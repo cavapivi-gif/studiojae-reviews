@@ -63,9 +63,13 @@ export const api = {
   deleteLieu: async (id) =>
     (await req(`/lieux/${id}`, { method: 'DELETE' })).json(),
 
-  /** Sync Google Places pour un lieu */
+  /** Sync Google Places pour un lieu (démarre un job en arrière-plan) */
   syncGoogle: async (id) =>
     (await req(`/lieux/${id}/sync-google`, { method: 'POST' })).json(),
+
+  /** Statut de la sync (polling) */
+  syncGoogleStatus: async (id) =>
+    (await req(`/lieux/${id}/sync-status`)).json(),
 
   /** Réglages */
   settings: async () => (await req('/settings')).json(),

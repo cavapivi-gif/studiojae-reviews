@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../lib/api'
 import {
   PageHeader, Btn, Input, Select, Toggle,
@@ -138,19 +138,41 @@ export default function Lieux() {
     }
   }
 
+  const pollRef = useRef(null)
+
+  const stopPoll = () => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+  }
+
   const handleSyncGoogle = async (lieu) => {
     if (syncing) return
     setSyncing(lieu.id)
     try {
-      const res = await api.syncGoogle(lieu.id)
-      flash(`✓ ${res.imported} avis importés, ${res.skipped} déjà existants.`)
-      load() // refresh counts
+      await api.syncGoogle(lieu.id)
+      // Polling toutes les 2s jusqu'à ce que le job soit terminé
+      pollRef.current = setInterval(async () => {
+        try {
+          const s = await api.syncGoogleStatus(lieu.id)
+          if (s.status === 'done') {
+            stopPoll()
+            setSyncing(null)
+            flash(`✓ ${s.imported ?? 0} avis importés, ${s.skipped ?? 0} déjà existants.`)
+            load()
+          } else if (s.error) {
+            stopPoll()
+            setSyncing(null)
+            flash(s.error, 'error')
+          }
+        } catch { stopPoll(); setSyncing(null) }
+      }, 2000)
     } catch (e) {
-      flash(e.message, 'error')
-    } finally {
       setSyncing(null)
+      flash(e.message, 'error')
     }
   }
+
+  // Nettoyer le poll si le composant est démonté
+  useEffect(() => () => stopPoll(), [])
 
   if (loading) return <div className="flex justify-center py-20"><Spinner /></div>
   if (error)   return <Notice type="error">{error}</Notice>

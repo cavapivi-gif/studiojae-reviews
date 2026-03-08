@@ -64,17 +64,40 @@ class Backoffice {
 
         add_action('admin_head', function () {
             echo '<style>
-                /* Supprimer tout le padding/margin WP qui crée un énorme gap en haut */
-                #wpcontent,
-                #wpbody,
-                #wpbody-content { padding: 0 !important; margin: 0 !important; }
-                #wpcontent { padding-left: 0 !important; }
-                #wpfooter  { display: none !important; }
-                .notice, .notice-warning, .notice-error, .notice-success,
-                .update-nag, #screen-meta, #screen-meta-links,
-                .wp-header-end, .wrap > h1:empty { display: none !important; }
-                #sj-reviews-root { min-height: 100vh; display: block; }
-                /* SVG inline — stroke/fill via attributs HTML, pas de CSS class à override */
+                /* Masquer les éléments WP autour de notre app */
+                #wpfooter, #screen-meta, #screen-meta-links,
+                .update-nag, .notice, .notice-warning, .notice-error, .notice-success,
+                .wp-header-end { display: none !important; }
+
+                /*
+                 * position:fixed = s'arrache totalement du flux WP admin
+                 * (float, padding, overflow ne peuvent plus interférer)
+                 * top:32px = hauteur de la barre admin WP (desktop)
+                 * left:160px = largeur du menu WP (non replié)
+                 */
+                #sj-reviews-root {
+                    position: fixed !important;
+                    top: 32px;
+                    left: 160px;
+                    right: 0;
+                    bottom: 0;
+                    overflow: hidden;
+                    z-index: 99;
+                    background: #fff;
+                }
+                /* Menu WP replié manuellement */
+                .folded #sj-reviews-root {
+                    left: 36px;
+                }
+                /* Mobile WP : barre admin = 46px, pas de menu latéral */
+                @media (max-width: 782px) {
+                    #sj-reviews-root {
+                        left: 0 !important;
+                        top: 46px;
+                    }
+                }
+
+                /* SVG inline — stroke/fill en attribut HTML, pas de class WP à override */
                 #sj-reviews-root svg {
                     display: inline-block !important;
                     overflow: visible !important;
