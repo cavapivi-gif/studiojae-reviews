@@ -21,9 +21,9 @@ export const api = {
   /** Dashboard stats */
   dashboard: async () => (await req('/dashboard')).json(),
 
-  /** Liste des avis */
-  reviews: async ({ page = 1, perPage = 20, search = '', rating = 0 } = {}) => {
-    const p = new URLSearchParams({ page, per_page: perPage, search, rating })
+  /** Liste des avis avec filtres */
+  reviews: async ({ page = 1, perPage = 20, search = '', rating = 0, source = '', lieu_id = '', orderby = 'date', order = 'DESC' } = {}) => {
+    const p = new URLSearchParams({ page, per_page: perPage, search, rating, source, lieu_id, orderby, order })
     const res = await req(`/reviews?${p}`)
     const data = await res.json()
     return {
@@ -47,6 +47,21 @@ export const api = {
   /** Supprimer avis */
   deleteReview: async (id) =>
     (await req(`/reviews/${id}`, { method: 'DELETE' })).json(),
+
+  /** Liste des lieux */
+  lieux: async () => (await req('/lieux')).json(),
+
+  /** Créer lieu */
+  createLieu: async (body) =>
+    (await req('/lieux', { method: 'POST', body: JSON.stringify(body) })).json(),
+
+  /** Modifier lieu */
+  updateLieu: async (id, body) =>
+    (await req(`/lieux/${id}`, { method: 'PUT', body: JSON.stringify(body) })).json(),
+
+  /** Supprimer lieu */
+  deleteLieu: async (id) =>
+    (await req(`/lieux/${id}`, { method: 'DELETE' })).json(),
 
   /** Réglages */
   settings: async () => (await req('/settings')).json(),

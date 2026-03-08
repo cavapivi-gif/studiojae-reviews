@@ -5,13 +5,15 @@ import {
   Plus,
   Settings,
   OpenNewWindow,
+  MapPin,
 } from 'iconoir-react'
 
 const nav = [
-  { to: '/dashboard', label: 'Tableau de bord', icon: HomeSimpleDoor },
-  { to: '/reviews',   label: 'Tous les avis',   icon: StarHalfDashed },
+  { to: '/dashboard',   label: 'Tableau de bord', icon: HomeSimpleDoor },
+  { to: '/reviews',     label: 'Tous les avis',   icon: StarHalfDashed },
   { to: '/reviews/new', label: 'Ajouter un avis', icon: Plus },
-  { to: '/settings',  label: 'Réglages',         icon: Settings },
+  { to: '/lieux',       label: 'Lieux',            icon: MapPin },
+  { to: '/settings',   label: 'Réglages',          icon: Settings },
 ]
 
 export default function Sidebar() {

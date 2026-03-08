@@ -107,6 +107,7 @@ function sj_normalize_review(\WP_Post $post): array {
         'certified' => (bool) $get('avis_certified'),
         'source'    => (string) ($get('avis_source') ?: 'google'),
         'place_id'  => (string) ($get('avis_place_id') ?: ''),
+        'lieu_id'   => (string) ($get('avis_lieu_id') ?: ''),
         'avatar'    => $avatar_url,
         'date'      => $post->post_date,
         'date_rel'  => sj_relative_date($post->post_date),

@@ -456,6 +456,22 @@ class ReviewsWidget extends \Elementor\Widget_Base {
             'tab'   => \Elementor\Controls_Manager::TAB_STYLE,
         ]);
 
+        // Transition
+        $this->add_control('card_transition', [
+            'label'      => __('Durée transition hover (ms)', 'sj-reviews'),
+            'type'       => \Elementor\Controls_Manager::SLIDER,
+            'size_units' => ['ms'],
+            'range'      => ['ms' => ['min' => 0, 'max' => 800, 'step' => 50]],
+            'default'    => ['size' => 250, 'unit' => 'ms'],
+            'selectors'  => ['{{WRAPPER}} .sj-review-card' => 'transition: background-color {{SIZE}}ms ease, border-color {{SIZE}}ms ease, box-shadow {{SIZE}}ms ease, transform {{SIZE}}ms ease'],
+        ]);
+
+        // Tabs Normal / Hover
+        $this->start_controls_tabs('card_tabs');
+
+        // ── Tab Normal ──
+        $this->start_controls_tab('card_tab_normal', ['label' => __('Normal', 'sj-reviews')]);
+
         $this->add_control('card_bg', [
             'label'     => __('Fond de carte', 'sj-reviews'),
             'type'      => \Elementor\Controls_Manager::COLOR,
@@ -467,10 +483,50 @@ class ReviewsWidget extends \Elementor\Widget_Base {
             'selector' => '{{WRAPPER}} .sj-review-card',
         ]);
 
+        $this->add_group_control(\Elementor\Group_Control_Box_Shadow::get_type(), [
+            'name'     => 'card_shadow',
+            'selector' => '{{WRAPPER}} .sj-review-card',
+        ]);
+
+        $this->end_controls_tab();
+
+        // ── Tab Hover ──
+        $this->start_controls_tab('card_tab_hover', ['label' => __('Hover', 'sj-reviews')]);
+
+        $this->add_control('card_bg_hover', [
+            'label'     => __('Fond au survol', 'sj-reviews'),
+            'type'      => \Elementor\Controls_Manager::COLOR,
+            'selectors' => ['{{WRAPPER}} .sj-review-card:hover' => 'background-color: {{VALUE}}'],
+        ]);
+
+        $this->add_control('card_border_color_hover', [
+            'label'     => __('Couleur bordure au survol', 'sj-reviews'),
+            'type'      => \Elementor\Controls_Manager::COLOR,
+            'selectors' => ['{{WRAPPER}} .sj-review-card:hover' => 'border-color: {{VALUE}}'],
+        ]);
+
+        $this->add_group_control(\Elementor\Group_Control_Box_Shadow::get_type(), [
+            'name'     => 'card_shadow_hover',
+            'selector' => '{{WRAPPER}} .sj-review-card:hover',
+        ]);
+
+        $this->add_control('card_transform_hover', [
+            'label'     => __('Élévation (translateY)', 'sj-reviews'),
+            'type'      => \Elementor\Controls_Manager::SLIDER,
+            'size_units' => ['px'],
+            'range'     => ['px' => ['min' => -20, 'max' => 0]],
+            'default'   => ['size' => 0, 'unit' => 'px'],
+            'selectors' => ['{{WRAPPER}} .sj-review-card:hover' => 'transform: translateY({{SIZE}}{{UNIT}})'],
+        ]);
+
+        $this->end_controls_tab();
+        $this->end_controls_tabs();
+
         $this->add_responsive_control('card_radius', [
             'label'      => __('Border radius', 'sj-reviews'),
             'type'       => \Elementor\Controls_Manager::SLIDER,
             'size_units' => ['px', 'em'],
+            'separator'  => 'before',
             'selectors'  => ['{{WRAPPER}} .sj-review-card' => 'border-radius: {{SIZE}}{{UNIT}}'],
         ]);
 
@@ -480,11 +536,6 @@ class ReviewsWidget extends \Elementor\Widget_Base {
             'size_units' => ['px', 'em'],
             'default'    => ['top' => '28', 'right' => '28', 'bottom' => '28', 'left' => '28', 'unit' => 'px', 'isLinked' => true],
             'selectors'  => ['{{WRAPPER}} .sj-review-card' => 'padding: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}}'],
-        ]);
-
-        $this->add_group_control(\Elementor\Group_Control_Box_Shadow::get_type(), [
-            'name'     => 'card_shadow',
-            'selector' => '{{WRAPPER}} .sj-review-card',
         ]);
 
         $this->add_responsive_control('cards_gap', [
@@ -811,7 +862,7 @@ class ReviewsWidget extends \Elementor\Widget_Base {
         if ($s['badge_show_score'] === 'yes') {
             echo '<div class="sj-aggregate__score">';
             echo '<span class="sj-aggregate__number">' . esc_html($score) . '</span>';
-            echo sj_stars_html((int) round((float) $score), 5, $s['star_color'] ?: '#f5a623');
+            echo sj_stars_html((int) round((float) $score), 5, $s['star_color'] ?? '#f5a623');
             echo '<span class="sj-aggregate__count">' . esc_html($count) . ' avis</span>';
             echo '</div>';
         }

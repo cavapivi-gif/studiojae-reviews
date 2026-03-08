@@ -13,7 +13,7 @@ const SOURCES = [
   { value: 'autre',       label: 'Autre' },
 ]
 
-const EMPTY = { author: '', rating: 5, text: '', certified: false, source: 'google', place_id: '' }
+const EMPTY = { author: '', rating: 5, text: '', certified: false, source: 'google', place_id: '', lieu_id: '' }
 
 export default function ReviewForm() {
   const { id }    = useParams()
@@ -26,6 +26,11 @@ export default function ReviewForm() {
   const [deleting, setDel]    = useState(false)
   const [error, setError]     = useState(null)
   const [saved, setSaved]     = useState(false)
+  const [lieux, setLieux]     = useState([])
+
+  useEffect(() => {
+    api.lieux().then(setLieux).catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!isEdit) return
@@ -37,6 +42,7 @@ export default function ReviewForm() {
         certified: r.certified ?? false,
         source:    r.source ?? 'google',
         place_id:  r.place_id ?? '',
+        lieu_id:   r.lieu_id ?? '',
       }))
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
@@ -158,8 +164,24 @@ export default function ReviewForm() {
             />
           </div>
 
+          {/* Lieu */}
+          {lieux.length > 0 && (
+            <div>
+              <Select
+                label="Lieu (optionnel)"
+                value={form.lieu_id}
+                onChange={e => set('lieu_id')(e.target.value)}
+              >
+                <option value="">— Aucun lieu —</option>
+                {lieux.filter(l => l.active).map(l => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </Select>
+            </div>
+          )}
+
           {/* Google Place ID */}
-          <div className="col-span-2">
+          <div className={lieux.length > 0 ? '' : 'col-span-2'}>
             <Input
               label="Google Place ID (optionnel)"
               value={form.place_id}

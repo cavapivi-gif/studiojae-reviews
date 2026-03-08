@@ -4,7 +4,6 @@ import { PageHeader, Input, Select, Btn, Notice, Spinner } from '../components/u
 import { Check } from 'iconoir-react'
 
 const DEFAULTS = {
-  place_id:        '',
   default_layout:  'slider-i',
   default_preset:  'minimal',
   star_color:      '#f5a623',
@@ -73,20 +72,12 @@ export default function Settings() {
 
           <section>
             <div className="text-xs text-gray-400 uppercase tracking-widest mb-3 pb-2 border-b border-gray-100">
-              Google My Business
+              Info
             </div>
-            <div className="flex flex-col gap-4">
-              <Input
-                label="Google Place ID"
-                value={form.place_id}
-                onChange={e => set('place_id')(e.target.value)}
-                placeholder="ChIJ…"
-              />
-              <p className="text-xs text-gray-400">
-                Optionnel. Permet d'afficher le lien vers votre fiche Google dans les widgets badge.
-                Sans l'API GMB, seuls les avis CPT sont affichés (max 5 recommandés pour le mode badge).
-              </p>
-            </div>
+            <p className="text-xs text-gray-400">
+              Les Place IDs Google sont désormais gérés par lieu dans <strong>Lieux &amp; Sources</strong>.
+              Les réglages ci-dessous s'appliquent globalement à tous les widgets et shortcodes.
+            </p>
           </section>
 
           <section>
@@ -153,14 +144,18 @@ export default function Settings() {
 
           <section>
             <div className="text-xs text-gray-400 uppercase tracking-widest mb-3 pb-2 border-b border-gray-100">
-              Shortcode
+              Shortcodes
             </div>
             <div className="bg-gray-50 border border-gray-200 px-4 py-3 text-xs font-mono text-gray-600 space-y-1">
               <div>[sj_reviews layout="slider-i" preset="minimal" max="5"]</div>
               <div>[sj_reviews layout="badge" preset="dark"]</div>
               <div>[sj_reviews layout="grid" preset="white" columns="3"]</div>
-              <div>[sj_reviews place_id="ChIJ..."]</div>
+              <div>[sj_reviews lieu_id="lieu_xxxxxxxx"]</div>
+              <div>[sj_reviews source="google"]</div>
             </div>
+            <p className="text-xs text-gray-400 mt-2">
+              Retrouvez l'ID de chaque lieu dans la page <strong>Lieux &amp; Sources</strong>.
+            </p>
           </section>
 
         </div>

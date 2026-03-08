@@ -2,11 +2,20 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { PageHeader, StatCard, Table, Btn, Notice, Spinner, Stars, Badge, RatingBar } from '../components/ui'
-import { RefreshDouble, Plus } from 'iconoir-react'
+import { Plus, MapPin } from 'iconoir-react'
 
 const SOURCE_LABELS = {
   google: 'Google', tripadvisor: 'TripAdvisor', facebook: 'Facebook',
   trustpilot: 'Trustpilot', direct: 'Direct', autre: 'Autre',
+}
+
+const SOURCE_COLORS = {
+  google:      'bg-blue-500',
+  tripadvisor: 'bg-emerald-500',
+  facebook:    'bg-blue-700',
+  trustpilot:  'bg-green-600',
+  direct:      'bg-gray-600',
+  autre:       'bg-gray-400',
 }
 
 export default function Dashboard() {
@@ -100,7 +109,34 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Recent */}
+          {/* Par source */}
+          {data?.by_source?.length > 0 && (
+            <div className="mx-8 mt-8">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs text-gray-400 uppercase tracking-widest">Par plateforme</span>
+              </div>
+              <div className="border border-gray-200 p-4 flex flex-wrap gap-4">
+                {data.by_source.map(({ source, count }) => (
+                  <button
+                    key={source}
+                    onClick={() => navigate(`/reviews?source=${source}`)}
+                    className="flex items-center gap-2 group"
+                    title={`Filtrer par ${SOURCE_LABELS[source] ?? source}`}
+                  >
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${SOURCE_COLORS[source] ?? 'bg-gray-400'}`} />
+                    <span className="text-sm text-gray-700 group-hover:text-black">
+                      {SOURCE_LABELS[source] ?? source}
+                    </span>
+                    <span className="text-xs font-semibold text-gray-900 bg-gray-100 rounded px-1.5 py-0.5">
+                      {count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Avis récents */}
           <div className="mx-8 mt-8 mb-10">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs text-gray-400 uppercase tracking-widest">Avis récents</span>
