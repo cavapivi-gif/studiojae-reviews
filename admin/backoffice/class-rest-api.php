@@ -89,6 +89,13 @@ class RestApi {
             ],
         ]);
 
+        // Sync Google Places pour un lieu
+        register_rest_route($this->ns, '/lieux/(?P<id>[a-z0-9_-]+)/sync-google', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'sync_google'],
+            'permission_callback' => [$this, 'is_manager'],
+        ]);
+
         register_rest_route($this->ns, '/lieux/(?P<id>[a-z0-9_-]+)', [
             [
                 'methods'             => 'PUT',
@@ -300,7 +307,32 @@ class RestApi {
     // ── Lieux ─────────────────────────────────────────────────────────────────
 
     public function list_lieux(\WP_REST_Request $req): \WP_REST_Response {
-        return rest_ensure_response($this->get_lieux());
+        global $wpdb;
+        $lieux = $this->get_lieux();
+
+        // Comptage des avis par lieu
+        if (!empty($lieux)) {
+            $counts_raw = $wpdb->get_results(
+                "SELECT pm.meta_value AS lieu_id, COUNT(*) AS total
+                 FROM {$wpdb->postmeta} pm
+                 INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+                 WHERE pm.meta_key = 'avis_lieu_id'
+                 AND pm.meta_value != ''
+                 AND p.post_type = 'sj_avis'
+                 AND p.post_status = 'publish'
+                 GROUP BY pm.meta_value"
+            );
+            $counts = [];
+            foreach ($counts_raw as $row) {
+                $counts[$row->lieu_id] = (int) $row->total;
+            }
+            $lieux = array_map(function ($lieu) use ($counts) {
+                $lieu['avis_count'] = $counts[$lieu['id']] ?? 0;
+                return $lieu;
+            }, $lieux);
+        }
+
+        return rest_ensure_response($lieux);
     }
 
     public function create_lieu(\WP_REST_Request $req): \WP_REST_Response|\WP_Error {
@@ -352,6 +384,115 @@ class RestApi {
         return rest_ensure_response(['deleted' => true, 'id' => $id]);
     }
 
+    // ── Google Maps Sync ──────────────────────────────────────────────────────
+
+    public function sync_google(\WP_REST_Request $req): \WP_REST_Response|\WP_Error {
+        $lieu_id = sanitize_key($req['id']);
+        $lieux   = $this->get_lieux();
+        $lieu    = null;
+        foreach ($lieux as $l) {
+            if ($l['id'] === $lieu_id) { $lieu = $l; break; }
+        }
+
+        if (!$lieu) {
+            return new \WP_Error('not_found', 'Lieu introuvable.', ['status' => 404]);
+        }
+        if (empty($lieu['place_id'])) {
+            return new \WP_Error('no_place_id', 'Ce lieu n\'a pas de Place ID Google.', ['status' => 400]);
+        }
+
+        // Sécurité anti-loop : 1 sync par lieu max toutes les 5 minutes
+        $transient_key = 'sj_sync_lock_' . $lieu_id;
+        if (get_transient($transient_key)) {
+            return new \WP_Error('rate_limited', 'Synchronisation déjà en cours. Réessayez dans quelques minutes.', ['status' => 429]);
+        }
+        set_transient($transient_key, true, 5 * MINUTE_IN_SECONDS);
+
+        $settings = get_option('sj_reviews_settings', []);
+        $api_key  = $settings['google_api_key'] ?? '';
+
+        if (empty($api_key)) {
+            delete_transient($transient_key);
+            return new \WP_Error('no_api_key', 'Clé API Google Maps non configurée dans les Réglages.', ['status' => 400]);
+        }
+
+        // Appel Google Places API (Place Details)
+        $url = add_query_arg([
+            'place_id' => $lieu['place_id'],
+            'fields'   => 'reviews',
+            'language' => 'fr',
+            'key'      => $api_key,
+        ], 'https://maps.googleapis.com/maps/api/place/details/json');
+
+        $response = wp_remote_get($url, ['timeout' => 15, 'sslverify' => true]);
+
+        if (is_wp_error($response)) {
+            delete_transient($transient_key);
+            return new \WP_Error('api_error', $response->get_error_message(), ['status' => 502]);
+        }
+
+        $body = json_decode(wp_remote_retrieve_body($response), true);
+
+        if (($body['status'] ?? '') !== 'OK') {
+            delete_transient($transient_key);
+            $msg = $body['error_message'] ?? ($body['status'] ?? 'Erreur Google API');
+            return new \WP_Error('google_error', $msg, ['status' => 502]);
+        }
+
+        $google_reviews = $body['result']['reviews'] ?? [];
+        $imported = 0;
+        $skipped  = 0;
+
+        foreach ($google_reviews as $gr) {
+            $author_name = sanitize_text_field($gr['author_name'] ?? 'Anonyme');
+            $rating      = max(1, min(5, (int) ($gr['rating'] ?? 5)));
+            $text        = sanitize_textarea_field($gr['text'] ?? '');
+            $time        = (int) ($gr['time'] ?? time());
+
+            // Évite les doublons : cherche un avis Google existant avec le même auteur + lieu
+            $existing = get_posts([
+                'post_type'   => 'sj_avis',
+                'post_status' => 'publish',
+                'meta_query'  => [
+                    ['key' => 'avis_source',  'value' => 'google'],
+                    ['key' => 'avis_lieu_id', 'value' => $lieu_id],
+                    ['key' => 'avis_author',  'value' => $author_name],
+                ],
+                'posts_per_page' => 1,
+            ]);
+
+            if (!empty($existing)) {
+                $skipped++;
+                continue;
+            }
+
+            $post_id = wp_insert_post([
+                'post_type'   => 'sj_avis',
+                'post_title'  => $author_name,
+                'post_status' => 'publish',
+                'post_date'   => date('Y-m-d H:i:s', $time),
+            ]);
+
+            if (!is_wp_error($post_id)) {
+                update_post_meta($post_id, 'avis_author',    $author_name);
+                update_post_meta($post_id, 'avis_rating',    $rating);
+                update_post_meta($post_id, 'avis_text',      $text);
+                update_post_meta($post_id, 'avis_source',    'google');
+                update_post_meta($post_id, 'avis_place_id',  $lieu['place_id']);
+                update_post_meta($post_id, 'avis_lieu_id',   $lieu_id);
+                update_post_meta($post_id, 'avis_certified', 0);
+                $imported++;
+            }
+        }
+
+        return rest_ensure_response([
+            'success'  => true,
+            'imported' => $imported,
+            'skipped'  => $skipped,
+            'total'    => count($google_reviews),
+        ]);
+    }
+
     // ── Settings ──────────────────────────────────────────────────────────────
 
     public function get_settings(\WP_REST_Request $req): \WP_REST_Response {
@@ -361,13 +502,14 @@ class RestApi {
             'star_color'      => '#f5a623',
             'certified_label' => 'Certifié',
             'max_front'       => 5,
+            'google_api_key'  => '',
         ];
         return rest_ensure_response(array_merge($defaults, get_option('sj_reviews_settings', [])));
     }
 
     public function save_settings(\WP_REST_Request $req): \WP_REST_Response {
         $body    = $req->get_json_params();
-        $allowed = ['default_layout', 'default_preset', 'star_color', 'certified_label', 'max_front'];
+        $allowed = ['default_layout', 'default_preset', 'star_color', 'certified_label', 'max_front', 'google_api_key'];
         $clean   = [];
         foreach ($allowed as $key) {
             if (isset($body[$key])) {

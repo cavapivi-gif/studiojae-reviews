@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import { PageHeader, Btn, Input, Textarea, Select, Toggle, Notice, Spinner, Stars, StarPicker } from '../components/ui'
-import { Check, ArrowLeft, Trash } from 'iconoir-react'
+import { Check, ArrowLeft, Trash2 } from 'lucide-react'
 
 const SOURCES = [
   { value: 'google',      label: 'Google' },
@@ -102,17 +102,17 @@ export default function ReviewForm() {
         actions={
           <div className="flex items-center gap-2">
             <Btn variant="ghost" size="sm" onClick={() => navigate('/reviews')}>
-              <ArrowLeft width={13} height={13} />
+              <ArrowLeft size={13} />
               Retour
             </Btn>
             {isEdit && (
               <Btn variant="danger" size="sm" loading={deleting} onClick={handleDelete}>
-                <Trash width={13} height={13} />
+                <Trash2 size={13} />
                 Supprimer
               </Btn>
             )}
             <Btn size="sm" loading={saving} onClick={handleSubmit}>
-              <Check width={13} height={13} />
+              <Check size={13} />
               {isEdit ? 'Enregistrer' : 'Créer l\'avis'}
             </Btn>
           </div>

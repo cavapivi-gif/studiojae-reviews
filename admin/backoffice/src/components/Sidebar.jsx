@@ -1,19 +1,20 @@
 import { NavLink } from 'react-router-dom'
 import {
-  HomeSimpleDoor,
-  StarHalfDashed,
+  LayoutDashboard,
+  Star,
   Plus,
   Settings,
-  OpenNewWindow,
+  ExternalLink,
   MapPin,
-} from 'iconoir-react'
+} from 'lucide-react'
 
 const nav = [
-  { to: '/dashboard',   label: 'Tableau de bord', icon: HomeSimpleDoor },
-  { to: '/reviews',     label: 'Tous les avis',   icon: StarHalfDashed },
+  { to: '/dashboard',   label: 'Tableau de bord', icon: LayoutDashboard },
+  { to: '/reviews',     label: 'Tous les avis',   icon: Star },
   { to: '/reviews/new', label: 'Ajouter un avis', icon: Plus },
   { to: '/lieux',       label: 'Lieux',            icon: MapPin },
   { to: '/settings',   label: 'Réglages',          icon: Settings },
+  { to: '/docs',        label: 'Documentation',    icon: ExternalLink },
 ]
 
 export default function Sidebar() {
@@ -23,7 +24,7 @@ export default function Sidebar() {
     <aside className="w-52 shrink-0 border-r border-gray-200 min-h-screen flex flex-col bg-white">
       {/* Logo */}
       <div className="flex items-center gap-2 px-5 py-5 border-b border-gray-200">
-        <StarHalfDashed width={16} height={16} strokeWidth={1.5} />
+        <Star size={15} strokeWidth={1.5} />
         <span className="text-sm tracking-widest uppercase">SJ Reviews</span>
       </div>
 
@@ -42,7 +43,7 @@ export default function Sidebar() {
               }`
             }
           >
-            <Icon width={15} height={15} strokeWidth={1.5} />
+            <Icon size={15} strokeWidth={1.5} />
             {label}
           </NavLink>
         ))}
@@ -54,7 +55,7 @@ export default function Sidebar() {
             rel="noopener noreferrer"
             className="flex items-center gap-3 px-5 py-2.5 text-sm text-gray-400 hover:text-black transition-colors"
           >
-            <OpenNewWindow width={13} height={13} strokeWidth={1.5} />
+            <ExternalLink size={13} strokeWidth={1.5} />
             WP Admin
           </a>
         )}

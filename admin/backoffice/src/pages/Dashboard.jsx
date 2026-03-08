@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { PageHeader, StatCard, Table, Btn, Notice, Spinner, Stars, Badge, RatingBar } from '../components/ui'
-import { Plus, MapPin } from 'iconoir-react'
+import { Plus } from 'lucide-react'
 
 const SOURCE_LABELS = {
   google: 'Google', tripadvisor: 'TripAdvisor', facebook: 'Facebook',

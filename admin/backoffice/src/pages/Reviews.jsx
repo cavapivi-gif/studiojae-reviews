@@ -4,7 +4,7 @@ import { api } from '../lib/api'
 import {
   PageHeader, Table, Btn, Notice, Spinner, Stars, Badge, Pagination, Input, Select
 } from '../components/ui'
-import { Plus, Trash, EditPencil, ArrowUp, ArrowDown } from 'iconoir-react'
+import { Plus, Trash2, Pencil, ArrowUp, ArrowDown } from 'lucide-react'
 
 const SOURCE_LABELS = {
   google: 'Google', tripadvisor: 'TripAdvisor', facebook: 'Facebook',
@@ -155,10 +155,10 @@ export default function Reviews() {
       render: r => (
         <div className="flex items-center gap-1">
           <Btn size="sm" variant="ghost" onClick={() => navigate(`/reviews/${r.id}`)}>
-            <EditPencil width={13} height={13} />
+            <Pencil size={13} height={13} />
           </Btn>
           <Btn size="sm" variant="danger" loading={deleting === r.id} onClick={() => handleDelete(r.id)}>
-            <Trash width={13} height={13} />
+            <Trash2 size={13} height={13} />
           </Btn>
         </div>
       ),

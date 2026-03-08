@@ -4,7 +4,7 @@ import {
   PageHeader, Btn, Input, Select, Toggle,
   Notice, Spinner, Badge,
 } from '../components/ui'
-import { EditPencil, Trash, NavArrowDown, NavArrowUp, MapPin, Plus } from 'iconoir-react'
+import { Pencil, Trash2, ChevronDown, ChevronUp, MapPin, Plus, RefreshCw, Star } from 'lucide-react'
 
 const SOURCE_OPTIONS = [
   { value: 'google',      label: 'Google' },
@@ -55,7 +55,7 @@ function LieuForm({ initial = EMPTY_FORM, onSave, onCancel, saving }) {
       <div className="flex items-center gap-3 sm:col-span-2">
         <Toggle
           checked={form.active}
-          onChange={e => set('active', e.target.checked)}
+          onChange={v => set('active', v)}
           id="lieu-active"
         />
         <label htmlFor="lieu-active" className="text-sm text-gray-700 cursor-pointer">
@@ -79,6 +79,7 @@ export default function Lieux() {
   const [saving, setSaving]   = useState(false)
   const [expanded, setExpanded] = useState(null)
   const [notice, setNotice]   = useState(null)
+  const [syncing, setSyncing] = useState(null)
 
   const load = useCallback(async () => {
     try {
@@ -137,6 +138,20 @@ export default function Lieux() {
     }
   }
 
+  const handleSyncGoogle = async (lieu) => {
+    if (syncing) return
+    setSyncing(lieu.id)
+    try {
+      const res = await api.syncGoogle(lieu.id)
+      flash(`✓ ${res.imported} avis importés, ${res.skipped} déjà existants.`)
+      load() // refresh counts
+    } catch (e) {
+      flash(e.message, 'error')
+    } finally {
+      setSyncing(null)
+    }
+  }
+
   if (loading) return <div className="flex justify-center py-20"><Spinner /></div>
   if (error)   return <Notice type="error">{error}</Notice>
 
@@ -188,6 +203,12 @@ export default function Lieux() {
                     <span className="font-medium text-sm text-gray-900 truncate">{lieu.name}</span>
                     <Badge variant={lieu.source}>{SOURCE_OPTIONS.find(s => s.value === lieu.source)?.label ?? lieu.source}</Badge>
                     {!lieu.active && <Badge variant="warn">Inactif</Badge>}
+                    {lieu.avis_count > 0 && (
+                      <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-0.5">
+                        <Star size={10} strokeWidth={1.5} />
+                        {lieu.avis_count} avis
+                      </span>
+                    )}
                   </div>
                   {lieu.address && <p className="text-xs text-gray-400 truncate mt-0.5">{lieu.address}</p>}
                   {lieu.place_id && (
@@ -195,13 +216,24 @@ export default function Lieux() {
                   )}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  {lieu.source === 'google' && lieu.place_id && (
+                    <Btn
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSyncGoogle(lieu)}
+                      loading={syncing === lieu.id}
+                      title="Synchroniser depuis Google Places"
+                    >
+                      <RefreshCw size={13} strokeWidth={1.5} className={syncing === lieu.id ? 'animate-spin' : ''} />
+                    </Btn>
+                  )}
                   <Btn
                     variant="ghost"
                     size="sm"
                     onClick={() => setEditingId(editingId === lieu.id ? null : lieu.id)}
                     title="Modifier"
                   >
-                    <EditPencil className="w-4 h-4" />
+                    <Pencil className="w-4 h-4" />
                   </Btn>
                   <Btn
                     variant="ghost"
@@ -210,7 +242,7 @@ export default function Lieux() {
                     title="Supprimer"
                     className="text-red-500 hover:text-red-700"
                   >
-                    <Trash className="w-4 h-4" />
+                    <Trash2 className="w-4 h-4" />
                   </Btn>
                   <Btn
                     variant="ghost"
@@ -219,8 +251,8 @@ export default function Lieux() {
                     title="Voir l'ID"
                   >
                     {expanded === lieu.id
-                      ? <NavArrowUp className="w-4 h-4" />
-                      : <NavArrowDown className="w-4 h-4" />}
+                      ? <ChevronUp className="w-4 h-4" />
+                      : <ChevronDown className="w-4 h-4" />}
                   </Btn>
                 </div>
               </div>

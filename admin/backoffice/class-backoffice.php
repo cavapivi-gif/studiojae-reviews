@@ -62,7 +62,24 @@ class Backoffice {
                 #wpfooter  { display: none !important; }
                 .notice, .update-nag, #screen-meta { display: none !important; }
                 #sj-reviews-root { min-height: 100vh; }
-                #sj-reviews-root svg { display: inline-block !important; overflow: visible !important; flex-shrink: 0; }
+                /* Lucide-react génère class="lucide lucide-*" : WP admin peut écraser stroke */
+                #sj-reviews-root svg {
+                    display: inline-block !important;
+                    overflow: visible !important;
+                    flex-shrink: 0;
+                }
+                #sj-reviews-root svg.lucide {
+                    stroke: currentColor !important;
+                    fill: none !important;
+                }
+                #sj-reviews-root svg.lucide path,
+                #sj-reviews-root svg.lucide circle,
+                #sj-reviews-root svg.lucide line,
+                #sj-reviews-root svg.lucide polyline,
+                #sj-reviews-root svg.lucide rect {
+                    stroke: currentColor !important;
+                    fill: none !important;
+                }
             </style>';
         });
     }

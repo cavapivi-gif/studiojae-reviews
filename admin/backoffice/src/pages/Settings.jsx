@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
 import { PageHeader, Input, Select, Btn, Notice, Spinner } from '../components/ui'
-import { Check } from 'iconoir-react'
+import { Check } from 'lucide-react'
 
 const DEFAULTS = {
   default_layout:  'slider-i',
@@ -9,6 +9,7 @@ const DEFAULTS = {
   star_color:      '#f5a623',
   certified_label: 'Certifié',
   max_front:       '5',
+  google_api_key:  '',
 }
 
 export default function Settings() {
@@ -72,12 +73,23 @@ export default function Settings() {
 
           <section>
             <div className="text-xs text-gray-400 uppercase tracking-widest mb-3 pb-2 border-b border-gray-100">
-              Info
+              Google Maps API
             </div>
-            <p className="text-xs text-gray-400">
-              Les Place IDs Google sont désormais gérés par lieu dans <strong>Lieux &amp; Sources</strong>.
-              Les réglages ci-dessous s'appliquent globalement à tous les widgets et shortcodes.
-            </p>
+            <div className="flex flex-col gap-3">
+              <Input
+                label="Clé API Google Maps"
+                type="password"
+                value={form.google_api_key}
+                onChange={e => set('google_api_key')(e.target.value)}
+                placeholder="AIzaSy…"
+                autoComplete="off"
+              />
+              <p className="text-xs text-gray-400">
+                Nécessaire pour synchroniser les avis depuis Google Places.
+                Activez <strong>Places API</strong> dans Google Cloud Console.
+                Les Place IDs sont configurés par lieu dans <strong>Lieux &amp; Sources</strong>.
+              </p>
+            </div>
           </section>
 
           <section>
