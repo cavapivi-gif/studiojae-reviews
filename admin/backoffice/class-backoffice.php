@@ -57,8 +57,11 @@ class Backoffice {
             return;
         }
 
-        wp_enqueue_style('sj-reviews-admin', $build_url . 'index.css', [], SJ_REVIEWS_VERSION);
-        wp_enqueue_script('sj-reviews-admin', $build_url . 'index.js', [], SJ_REVIEWS_VERSION, true);
+        $css_ver = filemtime($build_dir . 'index.css') ?: SJ_REVIEWS_VERSION;
+        $js_ver  = filemtime($build_dir . 'index.js')  ?: SJ_REVIEWS_VERSION;
+
+        wp_enqueue_style('sj-reviews-admin', $build_url . 'index.css', [], $css_ver);
+        wp_enqueue_script('sj-reviews-admin', $build_url . 'index.js', [], $js_ver, true);
 
         wp_localize_script('sj-reviews-admin', 'sjReviews', [
             'rest_url'  => rest_url('sj-reviews/v1'),
