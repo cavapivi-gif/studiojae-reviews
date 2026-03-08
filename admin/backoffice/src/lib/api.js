@@ -1,0 +1,57 @@
+const base  = () => window.sjReviews?.rest_url ?? '/wp-json/sj-reviews/v1'
+const nonce = () => window.sjReviews?.nonce ?? ''
+
+async function req(path, options = {}) {
+  const res = await fetch(`${base()}${path}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      'X-WP-Nonce':   nonce(),
+      ...options.headers,
+    },
+    ...options,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }))
+    throw new Error(err.message ?? 'Erreur réseau')
+  }
+  return res
+}
+
+export const api = {
+  /** Dashboard stats */
+  dashboard: async () => (await req('/dashboard')).json(),
+
+  /** Liste des avis */
+  reviews: async ({ page = 1, perPage = 20, search = '', rating = 0 } = {}) => {
+    const p = new URLSearchParams({ page, per_page: perPage, search, rating })
+    const res = await req(`/reviews?${p}`)
+    const data = await res.json()
+    return {
+      items:      data,
+      total:      parseInt(res.headers.get('X-WP-Total') ?? '0', 10),
+      totalPages: parseInt(res.headers.get('X-WP-TotalPages') ?? '1', 10),
+    }
+  },
+
+  /** Détail avis */
+  review: async (id) => (await req(`/reviews/${id}`)).json(),
+
+  /** Créer avis */
+  createReview: async (body) =>
+    (await req('/reviews', { method: 'POST', body: JSON.stringify(body) })).json(),
+
+  /** Modifier avis */
+  updateReview: async (id, body) =>
+    (await req(`/reviews/${id}`, { method: 'PUT', body: JSON.stringify(body) })).json(),
+
+  /** Supprimer avis */
+  deleteReview: async (id) =>
+    (await req(`/reviews/${id}`, { method: 'DELETE' })).json(),
+
+  /** Réglages */
+  settings: async () => (await req('/settings')).json(),
+
+  /** Enregistrer réglages */
+  saveSettings: async (body) =>
+    (await req('/settings', { method: 'POST', body: JSON.stringify(body) })).json(),
+}

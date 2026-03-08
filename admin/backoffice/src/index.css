@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+#sj-reviews-root {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #000;
+  background: #fff;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+#sj-reviews-root * {
+  box-sizing: border-box;
+}
+
+/* Reset WP admin interference */
+#sj-reviews-root h1,
+#sj-reviews-root h2,
+#sj-reviews-root h3,
+#sj-reviews-root p {
+  margin: 0;
+  padding: 0;
+  font-weight: 400;
+}
+
+#sj-reviews-root button {
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+#sj-reviews-root input,
+#sj-reviews-root select,
+#sj-reviews-root textarea {
+  font-family: inherit;
+  font-size: 13px;
+}
+
+#sj-reviews-root svg {
+  display: inline-block !important;
+  overflow: visible !important;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+/* Scrollbar minimal */
+#sj-reviews-root ::-webkit-scrollbar       { width: 4px; height: 4px; }
+#sj-reviews-root ::-webkit-scrollbar-track { background: transparent; }
+#sj-reviews-root ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
+
+/* Stars */
+.sj-star-display { color: #f5a623; display: inline-flex; gap: 1px; }
