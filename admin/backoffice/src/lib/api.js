@@ -77,4 +77,8 @@ export const api = {
   /** Enregistrer réglages */
   saveSettings: async (body) =>
     (await req('/settings', { method: 'POST', body: JSON.stringify(body) })).json(),
+
+  /** Tester la clé API Google Maps */
+  testGoogleKey: async (key) =>
+    (await req('/settings/test-google-key', { method: 'POST', body: JSON.stringify({ key }) })).json(),
 }

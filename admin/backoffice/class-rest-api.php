@@ -117,6 +117,13 @@ class RestApi {
             ],
         ]);
 
+        // Test de la clé API Google
+        register_rest_route($this->ns, '/settings/test-google-key', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'test_google_key'],
+            'permission_callback' => [$this, 'is_manager'],
+        ]);
+
         register_rest_route($this->ns, '/settings', [
             [
                 'methods'             => 'GET',
@@ -581,6 +588,44 @@ class RestApi {
             'google_api_key'  => '',
         ];
         return rest_ensure_response(array_merge($defaults, get_option('sj_reviews_settings', [])));
+    }
+
+    public function test_google_key(\WP_REST_Request $req): \WP_REST_Response|\WP_Error {
+        $key = sanitize_text_field($req['key'] ?? '');
+        if (empty($key)) {
+            return new \WP_Error('missing_key', 'Clé API manquante.', ['status' => 400]);
+        }
+
+        // Requête de test : Places Details sur un Place ID connu (Eiffel Tower)
+        $url = add_query_arg([
+            'place_id' => 'ChIJLU7jZClu5kcR4PcOOO6p3I0',
+            'fields'   => 'name',
+            'key'      => $key,
+        ], 'https://maps.googleapis.com/maps/api/place/details/json');
+
+        $response = wp_remote_get($url, ['timeout' => 10, 'sslverify' => true]);
+
+        if (is_wp_error($response)) {
+            return rest_ensure_response(['ok' => false, 'message' => $response->get_error_message()]);
+        }
+
+        $body   = json_decode(wp_remote_retrieve_body($response), true);
+        $status = $body['status'] ?? 'UNKNOWN';
+
+        if ($status === 'OK') {
+            return rest_ensure_response(['ok' => true, 'message' => '']);
+        }
+
+        $messages = [
+            'REQUEST_DENIED'       => 'Clé refusée — vérifiez les restrictions et que Places API est activée.',
+            'INVALID_REQUEST'      => 'Requête invalide.',
+            'OVER_QUERY_LIMIT'     => 'Quota dépassé.',
+            'NOT_FOUND'            => 'Places API accessible (clé valide).',
+        ];
+        $msg = $messages[$status] ?? ("Statut Google: $status");
+        $ok  = ($status === 'NOT_FOUND'); // NOT_FOUND = key works, just that place not found
+
+        return rest_ensure_response(['ok' => $ok, 'message' => $msg]);
     }
 
     public function save_settings(\WP_REST_Request $req): \WP_REST_Response {

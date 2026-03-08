@@ -18,6 +18,8 @@ export default function Settings() {
   const [saving, setSaving]   = useState(false)
   const [saved, setSaved]     = useState(false)
   const [error, setError]     = useState(null)
+  const [keyStatus, setKeyStatus] = useState(null) // null | 'testing' | 'ok' | 'error'
+  const [keyMsg, setKeyMsg]   = useState('')
 
   useEffect(() => {
     api.settings()
@@ -26,7 +28,10 @@ export default function Settings() {
       .finally(() => setLoading(false))
   }, [])
 
-  const set = key => value => setForm(f => ({ ...f, [key]: value }))
+  const set = key => value => {
+    setForm(f => ({ ...f, [key]: value }))
+    if (key === 'google_api_key') setKeyStatus(null)
+  }
 
   async function handleSave(e) {
     e.preventDefault()
@@ -44,14 +49,26 @@ export default function Settings() {
     }
   }
 
-  if (loading) {
-    return (
-      <div>
-        <PageHeader title="Réglages" />
-        <div className="flex items-center justify-center py-20"><Spinner size={20} /></div>
-      </div>
-    )
+  async function testApiKey() {
+    if (!form.google_api_key.trim()) return
+    setKeyStatus('testing')
+    setKeyMsg('')
+    try {
+      const res = await api.testGoogleKey(form.google_api_key)
+      setKeyStatus(res.ok ? 'ok' : 'error')
+      setKeyMsg(res.message ?? '')
+    } catch (e) {
+      setKeyStatus('error')
+      setKeyMsg(e.message)
+    }
   }
+
+  if (loading) return (
+    <div>
+      <PageHeader title="Réglages" />
+      <div className="flex items-center justify-center py-20"><Spinner size={20} /></div>
+    </div>
+  )
 
   return (
     <div>
@@ -59,7 +76,7 @@ export default function Settings() {
         title="Réglages"
         actions={
           <Btn size="sm" loading={saving} onClick={handleSave}>
-            <IconCheck width={13} height={13} />
+            <IconCheck size={13} strokeWidth={2} />
             Enregistrer
           </Btn>
         }
@@ -75,17 +92,44 @@ export default function Settings() {
             <div className="text-xs text-gray-400 uppercase tracking-widest mb-3 pb-2 border-b border-gray-100">
               Google Maps API
             </div>
-            <div className="flex flex-col gap-3">
-              <Input
-                label="Clé API Google Maps"
-                type="password"
-                value={form.google_api_key}
-                onChange={e => set('google_api_key')(e.target.value)}
-                placeholder="AIzaSy…"
-                autoComplete="off"
-              />
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2 items-end">
+                <div className="flex-1">
+                  <Input
+                    label="Clé API Google Maps"
+                    type="password"
+                    value={form.google_api_key}
+                    onChange={e => set('google_api_key')(e.target.value)}
+                    placeholder="AIzaSy…"
+                    autoComplete="off"
+                  />
+                </div>
+                <Btn
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={testApiKey}
+                  loading={keyStatus === 'testing'}
+                  disabled={!form.google_api_key.trim() || keyStatus === 'testing'}
+                  style={{ marginBottom: '1px' }}
+                >
+                  Tester
+                </Btn>
+              </div>
+
+              {keyStatus === 'ok' && (
+                <div className="flex items-center gap-1.5 text-xs text-green-700 bg-green-50 border border-green-200 px-3 py-2">
+                  <IconCheck size={12} strokeWidth={2.5} />
+                  Clé valide — Places API accessible.{keyMsg ? ` ${keyMsg}` : ''}
+                </div>
+              )}
+              {keyStatus === 'error' && (
+                <div className="text-xs text-red-700 bg-red-50 border border-red-200 px-3 py-2">
+                  Clé invalide ou Places API non activée. {keyMsg}
+                </div>
+              )}
+
               <p className="text-xs text-gray-400">
-                Nécessaire pour synchroniser les avis depuis Google Places.
                 Activez <strong>Places API</strong> dans Google Cloud Console.
                 Les Place IDs sont configurés par lieu dans <strong>Lieux &amp; Sources</strong>.
               </p>
