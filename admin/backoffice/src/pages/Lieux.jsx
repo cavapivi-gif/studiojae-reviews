@@ -156,7 +156,13 @@ export default function Lieux() {
           if (s.status === 'done') {
             stopPoll()
             setSyncing(null)
-            flash(`✓ ${s.imported ?? 0} avis importés, ${s.skipped ?? 0} déjà existants.`)
+            if (s.error) {
+              flash(s.error, 'error')
+            } else if ((s.total ?? 0) === 0 && s.message) {
+              flash(s.message, 'warn')
+            } else {
+              flash(`✓ ${s.imported ?? 0} avis importés, ${s.skipped ?? 0} déjà existants.`)
+            }
             load()
           } else if (s.error) {
             stopPoll()
