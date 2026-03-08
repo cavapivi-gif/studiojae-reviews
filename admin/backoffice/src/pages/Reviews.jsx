@@ -4,7 +4,7 @@ import { api } from '../lib/api'
 import {
   PageHeader, Table, Btn, Notice, Spinner, Stars, Badge, Pagination, Input, Select
 } from '../components/ui'
-import { Plus, Trash2, Pencil, ArrowUp, ArrowDown } from 'lucide-react'
+import { IconPlus, IconTrash, IconPencil, IconArrowUp, IconArrowDown } from '../components/Icons'
 
 const SOURCE_LABELS = {
   google: 'Google', tripadvisor: 'TripAdvisor', facebook: 'Facebook',
@@ -76,8 +76,8 @@ export default function Reviews() {
   const SortIcon = ({ col }) => {
     if (orderby !== col) return null
     return order === 'DESC'
-      ? <ArrowDown className="w-3 h-3 inline ml-1 text-gray-400" />
-      : <ArrowUp className="w-3 h-3 inline ml-1 text-gray-400" />
+      ? <IconArrowDown className="w-3 h-3 inline ml-1 text-gray-400" />
+      : <IconArrowUp className="w-3 h-3 inline ml-1 text-gray-400" />
   }
 
   async function handleDelete(id) {
@@ -155,10 +155,10 @@ export default function Reviews() {
       render: r => (
         <div className="flex items-center gap-1">
           <Btn size="sm" variant="ghost" onClick={() => navigate(`/reviews/${r.id}`)}>
-            <Pencil size={13} height={13} />
+            <IconPencil size={13} height={13} />
           </Btn>
           <Btn size="sm" variant="danger" loading={deleting === r.id} onClick={() => handleDelete(r.id)}>
-            <Trash2 size={13} height={13} />
+            <IconTrash size={13} height={13} />
           </Btn>
         </div>
       ),
@@ -171,7 +171,7 @@ export default function Reviews() {
         title="Tous les avis"
         actions={
           <Btn size="sm" onClick={() => navigate('/reviews/new')}>
-            <Plus width={13} height={13} />
+            <IconPlus width={13} height={13} />
             Ajouter
           </Btn>
         }

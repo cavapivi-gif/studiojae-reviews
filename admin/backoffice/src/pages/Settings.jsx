@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
 import { PageHeader, Input, Select, Btn, Notice, Spinner } from '../components/ui'
-import { Check } from 'lucide-react'
+import { IconCheck } from '../components/Icons'
 
 const DEFAULTS = {
   default_layout:  'slider-i',
@@ -59,7 +59,7 @@ export default function Settings() {
         title="Réglages"
         actions={
           <Btn size="sm" loading={saving} onClick={handleSave}>
-            <Check width={13} height={13} />
+            <IconCheck width={13} height={13} />
             Enregistrer
           </Btn>
         }

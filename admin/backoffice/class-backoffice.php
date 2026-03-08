@@ -8,6 +8,12 @@ class Backoffice {
     public function init(): void {
         add_action('admin_menu',            [$this, 'add_menu']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue']);
+        add_action('admin_enqueue_scripts', [$this, 'disable_heartbeat']);
+    }
+
+    public function disable_heartbeat(string $hook): void {
+        if ($hook !== 'toplevel_page_sj-reviews') return;
+        wp_deregister_script('heartbeat');
     }
 
     public function add_menu(): void {
@@ -58,27 +64,22 @@ class Backoffice {
 
         add_action('admin_head', function () {
             echo '<style>
-                #wpcontent { padding-left: 0 !important; margin-left: 0 !important; }
+                /* Supprimer tout le padding/margin WP qui crée un énorme gap en haut */
+                #wpcontent,
+                #wpbody,
+                #wpbody-content { padding: 0 !important; margin: 0 !important; }
+                #wpcontent { padding-left: 0 !important; }
                 #wpfooter  { display: none !important; }
-                .notice, .update-nag, #screen-meta { display: none !important; }
-                #sj-reviews-root { min-height: 100vh; }
-                /* Lucide-react génère class="lucide lucide-*" : WP admin peut écraser stroke */
+                .notice, .notice-warning, .notice-error, .notice-success,
+                .update-nag, #screen-meta, #screen-meta-links,
+                .wp-header-end, .wrap > h1:empty { display: none !important; }
+                #sj-reviews-root { min-height: 100vh; display: block; }
+                /* SVG inline — stroke/fill via attributs HTML, pas de CSS class à override */
                 #sj-reviews-root svg {
                     display: inline-block !important;
                     overflow: visible !important;
                     flex-shrink: 0;
-                }
-                #sj-reviews-root svg.lucide {
-                    stroke: currentColor !important;
-                    fill: none !important;
-                }
-                #sj-reviews-root svg.lucide path,
-                #sj-reviews-root svg.lucide circle,
-                #sj-reviews-root svg.lucide line,
-                #sj-reviews-root svg.lucide polyline,
-                #sj-reviews-root svg.lucide rect {
-                    stroke: currentColor !important;
-                    fill: none !important;
+                    vertical-align: middle;
                 }
             </style>';
         });

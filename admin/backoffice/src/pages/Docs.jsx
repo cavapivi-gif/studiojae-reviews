@@ -1,4 +1,4 @@
-import { Book, Code, Layers, MapPin, Star, Zap } from 'lucide-react'
+import { IconBook, IconCode, IconLayers, IconMapPin, IconStar, IconZap } from '../components/Icons'
 
 function Section({ icon: Icon, title, children }) {
   return (

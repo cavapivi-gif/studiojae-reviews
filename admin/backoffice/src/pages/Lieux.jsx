@@ -4,7 +4,7 @@ import {
   PageHeader, Btn, Input, Select, Toggle,
   Notice, Spinner, Badge,
 } from '../components/ui'
-import { Pencil, Trash2, ChevronDown, ChevronUp, MapPin, Plus, RefreshCw, Star } from 'lucide-react'
+import { IconPencil, IconTrash, IconChevronDown, IconChevronUp, IconMapPin, IconPlus, IconRefresh, IconStar } from '../components/Icons'
 
 const SOURCE_OPTIONS = [
   { value: 'google',      label: 'Google' },
@@ -163,7 +163,7 @@ export default function Lieux() {
         actions={
           !creating && (
             <Btn onClick={() => { setCreating(true); setEditingId(null) }}>
-              <Plus className="w-4 h-4 mr-1" />
+              <IconPlus className="w-4 h-4 mr-1" />
               Ajouter un lieu
             </Btn>
           )
@@ -187,7 +187,7 @@ export default function Lieux() {
       {/* Liste */}
       {lieux.length === 0 && !creating ? (
         <div className="text-center py-16 text-gray-400">
-          <MapPin className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <IconMapPin className="w-10 h-10 mx-auto mb-3 opacity-30" />
           <p className="text-sm">Aucun lieu configuré.</p>
           <p className="text-xs mt-1">Ajoutez vos boutiques ou points de vente pour filtrer les avis par lieu.</p>
         </div>
@@ -197,7 +197,7 @@ export default function Lieux() {
             <li key={lieu.id} className="border border-gray-200 rounded-lg bg-white overflow-hidden">
               {/* Header de la ligne */}
               <div className="flex items-center gap-3 p-4">
-                <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
+                <IconMapPin className="w-4 h-4 text-gray-400 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium text-sm text-gray-900 truncate">{lieu.name}</span>
@@ -205,7 +205,7 @@ export default function Lieux() {
                     {!lieu.active && <Badge variant="warn">Inactif</Badge>}
                     {lieu.avis_count > 0 && (
                       <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-0.5">
-                        <Star size={10} strokeWidth={1.5} />
+                        <IconStar size={10} strokeWidth={1.5} />
                         {lieu.avis_count} avis
                       </span>
                     )}
@@ -224,7 +224,7 @@ export default function Lieux() {
                       loading={syncing === lieu.id}
                       title="Synchroniser depuis Google Places"
                     >
-                      <RefreshCw size={13} strokeWidth={1.5} className={syncing === lieu.id ? 'animate-spin' : ''} />
+                      <IconRefresh size={13} strokeWidth={1.5} className={syncing === lieu.id ? 'animate-spin' : ''} />
                     </Btn>
                   )}
                   <Btn
@@ -233,7 +233,7 @@ export default function Lieux() {
                     onClick={() => setEditingId(editingId === lieu.id ? null : lieu.id)}
                     title="Modifier"
                   >
-                    <Pencil className="w-4 h-4" />
+                    <IconPencil className="w-4 h-4" />
                   </Btn>
                   <Btn
                     variant="ghost"
@@ -242,7 +242,7 @@ export default function Lieux() {
                     title="Supprimer"
                     className="text-red-500 hover:text-red-700"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <IconTrash className="w-4 h-4" />
                   </Btn>
                   <Btn
                     variant="ghost"
@@ -251,8 +251,8 @@ export default function Lieux() {
                     title="Voir l'ID"
                   >
                     {expanded === lieu.id
-                      ? <ChevronUp className="w-4 h-4" />
-                      : <ChevronDown className="w-4 h-4" />}
+                      ? <IconChevronUp className="w-4 h-4" />
+                      : <IconChevronDown className="w-4 h-4" />}
                   </Btn>
                 </div>
               </div>
