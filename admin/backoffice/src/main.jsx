@@ -6,9 +6,9 @@ import './index.css'
 
 const el = document.getElementById('sj-reviews-root')
 if (el) {
-  // Si pas de hash, démarre sur /dashboard
+  // Si pas de hash, démarre sur /dashboard (sans rechargement de page)
   if (!window.location.hash || window.location.hash === '#/') {
-    window.location.replace(window.location.pathname + window.location.search + '#/dashboard')
+    history.replaceState(null, '', window.location.pathname + window.location.search + '#/dashboard')
   }
 
   createRoot(el).render(
