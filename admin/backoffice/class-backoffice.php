@@ -70,7 +70,7 @@ class Backoffice {
                 .wp-header-end { display: none !important; }
 
                 /*
-                 * position:fixed = s'arrache totalement du flux WP admin
+                 * position:fixed = s\'arrache totalement du flux WP admin
                  * (float, padding, overflow ne peuvent plus interférer)
                  * top:32px = hauteur de la barre admin WP (desktop)
                  * left:160px = largeur du menu WP (non replié)

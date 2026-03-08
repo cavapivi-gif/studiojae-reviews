@@ -571,6 +571,9 @@ class RestApi {
             'imported' => $imported,
             'skipped'  => $skipped,
             'total'    => count($google_reviews),
+            'message'  => (count($google_reviews) === 0)
+                ? 'Google n\'a retourné aucun avis pour ce Place ID. Vérifiez que c\'est bien l\'ID du lieu (format ChIJ...), que l\'API Places est activée pour votre clé, et que le lieu a des avis sur Google Maps.'
+                : null,
         ], 5 * MINUTE_IN_SECONDS);
 
         delete_transient($lock_key);
@@ -596,7 +599,6 @@ class RestApi {
             return new \WP_Error('missing_key', 'Clé API manquante.', ['status' => 400]);
         }
 
-        // Requête de test : Places Details sur un Place ID connu (Eiffel Tower)
         $url = add_query_arg([
             'place_id' => 'ChIJLU7jZClu5kcR4PcOOO6p3I0',
             'fields'   => 'name',
@@ -612,20 +614,15 @@ class RestApi {
         $body   = json_decode(wp_remote_retrieve_body($response), true);
         $status = $body['status'] ?? 'UNKNOWN';
 
-        if ($status === 'OK') {
+        if (in_array($status, ['OK', 'NOT_FOUND'], true)) {
             return rest_ensure_response(['ok' => true, 'message' => '']);
         }
 
         $messages = [
-            'REQUEST_DENIED'       => 'Clé refusée — vérifiez les restrictions et que Places API est activée.',
-            'INVALID_REQUEST'      => 'Requête invalide.',
-            'OVER_QUERY_LIMIT'     => 'Quota dépassé.',
-            'NOT_FOUND'            => 'Places API accessible (clé valide).',
+            'REQUEST_DENIED'  => 'Clé refusée — vérifiez les restrictions et que Places API est activée.',
+            'OVER_QUERY_LIMIT' => 'Quota dépassé.',
         ];
-        $msg = $messages[$status] ?? ("Statut Google: $status");
-        $ok  = ($status === 'NOT_FOUND'); // NOT_FOUND = key works, just that place not found
-
-        return rest_ensure_response(['ok' => $ok, 'message' => $msg]);
+        return rest_ensure_response(['ok' => false, 'message' => $messages[$status] ?? "Statut Google: $status"]);
     }
 
     public function save_settings(\WP_REST_Request $req): \WP_REST_Response {
