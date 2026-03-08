@@ -11,7 +11,6 @@ class Backoffice {
     }
 
     public function add_menu(): void {
-        // Menu principal
         add_menu_page(
             'StudioJae Reviews',
             'SJ Reviews',
@@ -22,30 +21,17 @@ class Backoffice {
             25
         );
 
-        // Sous-menus — slugs propres sans hash (le HashRouter JS gère la navigation interne)
-        add_submenu_page('sj-reviews', 'Tableau de bord', 'Tableau de bord', 'manage_options', 'sj-reviews',          [$this, 'render_app']);
-        add_submenu_page('sj-reviews', 'Avis',            'Tous les avis',   'manage_options', 'edit.php?post_type=sj_avis', '');
-        add_submenu_page('sj-reviews', 'Ajouter',         'Ajouter un avis', 'manage_options', 'post-new.php?post_type=sj_avis', '');
-        add_submenu_page('sj-reviews', 'Réglages',        'Réglages',        'manage_options', 'sj-reviews-settings', [$this, 'render_app']);
+        // Un seul slug WP — React (HashRouter) gère toute la navigation interne
+        add_submenu_page('sj-reviews', 'Tableau de bord', 'Tableau de bord', 'manage_options', 'sj-reviews', [$this, 'render_app']);
     }
 
     public function render_app(): void {
         if (!current_user_can('manage_options')) return;
-
-        // Détermine la route React à partir du slug WP courant
-        $page   = sanitize_text_field($_GET['page'] ?? 'sj-reviews');
-        $routes = [
-            'sj-reviews'          => '/dashboard',
-            'sj-reviews-settings' => '/settings',
-        ];
-        $route = $routes[$page] ?? '/dashboard';
-
-        echo '<div id="sj-reviews-root" data-route="' . esc_attr($route) . '"></div>';
+        echo '<div id="sj-reviews-root"></div>';
     }
 
     public function enqueue(string $hook): void {
-        // Hooks valides pour nos pages : toplevel_page_sj-reviews et sj-reviews_page_sj-reviews-settings
-        if (strpos($hook, 'sj-reviews') === false) return;
+        if ($hook !== 'toplevel_page_sj-reviews') return;
 
         $build_dir = SJ_REVIEWS_DIR . 'admin/backoffice/build/assets/';
         $build_url = SJ_REVIEWS_URL . 'admin/backoffice/build/assets/';

@@ -6,11 +6,9 @@ import './index.css'
 
 const el = document.getElementById('sj-reviews-root')
 if (el) {
-  // Lit la route initiale injectée par PHP (data-route="/dashboard" ou "/settings")
-  // et initialise le hash si la page vient d'être chargée sans hash
-  const targetRoute = el.dataset.route ?? '/dashboard'
+  // Si pas de hash, démarre sur /dashboard
   if (!window.location.hash || window.location.hash === '#/') {
-    window.location.replace(window.location.pathname + window.location.search + '#' + targetRoute)
+    window.location.replace(window.location.pathname + window.location.search + '#/dashboard')
   }
 
   createRoot(el).render(
