@@ -564,6 +564,9 @@ class RestApi {
             'imported' => $imported,
             'skipped'  => $skipped,
             'total'    => count($google_reviews),
+            'message'  => (count($google_reviews) === 0)
+                ? 'Google n\'a retourné aucun avis pour ce Place ID. Vérifiez que c\'est bien l\'ID du lieu (format ChIJ...), que l\'API Places est activée pour votre clé, et que le lieu a des avis sur Google Maps.'
+                : null,
         ], 5 * MINUTE_IN_SECONDS);
 
         delete_transient($lock_key);
