@@ -25,7 +25,6 @@ class RestApi {
 
     public function init(): void {
         add_action('rest_api_init', [$this, 'register_routes']);
-        add_action('sj_sync_google_bg', [$this, 'do_sync_google_bg']);
     }
 
     public function register_routes(): void {
@@ -403,8 +402,10 @@ class RestApi {
 
     /**
      * POST /lieux/{id}/sync-google
-     * Planifie la sync Google en arrière-plan (WP Cron) et répond immédiatement.
-     * Évite le 502 gateway timeout causé par un appel HTTP bloquant dans la requête REST.
+     *
+     * Fetch synchrone (1 GET, 2 champs) : rating + user_ratings_total.
+     * Pas de cron (fetch < 1 s), pas d'import de commentaires individuels.
+     * Anti-loop : verrou transient de 30 s (libéré immédiatement après réponse).
      */
     public function sync_google(\WP_REST_Request $req): \WP_REST_Response|\WP_Error {
         $lieu_id = sanitize_key($req['id']);
@@ -422,113 +423,60 @@ class RestApi {
         }
 
         $settings = get_option('sj_reviews_settings', []);
-        if (empty($settings['google_api_key'])) {
-            return new \WP_Error('no_api_key', 'Clé API Google Maps non configurée dans les Réglages.', ['status' => 400]);
-        }
-
-        $lock_key   = 'sj_sync_lock_'   . $lieu_id;
-        $status_key = 'sj_sync_status_' . $lieu_id;
-
-        if (get_transient($lock_key)) {
-            return new \WP_Error('rate_limited', 'Synchronisation déjà en cours.', ['status' => 429]);
-        }
-
-        // Verrouille + marque comme "en attente"
-        set_transient($lock_key,   true,     5  * MINUTE_IN_SECONDS);
-        set_transient($status_key, 'queued', 10 * MINUTE_IN_SECONDS);
-
-        // Planifie le job en arrière-plan via WP Cron
-        wp_schedule_single_event(time(), 'sj_sync_google_bg', [$lieu_id]);
-
-        // Déclenche le cron immédiatement (requête non-bloquante vers wp-cron.php)
-        if (defined('ALTERNATE_WP_CRON') && ALTERNATE_WP_CRON) {
-            spawn_cron();
-        } else {
-            spawn_cron();
-        }
-
-        return rest_ensure_response([
-            'status'  => 'queued',
-            'message' => 'Synchronisation planifiée. Vérifiez le statut dans quelques secondes.',
-        ]);
-    }
-
-    /**
-     * GET /lieux/{id}/sync-status — polling depuis le front
-     */
-    public function sync_status(\WP_REST_Request $req): \WP_REST_Response {
-        $lieu_id    = sanitize_key($req['id']);
-        $status_key = 'sj_sync_status_' . $lieu_id;
-        $status     = get_transient($status_key);
-
-        if (!$status) {
-            return rest_ensure_response(['status' => 'idle']);
-        }
-        if (is_string($status)) {
-            return rest_ensure_response(['status' => $status]);
-        }
-        // C'est un array : sync terminée avec résultats
-        return rest_ensure_response(array_merge(['status' => 'done'], $status));
-    }
-
-    /**
-     * Callback WP Cron — appelé en arrière-plan, pas de limite de timeout gateway
-     */
-    public function do_sync_google_bg(string $lieu_id): void {
-        $status_key = 'sj_sync_status_' . $lieu_id;
-        $lock_key   = 'sj_sync_lock_'   . $lieu_id;
-
-        set_transient($status_key, 'running', 10 * MINUTE_IN_SECONDS);
-
-        $lieux = $this->get_lieux();
-        $lieu  = null;
-        foreach ($lieux as $l) {
-            if ($l['id'] === $lieu_id) { $lieu = $l; break; }
-        }
-
-        if (!$lieu || empty($lieu['place_id'])) {
-            set_transient($status_key, ['error' => 'Lieu ou Place ID introuvable.'], 5 * MINUTE_IN_SECONDS);
-            delete_transient($lock_key);
-            return;
-        }
-
-        $settings = get_option('sj_reviews_settings', []);
         $api_key  = $settings['google_api_key'] ?? '';
-
         if (empty($api_key)) {
-            set_transient($status_key, ['error' => 'Clé API manquante.'], 5 * MINUTE_IN_SECONDS);
-            delete_transient($lock_key);
-            return;
+            return new \WP_Error('no_api_key', 'Clé API Google Maps non configurée dans Réglages.', ['status' => 400]);
         }
 
-        // Agrégat uniquement : rating + total reviews (pas d'import de commentaires)
+        // Anti-loop : verrou 30 s (doubles-clics, appels simultanés)
+        $lock_key = 'sj_sync_lock_' . $lieu_id;
+        if (get_transient($lock_key)) {
+            return new \WP_Error('rate_limited', 'Sync déjà en cours, réessayez dans 30 secondes.', ['status' => 429]);
+        }
+        set_transient($lock_key, 1, 30);
+
+        // Appel Google Places API — champs de base uniquement
         $url = add_query_arg([
             'place_id' => $lieu['place_id'],
             'fields'   => 'rating,user_ratings_total',
             'key'      => $api_key,
         ], 'https://maps.googleapis.com/maps/api/place/details/json');
 
-        $response = wp_remote_get($url, ['timeout' => 30, 'sslverify' => true]);
+        $response = wp_remote_get($url, [
+            'timeout'   => 10,
+            'sslverify' => true,
+            // Requis si la clé a des restrictions HTTP referrer dans Google Cloud
+            'headers'   => ['Referer' => get_site_url()],
+        ]);
+
+        delete_transient($lock_key); // Libère immédiatement après réponse
 
         if (is_wp_error($response)) {
-            set_transient($status_key, ['error' => $response->get_error_message()], 5 * MINUTE_IN_SECONDS);
-            delete_transient($lock_key);
-            return;
+            return new \WP_Error('http_error', $response->get_error_message(), ['status' => 502]);
         }
 
-        $body = json_decode(wp_remote_retrieve_body($response), true);
+        $http_code = wp_remote_retrieve_response_code($response);
+        $body      = json_decode(wp_remote_retrieve_body($response), true);
+        $g_status  = $body['status'] ?? 'UNKNOWN';
 
-        if (($body['status'] ?? '') !== 'OK') {
-            $msg = $body['error_message'] ?? ($body['status'] ?? 'Erreur Google API');
-            set_transient($status_key, ['error' => $msg], 5 * MINUTE_IN_SECONDS);
-            delete_transient($lock_key);
-            return;
+        if ($g_status !== 'OK') {
+            // Erreurs Google détaillées pour diagnostic
+            $details = [
+                'REQUEST_DENIED'  => 'Clé refusée (restrictions HTTP referrer ou Places API non activée).',
+                'OVER_QUERY_LIMIT' => 'Quota dépassé.',
+                'INVALID_REQUEST'  => 'Place ID invalide ou malformé.',
+                'NOT_FOUND'        => 'Aucun lieu trouvé pour ce Place ID.',
+            ];
+            $msg = $body['error_message']
+                ?? $details[$g_status]
+                ?? "Erreur Google API : {$g_status} (HTTP {$http_code})";
+            return new \WP_Error('google_error', $msg, ['status' => 502]);
         }
 
-        $g_rating  = round((float) ($body['result']['rating']             ?? 0), 1);
-        $g_count   = (int)         ($body['result']['user_ratings_total'] ?? 0);
+        $g_rating = round((float) ($body['result']['rating']             ?? 0), 1);
+        $g_count  = (int)         ($body['result']['user_ratings_total'] ?? 0);
 
-        // Persiste sur le lieu dans l'option sj_lieux
+        // Persiste sur le lieu
         $all_lieux = $this->get_lieux();
         foreach ($all_lieux as &$l) {
             if ($l['id'] === $lieu_id) {
@@ -541,11 +489,18 @@ class RestApi {
         unset($l);
         update_option('sj_lieux', $all_lieux);
 
-        set_transient($status_key, [
+        return rest_ensure_response([
             'rating'        => $g_rating,
             'reviews_count' => $g_count,
-        ], 5 * MINUTE_IN_SECONDS);
-        delete_transient($lock_key);
+            'last_sync'     => current_time('Y-m-d H:i:s'),
+        ]);
+    }
+
+    /**
+     * GET /lieux/{id}/sync-status — conservé pour compatibilité (retourne toujours idle)
+     */
+    public function sync_status(\WP_REST_Request $req): \WP_REST_Response {
+        return rest_ensure_response(['status' => 'idle']);
     }
 
     // ── Settings ──────────────────────────────────────────────────────────────
