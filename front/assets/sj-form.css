@@ -1,0 +1,143 @@
+/* ═══════════════════════════════════════════════════════════════
+   SJ Reviews — Formulaire de soumission d'avis [sj_form]
+   ═══════════════════════════════════════════════════════════════ */
+
+.sj-form-wrap {
+  font-family: inherit;
+  color: #111;
+  max-width: 600px;
+}
+
+.sj-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.sj-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sj-form__label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.sj-form__input,
+.sj-form__textarea {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 0.875rem;
+  color: #111;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  font-family: inherit;
+}
+
+.sj-form__input:focus,
+.sj-form__textarea:focus {
+  border-color: #111;
+  box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.07);
+}
+
+.sj-form__textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+/* Star picker */
+.sj-form__stars {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sj-form__star-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #d1d5db;
+  transition: transform 0.15s;
+}
+
+.sj-form__star-btn:hover {
+  transform: scale(1.15);
+}
+
+/* Submit */
+.sj-form__actions {
+  display: flex;
+  justify-content: flex-start;
+  padding-top: 4px;
+}
+
+.sj-form__submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #fff;
+  background: #111;
+  border: none;
+  border-radius: 9999px;
+  padding: 12px 28px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.sj-form__submit:hover {
+  background: #333;
+}
+
+.sj-form__submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Messages */
+.sj-form__message {
+  font-size: 0.85rem;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-top: 4px;
+}
+
+.sj-form__message--success {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.sj-form__message--error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+/* Focus visible */
+.sj-form__star-btn:focus-visible,
+.sj-form__submit:focus-visible,
+.sj-form__input:focus-visible,
+.sj-form__textarea:focus-visible {
+  outline: 2px solid #111;
+  outline-offset: 2px;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .sj-form__submit {
+    width: 100%;
+    justify-content: center;
+  }
+}

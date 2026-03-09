@@ -186,6 +186,26 @@ class RestApi {
             ],
         ]);
 
+        // Public: front-end review loading (AJAX pagination + search)
+        register_rest_route($this->ns, '/front/reviews', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'front_reviews'],
+            'permission_callback' => '__return_true',
+            'args'                => [
+                'lieu_id'  => ['default' => 'all', 'type' => 'string'],
+                'lieu_ids' => ['default' => '',    'type' => 'string'],
+                'source_filter' => ['default' => '', 'type' => 'string'],
+                'page'     => ['default' => 1,     'type' => 'integer'],
+                'per_page' => ['default' => 10,    'type' => 'integer'],
+                'sort'     => ['default' => 'recent', 'type' => 'string'],
+                'rating'   => ['default' => 0,     'type' => 'integer'],
+                'period'   => ['default' => '',    'type' => 'string'],
+                'language' => ['default' => '',    'type' => 'string'],
+                'travel'   => ['default' => '',    'type' => 'string'],
+                'search'   => ['default' => '',    'type' => 'string'],
+            ],
+        ]);
+
         // Import Regiondo CSV
         register_rest_route($this->ns, '/import/post-matches', [
             'methods'             => 'GET',
@@ -216,7 +236,20 @@ class RestApi {
 
     // ── Dashboard ─────────────────────────────────────────────────────────────
 
+    private const DASHBOARD_CACHE_KEY = 'sj_dashboard_cache';
+    private const DASHBOARD_CACHE_TTL = HOUR_IN_SECONDS;
+
     public function dashboard(\WP_REST_Request $req): \WP_REST_Response {
+        $cached = get_transient(self::DASHBOARD_CACHE_KEY);
+        if (is_array($cached)) {
+            // Always refresh recent reviews (cheap query, keeps dashboard current)
+            $cached['recent'] = array_map(
+                fn($p) => sj_normalize_review($p, true),
+                get_posts(['post_type' => 'sj_avis', 'posts_per_page' => 5, 'orderby' => 'date', 'order' => 'DESC'])
+            );
+            return rest_ensure_response($cached);
+        }
+
         global $wpdb;
 
         $total = (int) wp_count_posts('sj_avis')->publish;
@@ -231,16 +264,20 @@ class RestApi {
         );
         $avg = round((float) $avg_raw, 1);
 
-        // Répartition par note
-        $distribution = [];
-        for ($i = 1; $i <= 5; $i++) {
-            $distribution[$i] = (int) $wpdb->get_var($wpdb->prepare(
-                "SELECT COUNT(*) FROM {$wpdb->postmeta} pm
-                 INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
-                 WHERE pm.meta_key = 'avis_rating' AND pm.meta_value = %s
-                 AND p.post_type = 'sj_avis' AND p.post_status = 'publish'",
-                (string) $i
-            ));
+        // Répartition par note — single GROUP BY query instead of 5 separate ones
+        $distribution = [1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0];
+        $dist_rows = $wpdb->get_results(
+            "SELECT CAST(pm.meta_value AS UNSIGNED) AS rating, COUNT(*) AS cnt
+             FROM {$wpdb->postmeta} pm
+             INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+             WHERE pm.meta_key = 'avis_rating'
+             AND p.post_type = 'sj_avis'
+             AND p.post_status = 'publish'
+             AND pm.meta_value BETWEEN '1' AND '5'
+             GROUP BY rating"
+        );
+        foreach ($dist_rows as $row) {
+            $distribution[(int) $row->rating] = (int) $row->cnt;
         }
 
         // Répartition par source (avec note moyenne par source)
@@ -276,15 +313,12 @@ class RestApi {
         }
 
         // Avis récents
-        $recent_posts = get_posts([
-            'post_type'      => 'sj_avis',
-            'posts_per_page' => 5,
-            'orderby'        => 'date',
-            'order'          => 'DESC',
-        ]);
-        $recent = array_map(fn($p) => sj_normalize_review($p, true), $recent_posts);
+        $recent = array_map(
+            fn($p) => sj_normalize_review($p, true),
+            get_posts(['post_type' => 'sj_avis', 'posts_per_page' => 5, 'orderby' => 'date', 'order' => 'DESC'])
+        );
 
-        return rest_ensure_response([
+        $data = [
             'total'        => $total,
             'avg_rating'   => $avg,
             'distribution' => $distribution,
@@ -292,7 +326,122 @@ class RestApi {
             'google_total' => $google_total,
             'google_avg'   => $google_avg,
             'recent'       => $recent,
-        ]);
+        ];
+
+        set_transient(self::DASHBOARD_CACHE_KEY, $data, self::DASHBOARD_CACHE_TTL);
+
+        return rest_ensure_response($data);
+    }
+
+    /** Invalidate dashboard cache (call after any review CRUD). */
+    private function invalidate_dashboard_cache(): void {
+        delete_transient(self::DASHBOARD_CACHE_KEY);
+    }
+
+    // ── Front reviews (public, AJAX pagination) ────────────────────────────
+
+    private const PERIOD_MONTHS = [
+        'spring' => [3,4,5],
+        'summer' => [6,7,8],
+        'autumn' => [9,10,11],
+        'winter' => [12,1,2],
+    ];
+
+    public function front_reviews(\WP_REST_Request $req): \WP_REST_Response {
+        $page     = max(1, (int) $req->get_param('page'));
+        $per_page = min(50, max(1, (int) $req->get_param('per_page')));
+        $sort     = sanitize_text_field($req->get_param('sort'));
+        $rating   = (int) $req->get_param('rating');
+        $period   = sanitize_key($req->get_param('period'));
+        $language = sanitize_key($req->get_param('language'));
+        $travel   = sanitize_key($req->get_param('travel'));
+        $search   = sanitize_text_field($req->get_param('search'));
+        $lieu_id  = sanitize_key($req->get_param('lieu_id'));
+        $lieu_ids = sanitize_text_field($req->get_param('lieu_ids'));
+        $source_filter = sanitize_text_field($req->get_param('source_filter'));
+
+        $args = [
+            'post_type'      => 'sj_avis',
+            'post_status'    => 'publish',
+            'posts_per_page' => $per_page,
+            'paged'          => $page,
+        ];
+
+        // Sort
+        if ($sort === 'rating_desc') {
+            $args['meta_key'] = 'avis_rating';
+            $args['orderby']  = 'meta_value_num';
+            $args['order']    = 'DESC';
+        } elseif ($sort === 'rating_asc') {
+            $args['meta_key'] = 'avis_rating';
+            $args['orderby']  = 'meta_value_num';
+            $args['order']    = 'ASC';
+        } else {
+            $args['orderby'] = 'date';
+            $args['order']   = 'DESC';
+        }
+
+        $meta_query = ['relation' => 'AND'];
+
+        // Lieu filter
+        if ($lieu_ids) {
+            $lieux = array_filter(array_map('trim', explode(',', $lieu_ids)));
+            if (!empty($lieux)) {
+                $meta_query[] = ['key' => 'avis_lieu_id', 'value' => $lieux, 'compare' => 'IN'];
+            }
+        } elseif ($lieu_id && $lieu_id !== 'all') {
+            $meta_query[] = ['key' => 'avis_lieu_id', 'value' => $lieu_id];
+        }
+
+        // Source filter
+        if ($source_filter) {
+            $sources = array_filter(array_map('trim', explode(',', $source_filter)));
+            if (!empty($sources)) {
+                $meta_query[] = ['key' => 'avis_source', 'value' => $sources, 'compare' => 'IN'];
+            }
+        }
+
+        // Rating
+        if ($rating >= 1 && $rating <= 5) {
+            $meta_query[] = ['key' => 'avis_rating', 'value' => $rating, 'type' => 'NUMERIC'];
+        }
+
+        // Language
+        if ($language) {
+            $meta_query[] = ['key' => 'avis_language', 'value' => $language];
+        }
+
+        // Travel type
+        if ($travel) {
+            $meta_query[] = ['key' => 'avis_travel_type', 'value' => $travel];
+        }
+
+        // Period (season-based: visit_date month)
+        if ($period && isset(self::PERIOD_MONTHS[$period])) {
+            $months = self::PERIOD_MONTHS[$period];
+            $month_clauses = [];
+            foreach ($months as $m) {
+                $month_clauses[] = ['key' => 'avis_visit_date', 'value' => sprintf('-%02d-', $m), 'compare' => 'LIKE'];
+            }
+            $meta_query[] = array_merge(['relation' => 'OR'], $month_clauses);
+        }
+
+        // Search
+        if ($search) {
+            $args['s'] = $search;
+        }
+
+        if (count($meta_query) > 1) {
+            $args['meta_query'] = $meta_query;
+        }
+
+        $query   = new \WP_Query($args);
+        $reviews = array_map('sj_normalize_review', $query->posts);
+
+        $response = rest_ensure_response($reviews);
+        $response->header('X-WP-Total',      $query->found_posts);
+        $response->header('X-WP-TotalPages', $query->max_num_pages);
+        return $response;
     }
 
     // ── List reviews ──────────────────────────────────────────────────────────
@@ -416,6 +565,7 @@ class RestApi {
         if (is_wp_error($post_id)) return $post_id;
 
         $this->save_meta($post_id, $data);
+        $this->invalidate_dashboard_cache();
         return rest_ensure_response(sj_normalize_review(get_post($post_id), true));
     }
 
@@ -432,6 +582,7 @@ class RestApi {
 
         wp_update_post(['ID' => $post->ID, 'post_title' => $data['author']]);
         $this->save_meta($post->ID, $data);
+        $this->invalidate_dashboard_cache();
 
         return rest_ensure_response(sj_normalize_review(get_post($post->ID), true));
     }
@@ -444,6 +595,7 @@ class RestApi {
             return new \WP_Error('not_found', 'Avis introuvable.', ['status' => 404]);
         }
         wp_delete_post($post->ID, true);
+        $this->invalidate_dashboard_cache();
         return rest_ensure_response(['deleted' => true, 'id' => (int) $req['id']]);
     }
 
@@ -801,14 +953,6 @@ class RestApi {
         $lieu_id = sanitize_text_field($req->get_param('lieu_id'));
         $rating  = (int) $req->get_param('rating');
 
-        $args = [
-            'post_type'      => 'sj_avis',
-            'post_status'    => 'publish',
-            'posts_per_page' => -1,
-            'orderby'        => 'date',
-            'order'          => 'DESC',
-        ];
-
         $meta_query = ['relation' => 'AND'];
         if ($source) {
             $meta_query[] = ['key' => 'avis_source', 'value' => $source, 'compare' => '='];
@@ -819,26 +963,44 @@ class RestApi {
         if ($rating >= 1 && $rating <= 5) {
             $meta_query[] = ['key' => 'avis_rating', 'value' => $rating, 'type' => 'NUMERIC'];
         }
-        if (count($meta_query) > 1) {
-            $args['meta_query'] = $meta_query;
-        }
-
-        $posts   = get_posts($args);
-        $reviews = array_map(fn($p) => sj_normalize_review($p, true), $posts);
 
         $headers = ['id', 'author', 'rating', 'source', 'title', 'text', 'certified', 'lieu_id', 'visit_date', 'language', 'travel_type', 'date', 'customer_email', 'order_id'];
 
-        $csv = fopen('php://temp', 'r+');
+        // Batched export to limit memory usage
+        $csv   = fopen('php://temp', 'r+');
         fputcsv($csv, $headers, ';');
-        foreach ($reviews as $r) {
-            $row = [];
-            foreach ($headers as $h) {
-                $val = $r[$h] ?? '';
-                if (is_bool($val)) $val = $val ? '1' : '0';
-                $row[] = (string) $val;
+        $count = 0;
+        $page  = 1;
+        $batch = 100;
+
+        do {
+            $args = [
+                'post_type'      => 'sj_avis',
+                'post_status'    => 'publish',
+                'posts_per_page' => $batch,
+                'paged'          => $page,
+                'orderby'        => 'date',
+                'order'          => 'DESC',
+            ];
+            if (count($meta_query) > 1) {
+                $args['meta_query'] = $meta_query;
             }
-            fputcsv($csv, $row, ';');
-        }
+
+            $posts = get_posts($args);
+            foreach ($posts as $p) {
+                $r   = sj_normalize_review($p, true);
+                $row = [];
+                foreach ($headers as $h) {
+                    $val = $r[$h] ?? '';
+                    if (is_bool($val)) $val = $val ? '1' : '0';
+                    $row[] = (string) $val;
+                }
+                fputcsv($csv, $row, ';');
+                $count++;
+            }
+            $page++;
+        } while (count($posts) === $batch);
+
         rewind($csv);
         $content = stream_get_contents($csv);
         fclose($csv);
@@ -846,7 +1008,7 @@ class RestApi {
         return rest_ensure_response([
             'csv'      => $content,
             'filename' => 'sj-reviews-export-' . wp_date('Y-m-d') . '.csv',
-            'count'    => count($reviews),
+            'count'    => $count,
         ]);
     }
 
@@ -1101,12 +1263,20 @@ class RestApi {
      *
      * @return array<int, array{index:int, row:array, status:'new'|'duplicate'|'error', reason?:string}>
      */
+    /**
+     * Validate a date string: must be YYYY-MM-DD with valid month/day.
+     */
+    private function is_valid_date(string $date): bool {
+        if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $m)) return false;
+        return checkdate((int) $m[2], (int) $m[3], (int) $m[1]);
+    }
+
     private function validate_rows(array $rows): array {
         global $wpdb;
 
         // Batch : récupère tous les order_id déjà en base en une seule requête
         $order_ids = array_filter(array_map(fn($r) => trim((string) ($r['order_id'] ?? '')), $rows));
-        $existing_set = [];
+        $existing_order_ids = [];
         if (!empty($order_ids)) {
             $placeholders = implode(',', array_fill(0, count($order_ids), '%s'));
             $existing_rows = $wpdb->get_results(
@@ -1117,17 +1287,43 @@ class RestApi {
                 )
             );
             foreach ($existing_rows as $e) {
-                $existing_set[$e->meta_value] = (int) $e->post_id;
+                $existing_order_ids[$e->meta_value] = (int) $e->post_id;
+            }
+        }
+
+        // Enriched duplicate detection: batch fetch email+date combos for fuzzy matching
+        $emails = array_filter(array_map(fn($r) => strtolower(trim((string) ($r['email'] ?? ''))), $rows));
+        $existing_email_dates = [];
+        if (!empty($emails)) {
+            $emails_unique = array_unique($emails);
+            $placeholders  = implode(',', array_fill(0, count($emails_unique), '%s'));
+            $email_rows    = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT pm_email.post_id, pm_email.meta_value AS email, p.post_date
+                     FROM {$wpdb->postmeta} pm_email
+                     INNER JOIN {$wpdb->posts} p ON p.ID = pm_email.post_id
+                     WHERE pm_email.meta_key = 'avis_customer_email'
+                     AND LOWER(pm_email.meta_value) IN ({$placeholders})
+                     AND p.post_type = 'sj_avis'",
+                    ...array_values($emails_unique)
+                )
+            );
+            foreach ($email_rows as $er) {
+                $key = strtolower($er->email) . '|' . substr($er->post_date, 0, 10);
+                $existing_email_dates[$key] = (int) $er->post_id;
             }
         }
 
         $results = [];
         foreach ($rows as $i => $row) {
-            $order_id = sanitize_text_field($row['order_id'] ?? '');
+            $order_id   = sanitize_text_field($row['order_id'] ?? '');
             $raw_rating = $row['rating'] ?? 0;
-            // Supporte float ("4.5" → 5) et virgule française ("4,5" → 5)
-            $rating   = (int) round((float) str_replace(',', '.', (string) $raw_rating));
-            $author   = sanitize_text_field($row['author'] ?? '');
+            $rating     = (int) round((float) str_replace(',', '.', (string) $raw_rating));
+            $author     = sanitize_text_field($row['author'] ?? '');
+            $email      = strtolower(trim((string) ($row['email'] ?? '')));
+            $eval_date  = trim((string) ($row['eval_date'] ?? ''));
+            $visit_date = trim((string) ($row['visit_date'] ?? ''));
+            $booking_date = trim((string) ($row['booking_date'] ?? ''));
 
             if (empty($author)) {
                 $results[] = ['index' => $i, 'row' => $row, 'status' => 'error', 'reason' => 'Auteur manquant'];
@@ -1137,9 +1333,34 @@ class RestApi {
                 $results[] = ['index' => $i, 'row' => $row, 'status' => 'error', 'reason' => 'Note invalide (doit être 1–5) — reçu : ' . esc_html((string) $raw_rating)];
                 continue;
             }
-            if ($order_id && isset($existing_set[$order_id])) {
-                $results[] = ['index' => $i, 'row' => $row, 'status' => 'duplicate', 'reason' => "Doublon — N° commande {$order_id} déjà importé (ID #{$existing_set[$order_id]})"];
+
+            // Date validation
+            if ($eval_date && !$this->is_valid_date($eval_date)) {
+                $results[] = ['index' => $i, 'row' => $row, 'status' => 'error', 'reason' => 'Date d\'évaluation invalide : ' . esc_html($eval_date) . ' (format attendu : AAAA-MM-JJ)'];
                 continue;
+            }
+            if ($visit_date && !$this->is_valid_date($visit_date)) {
+                $results[] = ['index' => $i, 'row' => $row, 'status' => 'error', 'reason' => 'Date de visite invalide : ' . esc_html($visit_date) . ' (format attendu : AAAA-MM-JJ)'];
+                continue;
+            }
+            if ($booking_date && !$this->is_valid_date($booking_date)) {
+                $results[] = ['index' => $i, 'row' => $row, 'status' => 'error', 'reason' => 'Date de réservation invalide : ' . esc_html($booking_date) . ' (format attendu : AAAA-MM-JJ)'];
+                continue;
+            }
+
+            // Duplicate: order_id match
+            if ($order_id && isset($existing_order_ids[$order_id])) {
+                $results[] = ['index' => $i, 'row' => $row, 'status' => 'duplicate', 'reason' => "Doublon — N° commande {$order_id} déjà importé (ID #{$existing_order_ids[$order_id]})"];
+                continue;
+            }
+
+            // Duplicate: email + eval_date match (same person, same day)
+            if ($email && $eval_date) {
+                $combo_key = $email . '|' . $eval_date;
+                if (isset($existing_email_dates[$combo_key])) {
+                    $results[] = ['index' => $i, 'row' => $row, 'status' => 'duplicate', 'reason' => "Doublon probable — même email ({$email}) et même date (ID #{$existing_email_dates[$combo_key]})"];
+                    continue;
+                }
             }
 
             $results[] = ['index' => $i, 'row' => $row, 'status' => 'new'];
@@ -1287,6 +1508,10 @@ class RestApi {
             }
 
             $imported++;
+        }
+
+        if ($imported > 0) {
+            $this->invalidate_dashboard_cache();
         }
 
         return rest_ensure_response([

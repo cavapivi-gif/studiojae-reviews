@@ -194,15 +194,6 @@
 }
 
 /* ── 4. Barre de filtres ──────────────────────────────────────── */
-.sj-summary__filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 16px;
-  align-items: center;
-  padding: 14px 0;
-  border-bottom: 1px solid #f0f0f0;
-  margin-bottom: 20px;
-}
 
 /* Sort */
 .sj-filters__sort {
@@ -232,58 +223,6 @@
   background-repeat: no-repeat;
   background-position: right 8px center;
   padding-right: 28px;
-}
-
-/* Groupes de pills */
-.sj-filters__group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.sj-filters__group-label {
-  font-size: 0.72rem;
-  color: #9ca3af;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  white-space: nowrap;
-}
-
-.sj-filters__pills {
-  display: flex;
-  gap: 5px;
-  flex-wrap: wrap;
-}
-
-/* Pills */
-.sj-filters__pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #374151;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 99px;
-  padding: 4px 12px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  line-height: 1.4;
-}
-
-.sj-filters__pill:hover {
-  border-color: #9ca3af;
-  background: #f3f4f6;
-}
-
-.sj-filters__pill.is-active,
-.sj-filters__pill[aria-pressed="true"] {
-  background: #111;
-  color: #fff;
-  border-color: #111;
 }
 
 /* Badge reset */
@@ -361,8 +300,8 @@
 }
 
 .sj-card__avatar--initiale {
-  background: #e0e7ff;
-  color: #4f46e5;
+  background: var(--sj-avatar-bg, #e0e7ff);
+  color: var(--sj-avatar-color, #4f46e5);
   font-size: 0.9rem;
   font-weight: 700;
   display: flex;
@@ -556,8 +495,69 @@
     font-size: 2.75rem;
   }
 
-  .sj-summary__filters {
-    gap: 8px 12px;
+  .sj-summary__score-block {
+    gap: 12px;
+  }
+
+  .sj-summary__filterbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .sj-filter-trigger {
+    justify-content: center;
+  }
+
+  .sj-filters__active {
+    margin-left: 0;
+    text-align: center;
+  }
+
+  .sj-card {
+    padding: 14px 16px;
+  }
+
+  .sj-card__author-name {
+    font-size: 0.82rem;
+  }
+
+  .sj-card__text {
+    font-size: 0.82rem;
+  }
+
+  .sj-summary__load-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 20px;
+  }
+
+  .sj-search__wrap {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 400px) {
+  .sj-summary {
+    padding: 14px 10px;
+    border-radius: 8px;
+  }
+
+  .sj-summary__score-num {
+    font-size: 2.25rem;
+  }
+
+  .sj-summary__dist-row {
+    grid-template-columns: 56px 1fr 24px;
+    gap: 6px;
+  }
+
+  .sj-summary__dist-label {
+    font-size: 0.68rem;
+  }
+
+  .sj-filter-modal__panel {
+    max-width: 100%;
   }
 }
 
@@ -946,6 +946,13 @@ body.sj-modal-open { overflow: hidden; }
   box-shadow: 0 0 0 3px rgba(17, 17, 17, .07);
 }
 .sj-search__input::-webkit-search-cancel-button { cursor: pointer; }
+
+/* ── AJAX loading state ─────────────────────────────────── */
+.sj-summary__reviews--loading {
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
 
 /* ── Accessibility: reduced motion ──────────────────────── */
 @media (prefers-reduced-motion: reduce) {
