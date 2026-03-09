@@ -50,6 +50,48 @@ class SummaryWidget extends Widget_Base {
             'default' => 'auto',
         ]);
 
+        $this->add_control(
+            'source_filter',
+            [
+                'label'    => __('Filtrer par source(s)', 'sj-reviews'),
+                'type'     => Controls_Manager::SELECT2,
+                'multiple' => true,
+                'options'  => [
+                    'google'      => 'Google',
+                    'tripadvisor' => 'TripAdvisor',
+                    'facebook'    => 'Facebook',
+                    'regiondo'    => 'Regiondo',
+                    'trustpilot'  => 'Trustpilot',
+                    'direct'      => 'Direct',
+                    'autre'       => 'Autre',
+                ],
+                'default'  => [],
+                'description' => __('Laisser vide = toutes les sources', 'sj-reviews'),
+            ]
+        );
+
+        $this->add_control(
+            'lieu_ids',
+            [
+                'label'    => __('Filtrer par lieu(x)', 'sj-reviews'),
+                'type'     => Controls_Manager::SELECT2,
+                'multiple' => true,
+                'options'  => $lieu_opts,
+                'default'  => [],
+                'description' => __('Laisser vide = tous les lieux', 'sj-reviews'),
+            ]
+        );
+
+        $this->add_control(
+            'schema_enabled',
+            [
+                'label'        => __('Données structurées (JSON-LD)', 'sj-reviews'),
+                'type'         => Controls_Manager::SWITCHER,
+                'return_value' => '1',
+                'default'      => '1',
+            ]
+        );
+
         $this->end_controls_section();
 
         /* ── SECTION : Statistiques ───────────────────────────────────── */
@@ -113,7 +155,7 @@ class SummaryWidget extends Widget_Base {
             'label'   => __('Afficher sous-critères sur chaque card', 'sj-reviews'),
             'type'    => \Elementor\Controls_Manager::SWITCHER,
             'default' => '',
-            'condition' => ['show_reviews' => 'yes'],
+            'condition' => ['show_reviews' => '1'],
         ]);
 
         $this->add_control('show_certified', [
@@ -858,10 +900,9 @@ class SummaryWidget extends Widget_Base {
 
         $this->add_responsive_control('loadmore_radius', [
             'label'      => __('Rayon des coins', 'sj-reviews'),
-            'type'       => Controls_Manager::SLIDER,
-            'size_units' => ['px'],
-            'range'      => ['px' => ['min' => 0, 'max' => 99]],
-            'selectors'  => ['{{WRAPPER}} .sj-summary__load-btn' => 'border-radius: {{SIZE}}{{UNIT}};'],
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => ['px', '%'],
+            'selectors'  => ['{{WRAPPER}} .sj-summary__load-btn' => 'border-radius: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};'],
         ]);
 
         $this->end_controls_section();
@@ -896,10 +937,9 @@ class SummaryWidget extends Widget_Base {
 
         $this->add_responsive_control('certified_radius', [
             'label'      => __('Border radius', 'sj-reviews'),
-            'type'       => \Elementor\Controls_Manager::SLIDER,
-            'size_units' => ['px', 'em'],
-            'default'    => ['size' => 4, 'unit' => 'px'],
-            'selectors'  => ['{{WRAPPER}} .sj-card__certified' => '--sj-certified-radius: {{SIZE}}{{UNIT}}'],
+            'type'       => \Elementor\Controls_Manager::DIMENSIONS,
+            'size_units' => ['px', '%'],
+            'selectors'  => ['{{WRAPPER}} .sj-card__certified' => '--sj-certified-radius: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}}'],
         ]);
 
         $this->end_controls_section();
@@ -908,7 +948,7 @@ class SummaryWidget extends Widget_Base {
         $this->start_controls_section('style_card_criteria', [
             'label'     => __('Style — Sous-critères (card)', 'sj-reviews'),
             'tab'       => \Elementor\Controls_Manager::TAB_STYLE,
-            'condition' => ['show_card_criteria' => 'yes', 'show_reviews' => 'yes'],
+            'condition' => ['show_card_criteria' => '1', 'show_reviews' => '1'],
         ]);
 
         $this->add_control('crit_dot_color', [
@@ -953,19 +993,22 @@ class SummaryWidget extends Widget_Base {
         // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
         echo $sc->render([
             'lieu_id'              => $s['lieu_id']              ?? 'auto',
-            'show_distribution'    => $s['show_distribution']    ?? '1',
-            'show_criteria'        => $s['show_criteria']        ?? '1',
-            'show_reviews'         => $s['show_reviews']         ?? '1',
-            'show_filters'         => $s['show_filters']         ?? '1',
-            'show_sort'            => $s['show_sort']            ?? '1',
-            'show_rating_filter'   => $s['show_rating_filter']   ?? '1',
-            'show_period_filter'   => $s['show_period_filter']   ?? '1',
-            'show_language_filter' => $s['show_language_filter'] ?? '1',
+            'show_distribution'    => ($s['show_distribution']    ?? '') === '1' ? '1' : '0',
+            'show_criteria'        => ($s['show_criteria']        ?? '') === '1' ? '1' : '0',
+            'show_reviews'         => ($s['show_reviews']         ?? '') === '1' ? '1' : '0',
+            'show_filters'         => ($s['show_filters']         ?? '') === '1' ? '1' : '0',
+            'show_sort'            => ($s['show_sort']            ?? '') === '1' ? '1' : '0',
+            'show_rating_filter'   => ($s['show_rating_filter']   ?? '') === '1' ? '1' : '0',
+            'show_period_filter'   => ($s['show_period_filter']   ?? '') === '1' ? '1' : '0',
+            'show_language_filter' => ($s['show_language_filter'] ?? '') === '1' ? '1' : '0',
             'reviews_initial'      => $s['reviews_initial']      ?? 5,
             'cards_columns'        => $s['cards_columns']        ?? '1',
             'text_words'           => max(0, (int) ($s['text_words'] ?: 40)),
-            'show_card_criteria'   => $s['show_card_criteria'] === 'yes' ? '1' : '0',
-            'show_certified'       => $s['show_certified'] === 'yes' ? '1' : '0',
+            'show_card_criteria'   => ($s['show_card_criteria'] ?? '') === '1' ? '1' : '0',
+            'show_certified'       => ($s['show_certified'] ?? '') === '1' ? '1' : '0',
+            'schema_enabled'       => ($s['schema_enabled']       ?? '') === '1' ? '1' : '0',
+            'source_filter'        => implode(',', (array) ($s['source_filter'] ?? [])),
+            'lieu_ids'             => implode(',', (array) ($s['lieu_ids'] ?? [])),
         ]);
     }
 }

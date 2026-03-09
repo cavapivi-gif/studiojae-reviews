@@ -68,10 +68,12 @@ class SummaryShortcode {
             'text_words'           => 40,
             'show_card_criteria'   => '0',
             'show_certified'       => '1',
+            'source_filter'        => '',
+            'lieu_ids'             => '',
         ], $atts, 'sj_summary');
 
         $lieu_id  = $this->resolve_lieu($a['lieu_id']);
-        $reviews  = $this->get_reviews($lieu_id);
+        $reviews  = $this->get_reviews($lieu_id, $a);
         $stats    = $this->compute_stats($reviews);
 
         if (empty($stats) || $stats['total'] === 0) {
@@ -113,7 +115,7 @@ class SummaryShortcode {
 
     // ── Récupération des avis ─────────────────────────────────────────────────
 
-    private function get_reviews(string $lieu_id): array {
+    private function get_reviews(string $lieu_id, array $a = []): array {
         $args = [
             'post_type'      => 'sj_avis',
             'post_status'    => 'publish',
@@ -122,11 +124,43 @@ class SummaryShortcode {
             'orderby'        => 'date',
             'order'          => 'DESC',
         ];
-        if ($lieu_id && $lieu_id !== 'all') {
-            $args['meta_query'] = [
-                ['key' => 'avis_lieu_id', 'value' => $lieu_id, 'compare' => '='],
+
+        $meta_query = ['relation' => 'AND'];
+
+        // lieu_ids multi-select (F3) takes priority; fall back to single lieu_id
+        if (!empty($a['lieu_ids'])) {
+            $lieux = array_filter(array_map('trim', explode(',', $a['lieu_ids'])));
+            if (!empty($lieux)) {
+                $meta_query[] = [
+                    'key'     => 'avis_lieu_id',
+                    'value'   => $lieux,
+                    'compare' => 'IN',
+                ];
+            }
+        } elseif ($lieu_id && $lieu_id !== 'all') {
+            // backward compat with existing single lieu_id
+            $meta_query[] = [
+                'key'   => 'avis_lieu_id',
+                'value' => $lieu_id,
             ];
         }
+
+        // source_filter multi-select (F3)
+        if (!empty($a['source_filter'])) {
+            $sources = array_filter(array_map('trim', explode(',', $a['source_filter'])));
+            if (!empty($sources)) {
+                $meta_query[] = [
+                    'key'     => 'avis_source',
+                    'value'   => $sources,
+                    'compare' => 'IN',
+                ];
+            }
+        }
+
+        if (count($meta_query) > 1) {
+            $args['meta_query'] = $meta_query;
+        }
+
         return array_map('sj_normalize_review', get_posts($args));
     }
 
