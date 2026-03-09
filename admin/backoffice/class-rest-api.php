@@ -48,6 +48,7 @@ class RestApi {
                     'lieu_id'  => ['default' => '',   'type' => 'string'],
                     'orderby'  => ['default' => 'date', 'type' => 'string'],
                     'order'    => ['default' => 'DESC',  'type' => 'string'],
+                    'email'    => ['default' => '',   'type' => 'string'],
                 ],
             ],
             [
@@ -273,6 +274,7 @@ class RestApi {
         $lieu_id  = sanitize_text_field($req->get_param('lieu_id'));
         $orderby  = in_array($req->get_param('orderby'), ['date', 'rating', 'author'], true) ? $req->get_param('orderby') : 'date';
         $order    = strtoupper($req->get_param('order')) === 'ASC' ? 'ASC' : 'DESC';
+        $email    = sanitize_email($req->get_param('email'));
 
         $args = [
             'post_type'      => 'sj_avis',
@@ -305,12 +307,42 @@ class RestApi {
             $meta_query[] = ['key' => 'avis_lieu_id', 'value' => $lieu_id, 'compare' => '='];
         }
 
+        if ($email) {
+            $meta_query[] = ['key' => 'avis_customer_email', 'value' => $email, 'compare' => '='];
+        }
+
         if (!empty($meta_query)) {
             $args['meta_query'] = $meta_query;
         }
 
         $query   = new \WP_Query($args);
         $reviews = array_map(fn($p) => sj_normalize_review($p), $query->posts);
+
+        // Batch: compter les contributions par email
+        $emails_in_page = array_filter(array_column($reviews, 'customer_email'));
+        $email_counts   = [];
+        if (!empty($emails_in_page)) {
+            global $wpdb;
+            $placeholders = implode(',', array_fill(0, count($emails_in_page), '%s'));
+            $rows = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT meta_value AS email, COUNT(*) AS cnt
+                     FROM {$wpdb->postmeta}
+                     WHERE meta_key = 'avis_customer_email' AND meta_value IN ({$placeholders})
+                     GROUP BY meta_value",
+                    ...$emails_in_page
+                )
+            );
+            foreach ($rows as $row) {
+                $email_counts[$row->email] = (int) $row->cnt;
+            }
+        }
+        $reviews = array_map(function ($r) use ($email_counts) {
+            $r['contribution_count'] = isset($r['customer_email']) && $r['customer_email']
+                ? ($email_counts[$r['customer_email']] ?? 1)
+                : 1;
+            return $r;
+        }, $reviews);
 
         $response = rest_ensure_response($reviews);
         $response->header('X-WP-Total',      $query->found_posts);

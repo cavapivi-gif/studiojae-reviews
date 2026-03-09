@@ -22,8 +22,8 @@ export const api = {
   dashboard: async () => (await req('/dashboard')).json(),
 
   /** Liste des avis avec filtres */
-  reviews: async ({ page = 1, perPage = 20, search = '', rating = 0, source = '', lieu_id = '', orderby = 'date', order = 'DESC' } = {}) => {
-    const p = new URLSearchParams({ page, per_page: perPage, search, rating, source, lieu_id, orderby, order })
+  reviews: async ({ page = 1, perPage = 20, search = '', rating = 0, source = '', lieu_id = '', orderby = 'date', order = 'DESC', email = '' } = {}) => {
+    const p = new URLSearchParams({ page, per_page: perPage, search, rating, source, lieu_id, orderby, order, email })
     const res = await req(`/reviews?${p}`)
     const data = await res.json()
     return {

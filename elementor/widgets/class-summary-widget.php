@@ -7,6 +7,7 @@ use Elementor\Group_Control_Typography;
 use Elementor\Group_Control_Background;
 use Elementor\Group_Control_Border;
 use Elementor\Group_Control_Box_Shadow;
+use Elementor\Group_Control_Text_Shadow;
 
 defined('ABSPATH') || exit;
 
@@ -106,6 +107,30 @@ class SummaryWidget extends Widget_Base {
             ],
             'default'  => '1',
             'condition' => ['show_reviews' => '1'],
+        ]);
+
+        $this->add_control('show_card_criteria', [
+            'label'   => __('Afficher sous-critères sur chaque card', 'sj-reviews'),
+            'type'    => \Elementor\Controls_Manager::SWITCHER,
+            'default' => '',
+            'condition' => ['show_reviews' => 'yes'],
+        ]);
+
+        $this->add_control('show_certified', [
+            'label'   => __('Afficher badge "Certifié"', 'sj-reviews'),
+            'type'    => \Elementor\Controls_Manager::SWITCHER,
+            'default' => 'yes',
+            'condition' => ['show_reviews' => 'yes'],
+        ]);
+
+        $this->add_control('text_words', [
+            'label'       => __('Mots avant "Voir plus"', 'sj-reviews'),
+            'type'        => \Elementor\Controls_Manager::NUMBER,
+            'default'     => 40,
+            'min'         => 10,
+            'max'         => 500,
+            'description' => __('Nombre de mots affichés avant troncature. 0 = désactivé.', 'sj-reviews'),
+            'condition'   => ['show_reviews' => 'yes'],
         ]);
 
         $this->end_controls_section();
@@ -840,6 +865,81 @@ class SummaryWidget extends Widget_Base {
         ]);
 
         $this->end_controls_section();
+
+        // ── STYLE — Badge Certifié ───────────────────────────────────────────────
+        $this->start_controls_section('style_certified', [
+            'label'     => __('Style — Badge Certifié', 'sj-reviews'),
+            'tab'       => \Elementor\Controls_Manager::TAB_STYLE,
+            'condition' => ['show_certified' => 'yes', 'show_reviews' => 'yes'],
+        ]);
+
+        $this->add_control('certified_bg', [
+            'label'     => __('Fond', 'sj-reviews'),
+            'type'      => \Elementor\Controls_Manager::COLOR,
+            'default'   => '#f0fdf4',
+            'selectors' => ['{{WRAPPER}} .sj-card__certified' => '--sj-certified-bg: {{VALUE}}'],
+        ]);
+
+        $this->add_control('certified_color', [
+            'label'     => __('Couleur texte', 'sj-reviews'),
+            'type'      => \Elementor\Controls_Manager::COLOR,
+            'default'   => '#15803d',
+            'selectors' => ['{{WRAPPER}} .sj-card__certified' => '--sj-certified-color: {{VALUE}}'],
+        ]);
+
+        $this->add_control('certified_border_color', [
+            'label'     => __('Couleur bordure', 'sj-reviews'),
+            'type'      => \Elementor\Controls_Manager::COLOR,
+            'default'   => '#bbf7d0',
+            'selectors' => ['{{WRAPPER}} .sj-card__certified' => '--sj-certified-border: {{VALUE}}'],
+        ]);
+
+        $this->add_responsive_control('certified_radius', [
+            'label'      => __('Border radius', 'sj-reviews'),
+            'type'       => \Elementor\Controls_Manager::SLIDER,
+            'size_units' => ['px', 'em'],
+            'default'    => ['size' => 4, 'unit' => 'px'],
+            'selectors'  => ['{{WRAPPER}} .sj-card__certified' => '--sj-certified-radius: {{SIZE}}{{UNIT}}'],
+        ]);
+
+        $this->end_controls_section();
+
+        // ── STYLE — Sous-critères par card ───────────────────────────────────────
+        $this->start_controls_section('style_card_criteria', [
+            'label'     => __('Style — Sous-critères (card)', 'sj-reviews'),
+            'tab'       => \Elementor\Controls_Manager::TAB_STYLE,
+            'condition' => ['show_card_criteria' => 'yes', 'show_reviews' => 'yes'],
+        ]);
+
+        $this->add_control('crit_dot_color', [
+            'label'     => __('Couleur dot + barre', 'sj-reviews'),
+            'type'      => \Elementor\Controls_Manager::COLOR,
+            'default'   => '#22c55e',
+            'selectors' => ['{{WRAPPER}} .sj-card__criteria' => '--sj-crit-color: {{VALUE}}'],
+        ]);
+
+        $this->add_control('crit_label_color', [
+            'label'     => __('Couleur libellé', 'sj-reviews'),
+            'type'      => \Elementor\Controls_Manager::COLOR,
+            'selectors' => ['{{WRAPPER}} .sj-card__crit-label' => 'color: {{VALUE}}'],
+        ]);
+
+        $this->add_group_control(\Elementor\Group_Control_Typography::get_type(), [
+            'name'     => 'crit_typo',
+            'label'    => __('Typographie', 'sj-reviews'),
+            'selector' => '{{WRAPPER}} .sj-card__crit-label, {{WRAPPER}} .sj-card__crit-score',
+        ]);
+
+        $this->add_responsive_control('crit_bar_height', [
+            'label'      => __('Hauteur barre', 'sj-reviews'),
+            'type'       => \Elementor\Controls_Manager::SLIDER,
+            'size_units' => ['px'],
+            'range'      => ['px' => ['min' => 2, 'max' => 12]],
+            'default'    => ['size' => 4, 'unit' => 'px'],
+            'selectors'  => ['{{WRAPPER}} .sj-card__crit-track' => 'height: {{SIZE}}{{UNIT}}'],
+        ]);
+
+        $this->end_controls_section();
     }
 
     protected function render(): void {
@@ -863,6 +963,9 @@ class SummaryWidget extends Widget_Base {
             'show_language_filter' => $s['show_language_filter'] ?? '1',
             'reviews_initial'      => $s['reviews_initial']      ?? 5,
             'cards_columns'        => $s['cards_columns']        ?? '1',
+            'text_words'           => max(0, (int) ($s['text_words'] ?: 40)),
+            'show_card_criteria'   => $s['show_card_criteria'] === 'yes' ? '1' : '0',
+            'show_certified'       => $s['show_certified'] === 'yes' ? '1' : '0',
         ]);
     }
 }

@@ -21,6 +21,7 @@ export default function Reviews() {
   const [lieux, setLieux]         = useState([])
   const [orderby, setOrderby]     = useState('date')
   const [order, setOrder]         = useState('DESC')
+  const [emailFilter, setEmail]   = useState('')
   const [deleting, setDeleting]   = useState(null)
   const PER_PAGE = 20
 
@@ -37,6 +38,7 @@ export default function Reviews() {
         search, rating: ratingFilter,
         source: sourceFilter, lieu_id: lieuFilter,
         orderby, order,
+        email: emailFilter,
       })
       setItems(res.items)
       setTotal(res.total)
@@ -45,14 +47,14 @@ export default function Reviews() {
     } finally {
       setLoading(false)
     }
-  }, [page, search, ratingFilter, sourceFilter, lieuFilter, orderby, order])
+  }, [page, search, ratingFilter, sourceFilter, lieuFilter, orderby, order, emailFilter])
 
   useEffect(() => { load() }, [load])
 
   const resetFilters = () => {
-    setSearch(''); setRating(0); setSource(''); setLieu(''); setOrderby('date'); setOrder('DESC'); setPage(1)
+    setSearch(''); setRating(0); setSource(''); setLieu(''); setOrderby('date'); setOrder('DESC'); setPage(1); setEmail('')
   }
-  const hasFilters = search || ratingFilter > 0 || sourceFilter || lieuFilter
+  const hasFilters = search || ratingFilter > 0 || sourceFilter || lieuFilter || emailFilter
 
   const toggleSort = (col) => {
     if (orderby === col) {
@@ -105,6 +107,9 @@ export default function Reviews() {
             <div className="font-medium text-sm">{r.author}</div>
             <div className="flex items-center gap-1 flex-wrap mt-0.5">
               {r.certified && <Badge variant="certified">Certifié</Badge>}
+              {r.contribution_count > 1 && (
+                <Badge variant="default">{r.contribution_count} contributions</Badge>
+              )}
               {r.lieu_id && lieuName(r.lieu_id) && (
                 <Badge variant="default">{lieuName(r.lieu_id)}</Badge>
               )}
@@ -175,6 +180,13 @@ export default function Reviews() {
             placeholder="Rechercher…"
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1) }}
+          />
+        </div>
+        <div className="w-52">
+          <Input
+            placeholder="Filtrer par email client…"
+            value={emailFilter}
+            onChange={e => { setEmail(e.target.value); setPage(1) }}
           />
         </div>
         <div className="w-36">
