@@ -152,6 +152,27 @@ class RestApi {
                 'permission_callback' => [$this, 'is_manager'],
             ],
         ]);
+
+        // Import Regiondo CSV
+        register_rest_route($this->ns, '/import/post-matches', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'import_post_matches'],
+            'permission_callback' => [$this, 'is_manager'],
+            'args'                => [
+                'search'    => ['type' => 'string',  'default' => ''],
+                'post_type' => ['type' => 'string',  'default' => ''],
+            ],
+        ]);
+        register_rest_route($this->ns, '/import/preview', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'import_preview'],
+            'permission_callback' => [$this, 'is_manager'],
+        ]);
+        register_rest_route($this->ns, '/import/execute', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'import_execute'],
+            'permission_callback' => [$this, 'is_manager'],
+        ]);
     }
 
     // ── Permissions ───────────────────────────────────────────────────────────
@@ -189,20 +210,36 @@ class RestApi {
             ));
         }
 
-        // Répartition par source
+        // Répartition par source (avec note moyenne par source)
         $sources_raw = $wpdb->get_results(
-            "SELECT pm.meta_value AS source, COUNT(*) AS total
-             FROM {$wpdb->postmeta} pm
-             INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
-             WHERE pm.meta_key = 'avis_source'
+            "SELECT
+                pm_src.meta_value AS source,
+                COUNT(*) AS total,
+                ROUND(AVG(CAST(pm_rat.meta_value AS DECIMAL(3,1))), 1) AS avg_rating
+             FROM {$wpdb->postmeta} pm_src
+             INNER JOIN {$wpdb->posts} p ON p.ID = pm_src.post_id
+             LEFT JOIN {$wpdb->postmeta} pm_rat
+                ON pm_rat.post_id = pm_src.post_id AND pm_rat.meta_key = 'avis_rating'
+             WHERE pm_src.meta_key = 'avis_source'
              AND p.post_type = 'sj_avis'
              AND p.post_status = 'publish'
-             GROUP BY pm.meta_value
+             GROUP BY pm_src.meta_value
              ORDER BY total DESC"
         );
-        $by_source = [];
+        $by_source    = [];
+        $google_total = 0;
+        $google_avg   = 0;
         foreach ($sources_raw as $row) {
-            $by_source[] = ['source' => $row->source, 'count' => (int) $row->total];
+            $entry = [
+                'source'     => $row->source,
+                'count'      => (int) $row->total,
+                'avg_rating' => round((float) $row->avg_rating, 1),
+            ];
+            $by_source[] = $entry;
+            if ($row->source === 'google') {
+                $google_total = (int) $row->total;
+                $google_avg   = round((float) $row->avg_rating, 1);
+            }
         }
 
         // Avis récents
@@ -219,6 +256,8 @@ class RestApi {
             'avg_rating'   => $avg,
             'distribution' => $distribution,
             'by_source'    => $by_source,
+            'google_total' => $google_total,
+            'google_avg'   => $google_avg,
             'recent'       => $recent,
         ]);
     }
@@ -635,6 +674,229 @@ class RestApi {
         }
         update_option('sj_reviews_settings', $clean);
         return rest_ensure_response($clean);
+    }
+
+    // ── Import ────────────────────────────────────────────────────────────────
+
+    /**
+     * GET /import/post-matches — Liste de posts pour le mapping produits→excursions
+     */
+    public function import_post_matches(\WP_REST_Request $req): \WP_REST_Response {
+        $settings      = get_option('sj_reviews_settings', []);
+        $allowed_types = array_map('sanitize_key', (array) ($settings['linked_post_types'] ?? []));
+        $search        = sanitize_text_field($req->get_param('search'));
+        $req_type      = sanitize_key($req->get_param('post_type'));
+
+        $types = $allowed_types ?: ['post', 'page'];
+        if ($req_type && in_array($req_type, $types, true)) {
+            $types = [$req_type];
+        }
+
+        $args = [
+            'post_type'      => $types,
+            'post_status'    => 'publish',
+            'posts_per_page' => 200,
+            'orderby'        => 'title',
+            'order'          => 'ASC',
+        ];
+        if ($search) {
+            $args['s'] = $search;
+        }
+
+        $posts = get_posts($args);
+        return rest_ensure_response(array_map(fn($p) => [
+            'id'        => $p->ID,
+            'title'     => get_the_title($p),
+            'post_type' => $p->post_type,
+        ], $posts));
+    }
+
+    /**
+     * POST /import/preview
+     *
+     * Body: {
+     *   rows: array<{product, order_id, booking_date, visit_date, eval_date, author, email, phone, rating, title, text}>,
+     *   defaults: { lieu_id, source, certified, language, sub_criteria_auto },
+     *   product_map: { "Produit CSV": post_id }
+     * }
+     *
+     * Returns: array<{ row, status: 'new'|'duplicate'|'error', reason? }>
+     */
+    public function import_preview(\WP_REST_Request $req): \WP_REST_Response|\WP_Error {
+        $body = $req->get_json_params();
+        $rows = (array) ($body['rows'] ?? []);
+
+        if (empty($rows)) {
+            return new \WP_Error('no_rows', 'Aucune ligne à importer.', ['status' => 422]);
+        }
+
+        $preview = [];
+        foreach ($rows as $i => $row) {
+            $order_id = sanitize_text_field($row['order_id'] ?? '');
+            $rating   = (int) ($row['rating'] ?? 0);
+            $author   = sanitize_text_field($row['author'] ?? '');
+
+            if (empty($author)) {
+                $preview[] = ['index' => $i, 'row' => $row, 'status' => 'error', 'reason' => 'Auteur manquant'];
+                continue;
+            }
+            if ($rating < 1 || $rating > 5) {
+                $preview[] = ['index' => $i, 'row' => $row, 'status' => 'error', 'reason' => 'Note invalide (doit être 1–5)'];
+                continue;
+            }
+
+            // Déduplication par order_id
+            if ($order_id) {
+                $existing = get_posts([
+                    'post_type'   => 'sj_avis',
+                    'post_status' => 'any',
+                    'meta_key'    => 'avis_order_id',
+                    'meta_value'  => $order_id,
+                    'fields'      => 'ids',
+                    'numberposts' => 1,
+                ]);
+                if (!empty($existing)) {
+                    $preview[] = ['index' => $i, 'row' => $row, 'status' => 'duplicate', 'reason' => "Doublon — N° commande {$order_id} déjà importé (ID #{$existing[0]})"];
+                    continue;
+                }
+            }
+
+            $preview[] = ['index' => $i, 'row' => $row, 'status' => 'new'];
+        }
+
+        $counts = ['new' => 0, 'duplicate' => 0, 'error' => 0];
+        foreach ($preview as $p) { $counts[$p['status']]++; }
+
+        return rest_ensure_response(['rows' => $preview, 'counts' => $counts]);
+    }
+
+    /**
+     * POST /import/execute
+     *
+     * Same body as preview. Creates 'new' rows, skips duplicates/errors.
+     * Returns: { imported, skipped, errors: [] }
+     */
+    public function import_execute(\WP_REST_Request $req): \WP_REST_Response|\WP_Error {
+        $body        = $req->get_json_params();
+        $rows        = (array) ($body['rows'] ?? []);
+        $defaults    = (array) ($body['defaults'] ?? []);
+        $product_map = (array) ($body['product_map'] ?? []);
+
+        if (empty($rows)) {
+            return new \WP_Error('no_rows', 'Aucune ligne à importer.', ['status' => 422]);
+        }
+
+        $lieu_id          = sanitize_key($defaults['lieu_id'] ?? '');
+        $source           = sanitize_text_field($defaults['source'] ?? 'regiondo');
+        $certified        = (bool) ($defaults['certified'] ?? true);
+        $language         = in_array($defaults['language'] ?? 'fr', ['fr','en','it','de','es'], true) ? $defaults['language'] : 'fr';
+        $sub_crit_auto    = (bool) ($defaults['sub_criteria_auto'] ?? true);
+        $allowed_sources  = ['google', 'tripadvisor', 'facebook', 'trustpilot', 'regiondo', 'direct', 'autre'];
+        if (!in_array($source, $allowed_sources, true)) $source = 'regiondo';
+
+        $imported = 0;
+        $skipped  = 0;
+        $errors   = [];
+
+        foreach ($rows as $i => $row) {
+            $order_id = sanitize_text_field($row['order_id'] ?? '');
+            $rating   = (int) ($row['rating'] ?? 0);
+            $author   = sanitize_text_field($row['author'] ?? '');
+
+            if (empty($author) || $rating < 1 || $rating > 5) {
+                $errors[] = "Ligne {$i}: auteur ou note invalide.";
+                continue;
+            }
+
+            // Déduplication
+            if ($order_id) {
+                $existing = get_posts([
+                    'post_type'   => 'sj_avis',
+                    'post_status' => 'any',
+                    'meta_key'    => 'avis_order_id',
+                    'meta_value'  => $order_id,
+                    'fields'      => 'ids',
+                    'numberposts' => 1,
+                ]);
+                if (!empty($existing)) {
+                    $skipped++;
+                    continue;
+                }
+            }
+
+            // Date de publication = date d'évaluation
+            $eval_date = sanitize_text_field($row['eval_date'] ?? '');
+            $post_date = preg_match('/^\d{4}-\d{2}-\d{2}/', $eval_date) ? $eval_date . ' 12:00:00' : current_time('mysql');
+
+            $post_id = wp_insert_post([
+                'post_type'   => 'sj_avis',
+                'post_title'  => $author,
+                'post_status' => 'publish',
+                'post_date'   => $post_date,
+            ], true);
+
+            if (is_wp_error($post_id)) {
+                $errors[] = "Ligne {$i}: " . $post_id->get_error_message();
+                continue;
+            }
+
+            // Sous-critères : hériter de la note globale si option activée
+            $sub_val = $sub_crit_auto ? $rating : 0;
+
+            // Produit → post lié
+            $product_key    = trim($row['product'] ?? '');
+            $linked_post_id = (int) ($product_map[$product_key] ?? 0);
+
+            // Dates
+            $visit_date    = sanitize_text_field($row['visit_date'] ?? '');
+            $booking_date  = sanitize_text_field($row['booking_date'] ?? '');
+
+            update_post_meta($post_id, 'avis_author',          $author);
+            update_post_meta($post_id, 'avis_title',           sanitize_text_field($row['title'] ?? ''));
+            update_post_meta($post_id, 'avis_rating',          $rating);
+            update_post_meta($post_id, 'avis_text',            sanitize_textarea_field($row['text'] ?? ''));
+            update_post_meta($post_id, 'avis_certified',       $certified ? 1 : 0);
+            update_post_meta($post_id, 'avis_source',          $source);
+            update_post_meta($post_id, 'avis_lieu_id',         $lieu_id);
+            update_post_meta($post_id, 'avis_language',        $language);
+            update_post_meta($post_id, 'avis_travel_type',     '');
+            update_post_meta($post_id, 'avis_qualite_prix',    $sub_val);
+            update_post_meta($post_id, 'avis_ambiance',        $sub_val);
+            update_post_meta($post_id, 'avis_experience',      $sub_val);
+            update_post_meta($post_id, 'avis_paysage',         $sub_val);
+            update_post_meta($post_id, 'avis_order_id',        $order_id);
+            update_post_meta($post_id, 'avis_customer_email',  sanitize_email($row['email'] ?? ''));
+            update_post_meta($post_id, 'avis_customer_phone',  sanitize_text_field($row['phone'] ?? ''));
+
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $visit_date)) {
+                update_post_meta($post_id, 'avis_visit_date', $visit_date);
+            }
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $booking_date)) {
+                update_post_meta($post_id, 'avis_booking_date', $booking_date);
+            }
+            if ($linked_post_id > 0) {
+                update_post_meta($post_id, 'avis_linked_post', $linked_post_id);
+            }
+
+            // Auto-sync place_id depuis lieu
+            if ($lieu_id) {
+                $lieux = (array) get_option('sj_lieux', []);
+                foreach ($lieux as $l) {
+                    if ($l['id'] === $lieu_id && !empty($l['place_id'])) {
+                        update_post_meta($post_id, 'avis_place_id', sanitize_text_field($l['place_id']));
+                        break;
+                    }
+                }
+            }
+
+            $imported++;
+        }
+
+        return rest_ensure_response([
+            'imported' => $imported,
+            'skipped'  => $skipped,
+            'errors'   => $errors,
+        ]);
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

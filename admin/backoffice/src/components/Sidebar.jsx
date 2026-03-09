@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom'
-import { IconDashboard, IconStar, IconPlus, IconSettings, IconExternalLink, IconMapPin } from './Icons'
+import { IconDashboard, IconStar, IconPlus, IconSettings, IconExternalLink, IconMapPin, IconUpload } from './Icons'
 
 const nav = [
   { to: '/dashboard',   label: 'Tableau de bord', icon: IconDashboard },
   { to: '/reviews',     label: 'Tous les avis',   icon: IconStar },
   { to: '/reviews/new', label: 'Ajouter un avis', icon: IconPlus },
   { to: '/lieux',       label: 'Lieux',            icon: IconMapPin },
+  { to: '/import',      label: 'Import CSV',       icon: IconUpload },
   { to: '/settings',   label: 'Réglages',          icon: IconSettings },
   { to: '/docs',        label: 'Documentation',    icon: IconExternalLink },
 ]

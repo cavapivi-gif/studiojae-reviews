@@ -11,7 +11,7 @@ class RatingBadgeWidget extends Widget_Base {
     public function get_name():  string { return 'sj_rating_badge'; }
     public function get_title(): string { return 'SJ — Badge de note'; }
     public function get_icon():  string { return 'eicon-rating'; }
-    public function get_categories(): array { return ['studiojae']; }
+    public function get_categories(): array { return ['sj-reviews']; }
     public function get_keywords(): array { return ['rating', 'badge', 'avis', 'google', 'note', 'sj']; }
 
     protected function register_controls(): void {
@@ -76,25 +76,82 @@ class RatingBadgeWidget extends Widget_Base {
         ]);
 
         $this->add_control('star_color', [
-            'label'   => 'Couleur des étoiles',
-            'type'    => Controls_Manager::COLOR,
-            'default' => '#f5a623',
-            'selectors' => [], // géré côté PHP via attribut direct sur le SVG
+            'label'     => 'Couleur des étoiles',
+            'type'      => Controls_Manager::COLOR,
+            'default'   => '#f5a623',
+            'selectors' => [
+                '{{WRAPPER}} .sj-badge' => '--sj-star-color: {{VALUE}};',
+            ],
         ]);
 
-        $this->add_control('badge_bg', [
-            'label'     => 'Fond du badge',
-            'type'      => Controls_Manager::COLOR,
-            'default'   => '#ffffff',
-            'selectors' => ['{{WRAPPER}} .sj-badge' => '--sj-bg: {{VALUE}}'],
+        $this->add_group_control(
+            \Elementor\Group_Control_Background::get_type(),
+            [
+                'name'     => 'badge_bg',
+                'label'    => __('Fond du badge', 'sj-reviews'),
+                'types'    => ['classic', 'gradient'],
+                'selector' => '{{WRAPPER}} .sj-badge',
+            ]
+        );
+
+        $this->add_group_control(
+            \Elementor\Group_Control_Border::get_type(),
+            [
+                'name'     => 'badge_border',
+                'selector' => '{{WRAPPER}} .sj-badge',
+            ]
+        );
+
+        $this->start_controls_tabs('badge_state_tabs');
+
+        $this->start_controls_tab('badge_state_normal', [
+            'label' => __('Normal', 'sj-reviews'),
         ]);
 
-        $this->add_control('badge_border_color', [
-            'label'     => 'Couleur bordure',
-            'type'      => Controls_Manager::COLOR,
-            'default'   => '#e5e7eb',
-            'selectors' => ['{{WRAPPER}} .sj-badge' => '--sj-border: {{VALUE}}'],
+        $this->add_group_control(
+            \Elementor\Group_Control_Box_Shadow::get_type(),
+            [
+                'name'     => 'badge_shadow',
+                'selector' => '{{WRAPPER}} .sj-badge',
+            ]
+        );
+
+        $this->end_controls_tab();
+
+        $this->start_controls_tab('badge_state_hover', [
+            'label' => __('Survol', 'sj-reviews'),
         ]);
+
+        $this->add_group_control(
+            \Elementor\Group_Control_Background::get_type(),
+            [
+                'name'     => 'badge_bg_hover',
+                'label'    => __('Fond au survol', 'sj-reviews'),
+                'types'    => ['classic', 'gradient'],
+                'selector' => '{{WRAPPER}} .sj-badge:hover',
+            ]
+        );
+
+        $this->add_group_control(
+            \Elementor\Group_Control_Border::get_type(),
+            [
+                'name'     => 'badge_border_hover',
+                'label'    => __('Bordure au survol', 'sj-reviews'),
+                'selector' => '{{WRAPPER}} .sj-badge:hover',
+            ]
+        );
+
+        $this->add_group_control(
+            \Elementor\Group_Control_Box_Shadow::get_type(),
+            [
+                'name'     => 'badge_shadow_hover',
+                'label'    => __('Ombre au survol', 'sj-reviews'),
+                'selector' => '{{WRAPPER}} .sj-badge:hover',
+            ]
+        );
+
+        $this->end_controls_tab();
+        $this->end_controls_tabs();
 
         $this->add_control('rating_color', [
             'label'     => 'Couleur de la note',
@@ -110,14 +167,6 @@ class RatingBadgeWidget extends Widget_Base {
             \Elementor\Group_Control_Typography::get_type(),
             [
                 'name'     => 'badge_typography',
-                'selector' => '{{WRAPPER}} .sj-badge',
-            ]
-        );
-
-        $this->add_group_control(
-            \Elementor\Group_Control_Box_Shadow::get_type(),
-            [
-                'name'     => 'badge_shadow',
                 'selector' => '{{WRAPPER}} .sj-badge',
             ]
         );
@@ -148,7 +197,6 @@ class RatingBadgeWidget extends Widget_Base {
             'design'      => $s['design']      ?? 'card',
             'show_source' => $s['show_source'] ?? '1',
             'show_link'   => $s['show_link']   ?? '1',
-            'star_color'  => $s['star_color']  ?? '#f5a623',
             'label'       => $s['label']       ?? 'avis',
         ];
 

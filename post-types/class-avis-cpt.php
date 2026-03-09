@@ -240,6 +240,45 @@ class AvisCpt {
             'ui'            => 0,
         ];
 
+        // Champs d'import Regiondo
+        $fields[] = [
+            'key'           => 'field_avis_order_id',
+            'name'          => 'avis_order_id',
+            'label'         => 'N° de commande',
+            'type'          => 'text',
+            'required'      => 0,
+            'placeholder'   => 'REG-XXXXX',
+            'instructions'  => 'Numéro de commande Regiondo. Utilisé pour éviter les doublons à l\'import.',
+        ];
+        $fields[] = [
+            'key'           => 'field_avis_booking_date',
+            'name'          => 'avis_booking_date',
+            'label'         => 'Date de réservation',
+            'type'          => 'date_picker',
+            'display_format' => 'd/m/Y',
+            'return_format'  => 'Y-m-d',
+            'first_day'      => 1,
+            'instructions'  => 'Date à laquelle le client a réservé.',
+        ];
+        $fields[] = [
+            'key'           => 'field_avis_customer_email',
+            'name'          => 'avis_customer_email',
+            'label'         => 'Email client (privé)',
+            'type'          => 'text',
+            'required'      => 0,
+            'placeholder'   => 'client@email.com',
+            'instructions'  => 'Email du client. Non affiché en front.',
+        ];
+        $fields[] = [
+            'key'           => 'field_avis_customer_phone',
+            'name'          => 'avis_customer_phone',
+            'label'         => 'Téléphone client (privé)',
+            'type'          => 'text',
+            'required'      => 0,
+            'placeholder'   => '+33 6 XX XX XX XX',
+            'instructions'  => 'Téléphone du client. Non affiché en front.',
+        ];
+
         acf_add_local_field_group([
             'key'      => 'group_sj_avis',
             'title'    => 'Détails de l\'avis',
@@ -288,6 +327,10 @@ class AvisCpt {
         $visit_date    = get_post_meta($post->ID, 'avis_visit_date', true);
         $language      = get_post_meta($post->ID, 'avis_language', true) ?: 'fr';
         $travel_type   = get_post_meta($post->ID, 'avis_travel_type', true);
+        $order_id      = get_post_meta($post->ID, 'avis_order_id',       true);
+        $booking_date  = get_post_meta($post->ID, 'avis_booking_date',   true);
+        $customer_email = get_post_meta($post->ID, 'avis_customer_email', true);
+        $customer_phone = get_post_meta($post->ID, 'avis_customer_phone', true);
 
         $settings      = get_option('sj_reviews_settings', []);
         $linked_types  = array_filter((array) ($settings['linked_post_types'] ?? []));
@@ -402,6 +445,24 @@ class AvisCpt {
                 </select>
             </div>
 
+            <!-- Champs d'import Regiondo -->
+            <div class="sj-meta-field">
+                <label for="avis_order_id"><?php esc_html_e('N° commande', 'sj-reviews'); ?></label>
+                <input type="text" id="avis_order_id" name="avis_order_id" value="<?php echo esc_attr($order_id); ?>" class="regular-text" placeholder="REG-XXXXX">
+            </div>
+            <div class="sj-meta-field">
+                <label for="avis_booking_date"><?php esc_html_e('Date de réservation', 'sj-reviews'); ?></label>
+                <input type="text" id="avis_booking_date" name="avis_booking_date" value="<?php echo esc_attr($booking_date); ?>" class="regular-text" placeholder="YYYY-MM-DD">
+            </div>
+            <div class="sj-meta-field">
+                <label for="avis_customer_email"><?php esc_html_e('Email client (privé)', 'sj-reviews'); ?></label>
+                <input type="email" id="avis_customer_email" name="avis_customer_email" value="<?php echo esc_attr($customer_email); ?>" class="regular-text">
+            </div>
+            <div class="sj-meta-field">
+                <label for="avis_customer_phone"><?php esc_html_e('Téléphone client (privé)', 'sj-reviews'); ?></label>
+                <input type="text" id="avis_customer_phone" name="avis_customer_phone" value="<?php echo esc_attr($customer_phone); ?>" class="regular-text" placeholder="+33 6 XX XX XX XX">
+            </div>
+
             <!-- Sous-critères -->
             <div class="sj-meta-field sj-meta-full" style="margin-top:8px">
                 <label style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#333">
@@ -461,5 +522,10 @@ class AvisCpt {
             $v = (int) ($_POST[$crit] ?? 0);
             update_post_meta($post_id, $crit, ($v >= 1 && $v <= 5) ? $v : 0);
         }
+
+        update_post_meta($post_id, 'avis_order_id',       sanitize_text_field($_POST['avis_order_id']       ?? ''));
+        update_post_meta($post_id, 'avis_booking_date',   sanitize_text_field($_POST['avis_booking_date']   ?? ''));
+        update_post_meta($post_id, 'avis_customer_email', sanitize_email($_POST['avis_customer_email']       ?? ''));
+        update_post_meta($post_id, 'avis_customer_phone', sanitize_text_field($_POST['avis_customer_phone'] ?? ''));
     }
 }

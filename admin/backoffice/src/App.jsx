@@ -7,6 +7,7 @@ import ReviewForm    from './pages/ReviewForm'
 import Settings      from './pages/Settings'
 import Lieux         from './pages/Lieux'
 import Docs          from './pages/Docs'
+import Import        from './pages/Import'
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="/lieux"         element={<Lieux />} />
           <Route path="/settings"      element={<Settings />} />
           <Route path="/docs"          element={<Docs />} />
+          <Route path="/import"        element={<Import />} />
         </Routes>
       </Layout>
     </ErrorBoundary>

@@ -6,7 +6,7 @@ import { IconPlus } from '../components/Icons'
 
 const SOURCE_LABELS = {
   google: 'Google', tripadvisor: 'TripAdvisor', facebook: 'Facebook',
-  trustpilot: 'Trustpilot', direct: 'Direct', autre: 'Autre',
+  trustpilot: 'Trustpilot', regiondo: 'Regiondo', direct: 'Direct', autre: 'Autre',
 }
 
 const SOURCE_COLORS = {
@@ -14,6 +14,7 @@ const SOURCE_COLORS = {
   tripadvisor: 'bg-emerald-500',
   facebook:    'bg-blue-700',
   trustpilot:  'bg-green-600',
+  regiondo:    'bg-orange-500',
   direct:      'bg-gray-600',
   autre:       'bg-gray-400',
 }
@@ -79,8 +80,8 @@ export default function Dashboard() {
         <div className="flex items-center justify-center py-20"><Spinner size={20} /></div>
       ) : (
         <>
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-px bg-gray-200 mx-8 mt-8 border border-gray-200">
+          {/* Stats — 4 colonnes */}
+          <div className="grid grid-cols-4 gap-px bg-gray-200 mx-8 mt-8 border border-gray-200">
             <StatCard
               label="Avis publiés"
               value={data?.total ?? 0}
@@ -91,6 +92,19 @@ export default function Dashboard() {
               value={data?.avg_rating ? `${data.avg_rating} / 5` : '—'}
               accent
               sub={<Stars rating={Math.round(data?.avg_rating ?? 0)} size={12} />}
+            />
+            <StatCard
+              label="Google"
+              value={
+                data?.google_total
+                  ? <span>{data.google_total} <span className="text-sm font-normal text-gray-400">avis</span></span>
+                  : '—'
+              }
+              sub={
+                data?.google_avg
+                  ? <Stars rating={Math.round(data.google_avg)} size={12} />
+                  : <span className="text-xs text-gray-400">Aucun avis Google</span>
+              }
             />
             <StatCard
               label="Répartition"
@@ -109,27 +123,33 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Par source */}
+          {/* Par plateforme */}
           {data?.by_source?.length > 0 && (
             <div className="mx-8 mt-8">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs text-gray-400 uppercase tracking-widest">Par plateforme</span>
               </div>
-              <div className="border border-gray-200 p-4 flex flex-wrap gap-4">
-                {data.by_source.map(({ source, count }) => (
+              <div className="border border-gray-200 divide-y">
+                {data.by_source.map(({ source, count, avg_rating }) => (
                   <button
                     key={source}
                     onClick={() => navigate(`/reviews?source=${source}`)}
-                    className="flex items-center gap-2 group"
-                    title={`Filtrer par ${SOURCE_LABELS[source] ?? source}`}
+                    className="w-full flex items-center gap-4 px-4 py-3 hover:bg-gray-50 transition-colors text-left group"
                   >
-                    <div className={`w-2 h-2 rounded-full shrink-0 ${SOURCE_COLORS[source] ?? 'bg-gray-400'}`} />
-                    <span className="text-sm text-gray-700 group-hover:text-black">
+                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${SOURCE_COLORS[source] ?? 'bg-gray-400'}`} />
+                    <span className="text-sm font-medium text-gray-700 group-hover:text-black w-28">
                       {SOURCE_LABELS[source] ?? source}
                     </span>
-                    <span className="text-xs font-semibold text-gray-900 bg-gray-100 rounded px-1.5 py-0.5">
+                    <span className="text-xs font-semibold text-gray-900 bg-gray-100 rounded px-2 py-0.5 min-w-8 text-center">
                       {count}
                     </span>
+                    {avg_rating > 0 && (
+                      <div className="flex items-center gap-1.5 ml-2">
+                        <Stars rating={Math.round(avg_rating)} size={11} />
+                        <span className="text-xs text-gray-500">{avg_rating.toFixed(1)}</span>
+                      </div>
+                    )}
+                    <span className="ml-auto text-xs text-gray-300 group-hover:text-gray-500">→</span>
                   </button>
                 ))}
               </div>

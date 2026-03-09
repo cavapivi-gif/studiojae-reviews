@@ -90,4 +90,18 @@ export const api = {
     const qs = postType ? `?post_type=${encodeURIComponent(postType)}` : ''
     return (await req(`/linked-posts${qs}`)).json()
   },
+
+  /** Post-matches pour mapping produits */
+  importPostMatches: async ({ search = '', post_type = '' } = {}) => {
+    const p = new URLSearchParams({ search, post_type })
+    return (await req(`/import/post-matches?${p}`)).json()
+  },
+
+  /** Aperçu import CSV */
+  importPreview: async (body) =>
+    (await req('/import/preview', { method: 'POST', body: JSON.stringify(body) })).json(),
+
+  /** Exécuter import CSV */
+  importExecute: async (body) =>
+    (await req('/import/execute', { method: 'POST', body: JSON.stringify(body) })).json(),
 }

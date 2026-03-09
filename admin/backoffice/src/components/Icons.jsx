@@ -42,3 +42,4 @@ export const IconBook        = ic('<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><p
 export const IconCode        = ic('<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>')
 export const IconLayers      = ic('<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>')
 export const IconZap         = ic('<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>')
+export const IconUpload      = ic('<polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>')
