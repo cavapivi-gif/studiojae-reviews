@@ -68,6 +68,7 @@ class SummaryShortcode {
             'text_words'           => 40,
             'show_card_criteria'   => '0',
             'show_certified'       => '1',
+            'schema_enabled'       => '1',
             'source_filter'        => '',
             'lieu_ids'             => '',
         ], $atts, 'sj_summary');
@@ -433,9 +434,11 @@ class SummaryShortcode {
             if ($h) $hash_counts[$h] = ($hash_counts[$h] ?? 0) + 1;
         }
         ?>
-        <?php foreach ($reviews as $idx => $rv):
+        <?php
+        $initial = max(1, (int) ($a['reviews_initial'] ?? 5));
+        foreach ($reviews as $idx => $rv):
             $period = $this->get_period($rv['visit_date'] ?? '');
-            $hidden = $idx >= (int) $a['reviews_initial'] ? ' sj-card--overflow' : '';
+            $hidden = $idx >= $initial ? ' sj-card--overflow' : '';
             $hash   = $rv['customer_hash'] ?? '';
             $contribs = ($hash && isset($hash_counts[$hash])) ? $hash_counts[$hash] : 1;
         ?>
@@ -555,7 +558,7 @@ class SummaryShortcode {
     </div><!-- /.sj-summary__reviews -->
 
     <!-- ══ SECTION 5 : VOIR PLUS ══════════════════════════════════════════════ -->
-    <?php $hidden_count = max(0, count($reviews) - (int) $a['reviews_initial']); ?>
+    <?php $hidden_count = max(0, count($reviews) - $initial); ?>
     <?php if ($hidden_count > 0): ?>
     <div class="sj-summary__loadmore">
         <button type="button" class="sj-summary__load-btn"
