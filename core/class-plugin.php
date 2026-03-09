@@ -8,7 +8,9 @@ class Plugin {
     public function init(): void {
         // CPT + ACF fields
         require_once SJ_REVIEWS_DIR . 'post-types/class-avis-cpt.php';
+        require_once SJ_REVIEWS_DIR . 'post-types/class-lieu-metabox.php';
         (new \SJ_Reviews\PostTypes\AvisCpt())->init();
+        (new \SJ_Reviews\PostTypes\LieuMetabox())->init();
 
         // Helpers
         require_once SJ_REVIEWS_DIR . 'includes/helpers.php';
@@ -30,17 +32,22 @@ class Plugin {
         // Shortcodes
         require_once SJ_REVIEWS_DIR . 'front/class-shortcode.php';
         require_once SJ_REVIEWS_DIR . 'front/class-rating-shortcode.php';
+        require_once SJ_REVIEWS_DIR . 'front/class-summary-shortcode.php';
         (new \SJ_Reviews\Front\Shortcode())->init();
         (new \SJ_Reviews\Front\RatingShortcode())->init();
+        (new \SJ_Reviews\Front\SummaryShortcode())->init();
 
         // Elementor
         add_action('elementor/widgets/register', function ($manager) {
             require_once SJ_REVIEWS_DIR . 'elementor/class-elementor-manager.php';
             require_once SJ_REVIEWS_DIR . 'elementor/widgets/class-reviews-widget.php';
             require_once SJ_REVIEWS_DIR . 'front/class-rating-shortcode.php';
+            require_once SJ_REVIEWS_DIR . 'front/class-summary-shortcode.php';
             require_once SJ_REVIEWS_DIR . 'elementor/widgets/class-rating-badge-widget.php';
+            require_once SJ_REVIEWS_DIR . 'elementor/widgets/class-summary-widget.php';
             $manager->register(new \SJ_Reviews\Elementor\Widgets\ReviewsWidget());
             $manager->register(new \SJ_Reviews\Elementor\Widgets\RatingBadgeWidget());
+            $manager->register(new \SJ_Reviews\Elementor\Widgets\SummaryWidget());
         });
 
         add_action('elementor/frontend/after_enqueue_styles', [$this, 'enqueue_front_assets']);
@@ -57,6 +64,12 @@ class Plugin {
         wp_enqueue_style(
             'sj-rating-badge',
             SJ_REVIEWS_URL . 'front/assets/sj-badge.css',
+            [],
+            SJ_REVIEWS_VERSION
+        );
+        wp_enqueue_style(
+            'sj-summary',
+            SJ_REVIEWS_URL . 'front/assets/sj-summary.css',
             [],
             SJ_REVIEWS_VERSION
         );

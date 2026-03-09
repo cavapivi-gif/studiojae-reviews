@@ -1,0 +1,192 @@
+/* ═══════════════════════════════════════════════════════════════
+   SJ Reviews — Widget Résumé (style TripAdvisor)
+   ═══════════════════════════════════════════════════════════════ */
+
+.sj-summary {
+    font-family: inherit;
+    color: #111;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 28px 24px;
+    max-width: 480px;
+}
+
+/* ── Header : score + label + bulles ─────────────────────────── */
+.sj-summary__header {
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.sj-summary__score-block {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.sj-summary__score-num {
+    font-size: 3.5rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    color: #111;
+}
+
+.sj-summary__score-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.sj-summary__score-label {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #111;
+}
+
+.sj-summary__count {
+    font-size: 0.78rem;
+    color: #6b7280;
+}
+
+/* ── Bulles TripAdvisor ───────────────────────────────────────── */
+.sj-summary__bubbles {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.sj-summary__bubble {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    position: relative;
+    transition: transform 0.15s ease;
+}
+
+.sj-summary__bubble--full {
+    background: #34d399;
+}
+
+.sj-summary__bubble--half {
+    background: linear-gradient(90deg, #34d399 50%, #e5e7eb 50%);
+}
+
+.sj-summary__bubble--empty {
+    background: #e5e7eb;
+}
+
+/* ── Distribution ────────────────────────────────────────────── */
+.sj-summary__distribution {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.sj-summary__dist-row {
+    display: grid;
+    grid-template-columns: 70px 1fr 28px;
+    align-items: center;
+    gap: 10px;
+}
+
+.sj-summary__dist-label {
+    font-size: 0.75rem;
+    color: #374151;
+    font-weight: 500;
+    text-align: right;
+}
+
+.sj-summary__dist-track {
+    height: 8px;
+    background: #f3f4f6;
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+.sj-summary__dist-fill {
+    height: 100%;
+    background: #34d399;
+    border-radius: 99px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sj-summary__dist-count {
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-weight: 600;
+    text-align: right;
+}
+
+/* ── Sous-critères ───────────────────────────────────────────── */
+.sj-summary__criteria {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sj-summary__criterion {
+    display: grid;
+    grid-template-columns: 100px 1fr 32px;
+    align-items: center;
+    gap: 10px;
+}
+
+.sj-summary__crit-label {
+    font-size: 0.75rem;
+    color: #374151;
+    font-weight: 500;
+}
+
+.sj-summary__crit-track {
+    height: 6px;
+    background: #f3f4f6;
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+.sj-summary__crit-fill {
+    height: 100%;
+    background: #6366f1;
+    border-radius: 99px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sj-summary__crit-score {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #111;
+    text-align: right;
+}
+
+/* ── État vide ───────────────────────────────────────────────── */
+.sj-summary--empty {
+    color: #9ca3af;
+    font-size: 0.875rem;
+    text-align: center;
+    padding: 24px;
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 480px) {
+    .sj-summary {
+        padding: 20px 16px;
+    }
+    .sj-summary__score-num {
+        font-size: 2.75rem;
+    }
+    .sj-summary__dist-row {
+        grid-template-columns: 60px 1fr 24px;
+        gap: 8px;
+    }
+    .sj-summary__criterion {
+        grid-template-columns: 80px 1fr 28px;
+        gap: 8px;
+    }
+}

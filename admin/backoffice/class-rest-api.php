@@ -463,7 +463,7 @@ class RestApi {
             'timeout'   => 10,
             'sslverify' => true,
             // Requis si la clé a des restrictions HTTP referrer dans Google Cloud
-            'headers'   => ['Referer' => get_site_url()],
+            'headers'   => ['Referer' => trailingslashit(get_site_url())],
         ]);
 
         delete_transient($lock_key); // Libère immédiatement après réponse
@@ -595,7 +595,13 @@ class RestApi {
             'key'      => $key,
         ], 'https://maps.googleapis.com/maps/api/place/details/json');
 
-        $response = wp_remote_get($url, ['timeout' => 10, 'sslverify' => true]);
+        // Envoie le Referer du site pour passer les restrictions HTTP referrer Google Cloud
+        $referer  = trailingslashit(get_site_url());
+        $response = wp_remote_get($url, [
+            'timeout'   => 10,
+            'sslverify' => true,
+            'headers'   => ['Referer' => $referer],
+        ]);
 
         if (is_wp_error($response)) {
             return rest_ensure_response(['ok' => false, 'message' => $response->get_error_message()]);
@@ -609,10 +615,10 @@ class RestApi {
         }
 
         $messages = [
-            'REQUEST_DENIED'  => 'Clé refusée — vérifiez les restrictions et que Places API est activée.',
+            'REQUEST_DENIED'   => 'Clé refusée. Si vous utilisez des restrictions HTTP referrer, ajoutez "' . get_site_url() . '/*" dans Cloud Console. Pour un usage serveur, préférez les restrictions par IP ou aucune restriction.',
             'OVER_QUERY_LIMIT' => 'Quota dépassé.',
         ];
-        return rest_ensure_response(['ok' => false, 'message' => $messages[$status] ?? "Statut Google: $status"]);
+        return rest_ensure_response(['ok' => false, 'message' => $messages[$status] ?? ($body['error_message'] ?? "Statut Google: $status")]);
     }
 
     public function save_settings(\WP_REST_Request $req): \WP_REST_Response {
@@ -662,6 +668,10 @@ class RestApi {
             return new \WP_Error('invalid_rating', 'La note doit être entre 1 et 5.', ['status' => 422]);
         }
         $allowed_sources = ['google', 'tripadvisor', 'facebook', 'trustpilot', 'regiondo', 'direct', 'autre'];
+        $crit_val = function(string $k) use ($body): int {
+            $v = (int) ($body[$k] ?? 0);
+            return ($v >= 1 && $v <= 5) ? $v : 0;
+        };
         return [
             'author'         => sanitize_text_field($body['author']),
             'avis_title'     => sanitize_text_field($body['avis_title'] ?? ''),
@@ -669,21 +679,38 @@ class RestApi {
             'text'           => sanitize_textarea_field($body['text'] ?? ''),
             'certified'      => (bool) ($body['certified'] ?? false),
             'source'         => in_array($body['source'] ?? 'google', $allowed_sources, true) ? $body['source'] : 'google',
-            'place_id'       => sanitize_text_field($body['place_id'] ?? ''),
             'lieu_id'        => sanitize_key($body['lieu_id'] ?? ''),
             'linked_post_id' => (int) ($body['linked_post_id'] ?? 0),
+            'qualite_prix'   => $crit_val('qualite_prix'),
+            'ambiance'       => $crit_val('ambiance'),
+            'experience'     => $crit_val('experience'),
+            'paysage'        => $crit_val('paysage'),
         ];
     }
 
     private function save_meta(int $post_id, array $data): void {
-        update_post_meta($post_id, 'avis_author',      $data['author']);
-        update_post_meta($post_id, 'avis_title',       $data['avis_title'] ?? '');
-        update_post_meta($post_id, 'avis_rating',      $data['rating']);
-        update_post_meta($post_id, 'avis_text',        $data['text']);
-        update_post_meta($post_id, 'avis_certified',   $data['certified'] ? 1 : 0);
-        update_post_meta($post_id, 'avis_source',      $data['source']);
-        update_post_meta($post_id, 'avis_place_id',    $data['place_id']);
-        update_post_meta($post_id, 'avis_lieu_id',     $data['lieu_id']);
-        update_post_meta($post_id, 'avis_linked_post', $data['linked_post_id'] ?: '');
+        update_post_meta($post_id, 'avis_author',       $data['author']);
+        update_post_meta($post_id, 'avis_title',        $data['avis_title'] ?? '');
+        update_post_meta($post_id, 'avis_rating',       $data['rating']);
+        update_post_meta($post_id, 'avis_text',         $data['text']);
+        update_post_meta($post_id, 'avis_certified',    $data['certified'] ? 1 : 0);
+        update_post_meta($post_id, 'avis_source',       $data['source']);
+        update_post_meta($post_id, 'avis_lieu_id',      $data['lieu_id']);
+        update_post_meta($post_id, 'avis_linked_post',  $data['linked_post_id'] ?: '');
+        update_post_meta($post_id, 'avis_qualite_prix', $data['qualite_prix']);
+        update_post_meta($post_id, 'avis_ambiance',     $data['ambiance']);
+        update_post_meta($post_id, 'avis_experience',   $data['experience']);
+        update_post_meta($post_id, 'avis_paysage',      $data['paysage']);
+
+        // Auto-synchronise avis_place_id depuis le lieu si non défini
+        if (!get_post_meta($post_id, 'avis_place_id', true) && !empty($data['lieu_id'])) {
+            $lieux = (array) get_option('sj_lieux', []);
+            foreach ($lieux as $l) {
+                if ($l['id'] === $data['lieu_id'] && !empty($l['place_id'])) {
+                    update_post_meta($post_id, 'avis_place_id', sanitize_text_field($l['place_id']));
+                    break;
+                }
+            }
+        }
     }
 }

@@ -112,22 +112,46 @@ function sj_normalize_review(\WP_Post $post): array {
         }
     }
 
+    $lieu_id  = (string) ($get('avis_lieu_id') ?: '');
+    $place_id = (string) ($get('avis_place_id') ?: '');
+
+    // Dérive le place_id depuis le lieu si non défini directement
+    if (!$place_id && $lieu_id) {
+        $lieux = (array) get_option('sj_lieux', []);
+        foreach ($lieux as $l) {
+            if ($l['id'] === $lieu_id && !empty($l['place_id'])) {
+                $place_id = (string) $l['place_id'];
+                break;
+            }
+        }
+    }
+
+    $crit_int = fn(string $k): ?int => (function() use ($get, $k) {
+        $v = (int) $get($k);
+        return ($v >= 1 && $v <= 5) ? $v : null;
+    })();
+
     return [
-        'id'          => $post->ID,
-        'title'       => get_the_title($post),
-        'avis_title'  => (string) ($get('avis_title') ?: ''),
-        'author'      => (string) ($get('avis_author') ?: get_the_title($post)),
-        'rating'      => (int) ($get('avis_rating') ?: 5),
-        'text'        => (string) ($get('avis_text') ?: ''),
-        'certified'   => (bool) $get('avis_certified'),
-        'source'      => (string) ($get('avis_source') ?: 'google'),
-        'place_id'    => (string) ($get('avis_place_id') ?: ''),
-        'lieu_id'     => (string) ($get('avis_lieu_id') ?: ''),
-        'avatar'      => $avatar_url,
-        'date'        => $post->post_date,
-        'date_rel'    => sj_relative_date($post->post_date),
+        'id'           => $post->ID,
+        'title'        => get_the_title($post),
+        'avis_title'   => (string) ($get('avis_title') ?: ''),
+        'author'       => (string) ($get('avis_author') ?: get_the_title($post)),
+        'rating'       => (int) ($get('avis_rating') ?: 5),
+        'text'         => (string) ($get('avis_text') ?: ''),
+        'certified'    => (bool) $get('avis_certified'),
+        'source'       => (string) ($get('avis_source') ?: 'google'),
+        'place_id'     => $place_id,
+        'lieu_id'      => $lieu_id,
+        'avatar'       => $avatar_url,
+        'date'         => $post->post_date,
+        'date_rel'     => sj_relative_date($post->post_date),
         'linked_post_id' => $linked_post_id ?: null,
         'linked_post'    => $linked_post_obj,
+        // Sous-critères (null = non noté)
+        'qualite_prix' => $crit_int('avis_qualite_prix'),
+        'ambiance'     => $crit_int('avis_ambiance'),
+        'experience'   => $crit_int('avis_experience'),
+        'paysage'      => $crit_int('avis_paysage'),
     ];
 }
 

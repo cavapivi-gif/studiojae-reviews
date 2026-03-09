@@ -143,14 +143,47 @@ class AvisCpt {
                 'preview_size'  => 'thumbnail',
                 'instructions'  => 'Photo optionnelle de l\'auteur.',
             ],
-            [
-                'key'           => 'field_avis_place_id',
-                'name'          => 'avis_place_id',
-                'label'         => 'Google Place ID',
-                'type'          => 'text',
-                'instructions'  => 'Si cet avis vient de Google Maps, indiquez le Place ID pour le lien.',
-            ],
         ];
+
+        // Lieu : dropdown dynamique depuis sj_lieux
+        $lieux_opt    = (array) get_option('sj_lieux', []);
+        $lieu_choices = ['' => '— Aucun lieu —'];
+        foreach ($lieux_opt as $l) {
+            $lieu_choices[$l['id']] = esc_html($l['name'] . ($l['active'] ? '' : ' (inactif)'));
+        }
+        $fields[] = [
+            'key'           => 'field_avis_lieu_id',
+            'name'          => 'avis_lieu_id',
+            'label'         => 'Lieu',
+            'type'          => 'select',
+            'choices'       => $lieu_choices,
+            'default_value' => '',
+            'allow_null'    => 1,
+            'ui'            => 0,
+            'instructions'  => 'Lieu auquel cet avis est rattaché.',
+        ];
+
+        // Sous-critères de notation
+        $criteria = [
+            'avis_qualite_prix' => 'Qualité/prix',
+            'avis_ambiance'     => 'Ambiance',
+            'avis_experience'   => 'Expérience',
+            'avis_paysage'      => 'Paysage',
+        ];
+        foreach ($criteria as $crit_name => $crit_label) {
+            $fields[] = [
+                'key'           => 'field_' . $crit_name,
+                'name'          => $crit_name,
+                'label'         => $crit_label . ' (0 = non noté)',
+                'type'          => 'number',
+                'required'      => 0,
+                'min'           => 0,
+                'max'           => 5,
+                'step'          => 1,
+                'default_value' => 0,
+                'instructions'  => '0 = non noté. Note de 1 à 5.',
+            ];
+        }
 
         // Champ de liaison uniquement si des post types sont configurés dans Réglages
         if (!empty($linked_types)) {
@@ -201,17 +234,22 @@ class AvisCpt {
     public function render_fallback_metabox(\WP_Post $post): void {
         wp_nonce_field('sj_avis_meta', 'sj_avis_nonce');
 
-        $author      = get_post_meta($post->ID, 'avis_author', true);
-        $avis_title  = get_post_meta($post->ID, 'avis_title', true);
-        $rating      = get_post_meta($post->ID, 'avis_rating', true) ?: 5;
-        $text        = get_post_meta($post->ID, 'avis_text', true);
-        $certified   = get_post_meta($post->ID, 'avis_certified', true);
-        $source      = get_post_meta($post->ID, 'avis_source', true) ?: 'google';
-        $place_id    = get_post_meta($post->ID, 'avis_place_id', true);
-        $linked_post = (int) get_post_meta($post->ID, 'avis_linked_post', true);
+        $author        = get_post_meta($post->ID, 'avis_author', true);
+        $avis_title    = get_post_meta($post->ID, 'avis_title', true);
+        $rating        = get_post_meta($post->ID, 'avis_rating', true) ?: 5;
+        $text          = get_post_meta($post->ID, 'avis_text', true);
+        $certified     = get_post_meta($post->ID, 'avis_certified', true);
+        $source        = get_post_meta($post->ID, 'avis_source', true) ?: 'google';
+        $lieu_id       = get_post_meta($post->ID, 'avis_lieu_id', true);
+        $linked_post   = (int) get_post_meta($post->ID, 'avis_linked_post', true);
+        $qualite_prix  = (int) get_post_meta($post->ID, 'avis_qualite_prix', true);
+        $ambiance      = (int) get_post_meta($post->ID, 'avis_ambiance', true);
+        $experience    = (int) get_post_meta($post->ID, 'avis_experience', true);
+        $paysage       = (int) get_post_meta($post->ID, 'avis_paysage', true);
 
         $settings      = get_option('sj_reviews_settings', []);
         $linked_types  = array_filter((array) ($settings['linked_post_types'] ?? []));
+        $lieux_opt     = (array) get_option('sj_lieux', []);
 
         $sources = [
             'google' => 'Google', 'tripadvisor' => 'TripAdvisor',
@@ -254,9 +292,17 @@ class AvisCpt {
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="sj-meta-field">
-                <label for="avis_place_id"><?php esc_html_e('Google Place ID', 'sj-reviews'); ?></label>
-                <input type="text" id="avis_place_id" name="avis_place_id" value="<?php echo esc_attr($place_id); ?>" placeholder="ChIJ...">
+            <!-- Lieu (dropdown) -->
+            <div class="sj-meta-field sj-meta-full">
+                <label for="avis_lieu_id"><?php esc_html_e('Lieu rattaché', 'sj-reviews'); ?></label>
+                <select id="avis_lieu_id" name="avis_lieu_id">
+                    <option value=""><?php esc_html_e('— Aucun lieu —', 'sj-reviews'); ?></option>
+                    <?php foreach ($lieux_opt as $l): ?>
+                        <option value="<?php echo esc_attr($l['id']); ?>" <?php selected($lieu_id, $l['id']); ?>>
+                            <?php echo esc_html($l['name'] . ($l['active'] ? '' : ' (inactif)')); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
             </div>
             <div class="sj-meta-field sj-meta-full">
                 <label for="avis_text"><?php esc_html_e('Texte de l\'avis', 'sj-reviews'); ?></label>
@@ -291,6 +337,33 @@ class AvisCpt {
                 <p style="font-size:11px;color:#888;margin:4px 0 0">Configurez les types dans <strong>Réglages → SJ Reviews</strong>.</p>
             </div>
             <?php endif; ?>
+            <!-- Sous-critères -->
+            <div class="sj-meta-field sj-meta-full" style="margin-top:8px">
+                <label style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#333">
+                    <?php esc_html_e('Sous-critères (0 = non noté)', 'sj-reviews'); ?>
+                </label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+                    <?php
+                    $crits = [
+                        'avis_qualite_prix' => 'Qualité/prix',
+                        'avis_ambiance'     => 'Ambiance',
+                        'avis_experience'   => 'Expérience',
+                        'avis_paysage'      => 'Paysage',
+                    ];
+                    foreach ($crits as $crit_key => $crit_lbl):
+                        $crit_val = (int) get_post_meta($post->ID, $crit_key, true);
+                    ?>
+                    <div>
+                        <label for="<?php echo esc_attr($crit_key); ?>" style="font-size:11px;color:#555;display:block;margin-bottom:3px">
+                            <?php echo esc_html($crit_lbl); ?>
+                        </label>
+                        <input type="number" id="<?php echo esc_attr($crit_key); ?>" name="<?php echo esc_attr($crit_key); ?>"
+                               value="<?php echo esc_attr($crit_val); ?>" min="0" max="5" step="1"
+                               style="width:100%;padding:5px 8px;border:1px solid #ddd;font-size:13px">
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
         </div>
         <?php
     }
@@ -301,8 +374,8 @@ class AvisCpt {
         if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
         if (!current_user_can('edit_post', $post_id)) return;
 
-        $fields = ['avis_author', 'avis_title', 'avis_rating', 'avis_source', 'avis_place_id'];
-        foreach ($fields as $field) {
+        $text_fields = ['avis_author', 'avis_title', 'avis_rating', 'avis_source', 'avis_lieu_id'];
+        foreach ($text_fields as $field) {
             if (isset($_POST[$field])) {
                 update_post_meta($post_id, $field, sanitize_text_field($_POST[$field]));
             }
@@ -310,5 +383,10 @@ class AvisCpt {
         update_post_meta($post_id, 'avis_text', sanitize_textarea_field($_POST['avis_text'] ?? ''));
         update_post_meta($post_id, 'avis_certified', isset($_POST['avis_certified']) ? 1 : 0);
         update_post_meta($post_id, 'avis_linked_post', (int) ($_POST['avis_linked_post'] ?? 0) ?: '');
+
+        foreach (['avis_qualite_prix', 'avis_ambiance', 'avis_experience', 'avis_paysage'] as $crit) {
+            $v = (int) ($_POST[$crit] ?? 0);
+            update_post_meta($post_id, $crit, ($v >= 1 && $v <= 5) ? $v : 0);
+        }
     }
 }
