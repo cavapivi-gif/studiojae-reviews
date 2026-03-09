@@ -601,7 +601,7 @@ class SummaryShortcode {
 </div><!-- /.sj-summary -->
 <?php if ($a['schema_enabled'] !== '0' && !is_admin() && $stats['avg'] > 0): ?>
 <script type="application/ld+json"><?php
-    echo wp_json_encode([
+    $schema = [
         '@context'        => 'https://schema.org',
         '@type'           => 'LocalBusiness',
         'name'            => get_the_title() ?: get_bloginfo('name'),
@@ -612,7 +612,43 @@ class SummaryShortcode {
             'bestRating'  => 5,
             'worstRating' => 1,
         ],
-    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    ];
+
+    // Inject a few individual reviews for Google rich results (max 5)
+    $schema_reviews = [];
+    $candidates = array_filter($reviews, fn($r) => $r['rating'] >= 1 && $r['rating'] <= 5 && !empty($r['text']));
+    // Sort by rating DESC then date DESC to pick the best/most recent
+    usort($candidates, function($a, $b) {
+        if ($b['rating'] !== $a['rating']) return $b['rating'] - $a['rating'];
+        return strcmp($b['date'], $a['date']);
+    });
+    foreach (array_slice($candidates, 0, 5) as $r) {
+        $entry = [
+            '@type'        => 'Review',
+            'reviewRating' => [
+                '@type'       => 'Rating',
+                'ratingValue' => $r['rating'],
+                'bestRating'  => 5,
+                'worstRating' => 1,
+            ],
+            'author' => [
+                '@type' => 'Person',
+                'name'  => $r['author'] ?: 'Anonyme',
+            ],
+        ];
+        if (!empty($r['text'])) {
+            $entry['reviewBody'] = wp_strip_all_tags($r['text']);
+        }
+        if (!empty($r['date'])) {
+            $entry['datePublished'] = gmdate('Y-m-d', strtotime($r['date']));
+        }
+        $schema_reviews[] = $entry;
+    }
+    if (!empty($schema_reviews)) {
+        $schema['review'] = $schema_reviews;
+    }
+
+    echo wp_json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 ?></script>
 <?php endif; ?>
         <?php
