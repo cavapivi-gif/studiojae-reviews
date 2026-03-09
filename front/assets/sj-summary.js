@@ -1,16 +1,11 @@
 /**
  * SJ Reviews — Widget Page Avis
- * Gestion : filtres pills, tri, "Voir plus" cards, troncature texte
+ * Gestion : filtre modal, tri, "Voir plus" cards, troncature texte, sous-critères
  */
 ;(function () {
   'use strict'
 
-  /* ── Constantes ──────────────────────────────────────────────────────── */
-  const TRUNCATE_LEN = 220  // caractères avant troncature
-
-  /* ── Init au chargement ──────────────────────────────────────────────── */
   document.addEventListener('DOMContentLoaded', initAll)
-  // Compatibilité Elementor (réinitialise après rendu éditeur)
   if (window.elementorFrontend) {
     window.elementorFrontend.hooks.addAction('frontend/element_ready/sj_summary.default', initAll)
   }
@@ -19,35 +14,41 @@
     document.querySelectorAll('.sj-summary').forEach(initWidget)
   }
 
-  /* ── Initialisation par widget ───────────────────────────────────────── */
   function initWidget(widget) {
     const uid      = widget.id
     const initial  = parseInt(widget.dataset.initial, 10) || 5
+    const words    = parseInt(widget.dataset.words, 10) || 40
     const reviews  = widget.querySelector('.sj-summary__reviews')
-    const filters  = widget.querySelector('.sj-summary__filters')
+    const filterBar = widget.querySelector('.sj-summary__filterbar')
     const loadBtn  = widget.querySelector('.sj-summary__load-btn')
     const loadMore = widget.querySelector('.sj-summary__loadmore')
+    const modal    = document.getElementById(uid + '-modal')
 
     if (!reviews) return
 
-    // État des filtres actifs
-    const active = { rating: null, period: null, language: null, sort: 'recent' }
+    // État des filtres (en cours d'édition dans modal)
+    const pending = { rating: null, period: null, language: null, travel: null }
+    // État appliqué
+    const active  = { rating: null, period: null, language: null, travel: null, sort: 'recent' }
 
-    /* ── Troncature des textes ─────────────────────────────────────────── */
+    /* ── Troncature par mots ─────────────────────────────────────────────── */
     reviews.querySelectorAll('.sj-card__text').forEach(p => {
-      const full  = p.dataset.full || p.textContent.trim()
-      const short = full.length > TRUNCATE_LEN
-        ? full.slice(0, TRUNCATE_LEN).trimEnd() + '…'
-        : full
-      p.textContent = short
+      const full      = p.dataset.full || p.textContent.trim()
+      const wordArr   = full.split(/\s+/)
+      const shortArr  = wordArr.slice(0, words)
+      const short     = wordArr.length > words ? shortArr.join(' ') + '…' : full
+      p.textContent   = short
       p.dataset.short = short
       p.dataset.full  = full
+      // Montrer/cacher le bouton Voir plus
+      const btn = p.closest('.sj-card__body')?.querySelector('.sj-card__more')
+      if (btn) btn.hidden = wordArr.length <= words
     })
 
     /* ── Boutons "Voir plus" par card ──────────────────────────────────── */
     reviews.querySelectorAll('.sj-card__more').forEach(btn => {
       btn.addEventListener('click', function () {
-        const p       = this.closest('.sj-card__body').querySelector('.sj-card__text')
+        const p        = this.closest('.sj-card__body').querySelector('.sj-card__text')
         const expanded = this.getAttribute('aria-expanded') === 'true'
         if (expanded) {
           p.textContent = p.dataset.short
@@ -61,34 +62,9 @@
       })
     })
 
-    /* ── Pills de filtres ──────────────────────────────────────────────── */
-    if (filters) {
-      filters.querySelectorAll('.sj-filters__pill').forEach(pill => {
-        pill.addEventListener('click', function () {
-          const type = this.dataset.filter
-          const val  = this.dataset.value
-
-          // Toggle : si déjà actif → désactive
-          if (active[type] === val) {
-            active[type] = null
-            this.setAttribute('aria-pressed', 'false')
-            this.classList.remove('is-active')
-          } else {
-            // Désactive tous les pills du même groupe
-            filters.querySelectorAll(`.sj-filters__pill[data-filter="${type}"]`).forEach(p => {
-              p.setAttribute('aria-pressed', 'false')
-              p.classList.remove('is-active')
-            })
-            active[type] = val
-            this.setAttribute('aria-pressed', 'true')
-            this.classList.add('is-active')
-          }
-          applyFilters()
-        })
-      })
-
-      /* Tri ──────────────────────────────────────────────────────────── */
-      const sortSel = filters.querySelector('[data-filter="sort"]')
+    /* ── Tri ──────────────────────────────────────────────────────────────── */
+    if (filterBar) {
+      const sortSel = filterBar.querySelector('[data-filter="sort"]')
       if (sortSel) {
         sortSel.addEventListener('change', function () {
           active.sort = this.value
@@ -96,94 +72,177 @@
         })
       }
 
-      /* Reset ────────────────────────────────────────────────────────── */
-      const resetBtn = filters.querySelector('.sj-filters__reset')
+      // Reset bar button
+      const resetBtn = filterBar.querySelector('.sj-filters__reset')
       if (resetBtn) {
         resetBtn.addEventListener('click', function () {
-          active.rating = active.period = active.language = null
-          active.sort   = 'recent'
-          filters.querySelectorAll('.sj-filters__pill').forEach(p => {
-            p.setAttribute('aria-pressed', 'false')
-            p.classList.remove('is-active')
-          })
-          if (sortSel) sortSel.value = 'recent'
+          resetAll()
           applyFilters()
         })
       }
     }
 
-    /* ── "Voir plus" global (load more) ────────────────────────────────── */
-    if (loadBtn) {
-      loadBtn.addEventListener('click', function () {
-        reviews.querySelectorAll('.sj-card--overflow').forEach(c => {
-          c.classList.remove('sj-card--overflow')
+    /* ── Modal filtres ───────────────────────────────────────────────────── */
+    const trigger = filterBar?.querySelector('.sj-filter-trigger')
+
+    if (trigger && modal) {
+      // Ouvrir modal
+      trigger.addEventListener('click', function () {
+        // Copie l'état actif dans pending
+        Object.assign(pending, { rating: active.rating, period: active.period, language: active.language, travel: active.travel })
+        syncModalUI()
+        modal.hidden = false
+        document.body.classList.add('sj-modal-open')
+        this.setAttribute('aria-expanded', 'true')
+      })
+
+      // Fermer (overlay + bouton X)
+      modal.querySelectorAll('[data-close="modal"]').forEach(el => {
+        el.addEventListener('click', closeModal)
+      })
+
+      // Escape key
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !modal.hidden) closeModal()
+      })
+
+      // Pills dans la modal → toggle pending
+      modal.querySelectorAll('.sj-filter-modal__pill, .sj-filter-modal__dot-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+          const type = this.dataset.filter
+          const val  = this.dataset.value
+          if (pending[type] === val) {
+            pending[type] = null
+            this.setAttribute('aria-pressed', 'false')
+            this.classList.remove('is-active')
+          } else {
+            modal.querySelectorAll(`[data-filter="${type}"]`).forEach(p => {
+              p.setAttribute('aria-pressed', 'false')
+              p.classList.remove('is-active')
+            })
+            pending[type] = val
+            this.setAttribute('aria-pressed', 'true')
+            this.classList.add('is-active')
+          }
         })
-        if (loadMore) loadMore.hidden = true
+      })
+
+      // Appliquer
+      modal.querySelector('.sj-filter-modal__btn-apply')?.addEventListener('click', function () {
+        Object.assign(active, pending)
+        closeModal()
+        applyFilters()
+      })
+
+      // Réinitialiser (dans la modal)
+      modal.querySelector('.sj-filter-modal__btn-reset')?.addEventListener('click', function () {
+        pending.rating = pending.period = pending.language = pending.travel = null
+        syncModalUI()
       })
     }
 
-    /* ── Application des filtres ───────────────────────────────────────── */
+    function closeModal() {
+      modal.hidden = true
+      document.body.classList.remove('sj-modal-open')
+      trigger?.setAttribute('aria-expanded', 'false')
+    }
+
+    function syncModalUI() {
+      modal.querySelectorAll('[data-filter]').forEach(btn => {
+        const type = btn.dataset.filter
+        if (!type || type === 'sort') return
+        const isActive = pending[type] === btn.dataset.value
+        btn.setAttribute('aria-pressed', isActive ? 'true' : 'false')
+        btn.classList.toggle('is-active', isActive)
+      })
+    }
+
+    /* ── "Voir plus" global (load more) ──────────────────────────────────── */
+    let allLoaded = false
+    if (loadBtn) {
+      loadBtn.addEventListener('click', function () {
+        reviews.querySelectorAll('.sj-card--overflow').forEach(c => c.classList.remove('sj-card--overflow'))
+        if (loadMore) loadMore.hidden = true
+        allLoaded = true
+      })
+    }
+
+    /* ── Application des filtres ─────────────────────────────────────────── */
     function applyFilters() {
       const cards = Array.from(reviews.querySelectorAll('.sj-card'))
 
-      // Filtrage
       cards.forEach(card => {
         const pass =
           (!active.rating   || card.dataset.rating   === active.rating)   &&
           (!active.period   || card.dataset.period   === active.period)   &&
-          (!active.language || card.dataset.language === active.language)
+          (!active.language || card.dataset.language === active.language) &&
+          (!active.travel   || card.dataset.travel   === active.travel)
         card.classList.toggle('sj-card--hidden', !pass)
       })
 
-      // Tri
-      const visible = cards.filter(c => !c.classList.contains('sj-card--hidden'))
-      sortCards(visible)
+      sortCards()
 
-      // Ré-applique overflow si aucun filtre actif
-      const anyActive = active.rating || active.period || active.language
-      if (!anyActive) {
+      const anyFilter = active.rating || active.period || active.language || active.travel
+
+      if (!anyFilter && !allLoaded) {
         cards.forEach((c, i) => {
-          if (i >= initial) c.classList.add('sj-card--overflow')
-          else              c.classList.remove('sj-card--overflow')
+          if (c.classList.contains('sj-card--hidden')) return
+          // Compte les visibles pour déterminer overflow
         })
-        if (loadMore) loadMore.hidden = false
+        // Ré-applique overflow sur base des cards non-cachées
+        let visibleCount = 0
+        cards.forEach(c => {
+          if (c.classList.contains('sj-card--hidden')) {
+            c.classList.remove('sj-card--overflow')
+            return
+          }
+          visibleCount++
+          c.classList.toggle('sj-card--overflow', visibleCount > initial)
+        })
+        const overflowCount = cards.filter(c => c.classList.contains('sj-card--overflow')).length
+        if (loadMore) {
+          const countEl = loadMore.querySelector('.sj-summary__load-count')
+          if (countEl) countEl.textContent = overflowCount > 0 ? `(${overflowCount})` : ''
+          loadMore.hidden = overflowCount === 0
+        }
       } else {
         cards.forEach(c => c.classList.remove('sj-card--overflow'))
-        if (loadMore) loadMore.hidden = true
+        if (loadMore && anyFilter) loadMore.hidden = true
       }
 
-      // Badge compteur filtres actifs
-      updateFilterBadge()
+      updateBadges(anyFilter)
     }
 
-    function sortCards(cards) {
-      const parent = reviews
+    function sortCards() {
       const allCards = Array.from(reviews.querySelectorAll('.sj-card'))
-
       allCards.sort((a, b) => {
-        if (active.sort === 'rating_desc') {
-          return parseInt(b.dataset.rating, 10) - parseInt(a.dataset.rating, 10)
-        }
-        if (active.sort === 'rating_asc') {
-          return parseInt(a.dataset.rating, 10) - parseInt(b.dataset.rating, 10)
-        }
-        // recent (par data-date desc)
+        if (active.sort === 'rating_desc') return parseInt(b.dataset.rating, 10) - parseInt(a.dataset.rating, 10)
+        if (active.sort === 'rating_asc')  return parseInt(a.dataset.rating, 10) - parseInt(b.dataset.rating, 10)
         return new Date(b.dataset.date) - new Date(a.dataset.date)
       })
-
-      allCards.forEach(c => parent.appendChild(c))
+      allCards.forEach(c => reviews.appendChild(c))
     }
 
-    function updateFilterBadge() {
-      const activeBar = filters?.querySelector('.sj-filters__active')
-      if (!activeBar) return
-      const count = [active.rating, active.period, active.language].filter(Boolean).length
-      const countEl = activeBar.querySelector('.sj-filters__active-count')
-      if (count > 0) {
-        activeBar.hidden = false
-        if (countEl) countEl.textContent = `(${count})`
-      } else {
-        activeBar.hidden = true
+    function resetAll() {
+      active.rating = active.period = active.language = active.travel = null
+      pending.rating = pending.period = pending.language = pending.travel = null
+      allLoaded = false
+    }
+
+    function updateBadges(anyFilter) {
+      const count = [active.rating, active.period, active.language, active.travel].filter(Boolean).length
+      // Badge bouton Filtrer
+      const badge = trigger?.querySelector('.sj-filter-trigger__badge')
+      if (badge) {
+        badge.textContent = count > 0 ? count : ''
+        badge.hidden = count === 0
+      }
+      // Barre réinitialiser
+      const activeBar = filterBar?.querySelector('.sj-filters__active')
+      if (activeBar) {
+        const countEl = activeBar.querySelector('.sj-filters__active-count')
+        if (countEl) countEl.textContent = count > 0 ? `(${count})` : ''
+        activeBar.hidden = count === 0
       }
     }
   }

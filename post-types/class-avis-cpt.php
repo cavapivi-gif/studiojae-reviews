@@ -47,7 +47,7 @@ class AvisCpt {
             'public'              => false,
             'publicly_queryable'  => false,
             'show_ui'             => true,
-            'show_in_menu'        => 'sj-reviews',   // sous notre menu plugin
+            'show_in_menu'        => false,
             'show_in_rest'        => true,
             'supports'            => ['title', 'custom-fields'],
             'capability_type'     => 'post',

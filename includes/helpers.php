@@ -156,6 +156,7 @@ function sj_normalize_review(\WP_Post $post): array {
         'visit_date'    => (string) ($get('avis_visit_date')   ?: ''),
         'language'      => (string) ($get('avis_language')     ?: 'fr'),
         'travel_type'   => (string) ($get('avis_travel_type')  ?: ''),
+        'customer_email' => (string) ($get('avis_customer_email') ?: ''),
     ];
 }
 

@@ -65,6 +65,9 @@ class SummaryShortcode {
             'show_sort'            => '1',
             'reviews_initial'      => 5,
             'cards_columns'        => '1',
+            'text_words'           => 40,
+            'show_card_criteria'   => '0',
+            'show_certified'       => '1',
         ], $atts, 'sj_summary');
 
         $lieu_id  = $this->resolve_lieu($a['lieu_id']);
@@ -169,7 +172,8 @@ class SummaryShortcode {
         ob_start();
         ?>
 <div class="sj-summary" id="<?php echo esc_attr($uid); ?>"
-     data-initial="<?php echo esc_attr((int) $a['reviews_initial']); ?>">
+     data-initial="<?php echo esc_attr((int) $a['reviews_initial']); ?>"
+     data-words="<?php echo esc_attr((int)$a['text_words']); ?>">
 
     <!-- ══ SECTION 1 : EN-TÊTE ══════════════════════════════════════════════ -->
     <div class="sj-summary__header">
@@ -267,106 +271,147 @@ class SummaryShortcode {
     ?>
 
     <?php if ($show_filters && $show_reviews): ?>
-    <!-- ══ SECTION 3 : BARRE DE FILTRES ══════════════════════════════════════ -->
-    <div class="sj-summary__filters" data-summary="<?php echo esc_attr($uid); ?>">
+<div class="sj-summary__filterbar" data-summary="<?php echo esc_attr($uid); ?>">
+    <!-- Tri (reste dans la barre) -->
+    <?php if ($a['show_sort'] !== '0'): ?>
+    <div class="sj-filters__sort">
+        <label class="sj-filters__sort-label" for="<?php echo esc_attr($uid); ?>-sort">Trier par</label>
+        <select id="<?php echo esc_attr($uid); ?>-sort" class="sj-filters__sort-select" data-filter="sort">
+            <option value="recent">Plus récent</option>
+            <option value="rating_desc">Meilleure note</option>
+            <option value="rating_asc">Moins bonne note</option>
+        </select>
+    </div>
+    <?php endif; ?>
 
-        <!-- Trier -->
-        <?php if ($a['show_sort'] !== '0'): ?>
-        <div class="sj-filters__sort">
-            <label class="sj-filters__sort-label" for="<?php echo esc_attr($uid); ?>-sort">
-                Trier par
-            </label>
-            <select id="<?php echo esc_attr($uid); ?>-sort"
-                    class="sj-filters__sort-select"
-                    data-filter="sort">
-                <option value="recent">Plus récent</option>
-                <option value="rating_desc">Meilleure note</option>
-                <option value="rating_asc">Moins bonne note</option>
-            </select>
-        </div>
-        <?php endif; ?>
+    <!-- Bouton filtrer -->
+    <button type="button" class="sj-filter-trigger" data-summary="<?php echo esc_attr($uid); ?>" aria-expanded="false">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+        Filtrer
+        <span class="sj-filter-trigger__badge" hidden></span>
+    </button>
 
-        <!-- Pills : Note -->
-        <?php if ($a['show_rating_filter'] !== '0' && count($avail_ratings) > 1): ?>
-        <div class="sj-filters__group">
-            <span class="sj-filters__group-label">Note</span>
-            <div class="sj-filters__pills">
-                <?php foreach ($avail_ratings as $r): ?>
-                <button type="button"
-                        class="sj-filters__pill"
-                        data-filter="rating"
-                        data-value="<?php echo esc_attr($r); ?>"
-                        aria-pressed="false">
-                    <?php echo esc_html($r); ?>★
-                </button>
-                <?php endforeach; ?>
-            </div>
-        </div>
-        <?php endif; ?>
+    <!-- Badge filtres actifs -->
+    <div class="sj-filters__active" aria-live="polite" hidden>
+        <button type="button" class="sj-filters__reset">Réinitialiser <span class="sj-filters__active-count"></span></button>
+    </div>
+</div>
 
-        <!-- Pills : Période -->
-        <?php if ($a['show_period_filter'] !== '0' && !empty($avail_periods)): ?>
-        <div class="sj-filters__group">
-            <span class="sj-filters__group-label">Période</span>
-            <div class="sj-filters__pills">
-                <?php foreach (self::PERIODS as $slug => $pd):
-                    if (!isset($avail_periods[$slug])) continue;
-                ?>
-                <button type="button"
-                        class="sj-filters__pill"
-                        data-filter="period"
-                        data-value="<?php echo esc_attr($slug); ?>"
-                        aria-pressed="false">
-                    <?php echo esc_html($pd['label']); ?>
-                </button>
-                <?php endforeach; ?>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <!-- Pills : Langue -->
-        <?php if ($a['show_language_filter'] !== '0' && count($avail_langs) > 1): ?>
-        <div class="sj-filters__group">
-            <span class="sj-filters__group-label">Langue</span>
-            <div class="sj-filters__pills">
-                <?php foreach ($avail_langs as $lang): ?>
-                <button type="button"
-                        class="sj-filters__pill"
-                        data-filter="language"
-                        data-value="<?php echo esc_attr($lang); ?>"
-                        aria-pressed="false">
-                    <?php echo esc_html(self::LANG_LABELS[$lang] ?? strtoupper($lang)); ?>
-                </button>
-                <?php endforeach; ?>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <!-- Badge nb filtres actifs -->
-        <div class="sj-filters__active" aria-live="polite" hidden>
-            <button type="button" class="sj-filters__reset">
-                Réinitialiser les filtres
-                <span class="sj-filters__active-count"></span>
+<!-- Modal filtres -->
+<div class="sj-filter-modal" id="<?php echo esc_attr($uid); ?>-modal" role="dialog" aria-modal="true" aria-label="Filtrer les avis" hidden>
+    <div class="sj-filter-modal__overlay" data-close="modal"></div>
+    <div class="sj-filter-modal__panel">
+        <div class="sj-filter-modal__head">
+            <h2 class="sj-filter-modal__title">Filtrer les avis</h2>
+            <button type="button" class="sj-filter-modal__close" data-close="modal" aria-label="Fermer">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
         </div>
 
-    </div><!-- /.sj-summary__filters -->
-    <?php endif; ?>
+        <div class="sj-filter-modal__body">
+
+            <!-- Note attribuée -->
+            <?php if ($a['show_rating_filter'] !== '0'): ?>
+            <div class="sj-filter-modal__group">
+                <p class="sj-filter-modal__group-label">Note attribuée</p>
+                <div class="sj-filter-modal__dots-row">
+                    <?php foreach ([5,4,3,2,1] as $r):
+                        $cnt = $stats['distribution'][$r] ?? 0;
+                    ?>
+                    <button type="button" class="sj-filter-modal__dot-btn" data-filter="rating" data-value="<?php echo esc_attr($r); ?>" aria-pressed="false">
+                        <?php for ($b=1;$b<=5;$b++): ?><span class="sj-filter-modal__dot<?php echo $b<=$r?' sj-filter-modal__dot--full':''; ?>"></span><?php endfor; ?>
+                        <span class="sj-filter-modal__dot-count"><?php echo esc_html($cnt); ?></span>
+                    </button>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Type de voyageur -->
+            <?php
+            $avail_travel_types = array_unique(array_filter(array_column($reviews, 'travel_type')));
+            if (!empty($avail_travel_types)):
+            ?>
+            <div class="sj-filter-modal__group">
+                <p class="sj-filter-modal__group-label">Type de voyageur</p>
+                <div class="sj-filter-modal__pills">
+                    <?php foreach (self::TRAVEL_LABELS as $slug => $label):
+                        if (!in_array($slug, $avail_travel_types, true)) continue;
+                    ?>
+                    <button type="button" class="sj-filter-modal__pill" data-filter="travel" data-value="<?php echo esc_attr($slug); ?>" aria-pressed="false">
+                        <?php echo esc_html($label); ?>
+                    </button>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Période de l'année -->
+            <?php if ($a['show_period_filter'] !== '0' && !empty($avail_periods)): ?>
+            <div class="sj-filter-modal__group">
+                <p class="sj-filter-modal__group-label">Période de l'année</p>
+                <div class="sj-filter-modal__pills">
+                    <?php foreach (self::PERIODS as $slug => $pd):
+                        if (!isset($avail_periods[$slug])) continue;
+                    ?>
+                    <button type="button" class="sj-filter-modal__pill" data-filter="period" data-value="<?php echo esc_attr($slug); ?>" aria-pressed="false">
+                        <?php echo esc_html($pd['label']); ?>
+                    </button>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Langue -->
+            <?php if ($a['show_language_filter'] !== '0' && count($avail_langs) > 1): ?>
+            <div class="sj-filter-modal__group">
+                <p class="sj-filter-modal__group-label">Langue</p>
+                <div class="sj-filter-modal__pills">
+                    <?php foreach ($avail_langs as $lang): ?>
+                    <button type="button" class="sj-filter-modal__pill" data-filter="language" data-value="<?php echo esc_attr($lang); ?>" aria-pressed="false">
+                        <?php echo esc_html(self::LANG_LABELS[$lang] ?? strtoupper($lang)); ?>
+                    </button>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+        </div><!-- /.body -->
+
+        <div class="sj-filter-modal__foot">
+            <button type="button" class="sj-filter-modal__btn-reset">Réinitialiser</button>
+            <button type="button" class="sj-filter-modal__btn-apply">Appliquer</button>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
     <?php if ($show_reviews): ?>
     <!-- ══ SECTION 4 : CARDS D'AVIS ══════════════════════════════════════════ -->
     <div class="sj-summary__reviews sj-cards-grid sj-cards-grid--<?php echo esc_attr($a['cards_columns']); ?>col"
          data-summary="<?php echo esc_attr($uid); ?>"
          aria-live="polite">
+        <?php
+        // Contributions par email
+        $email_counts = [];
+        foreach ($reviews as $rv2) {
+            $e = $rv2['customer_email'] ?? '';
+            if ($e) $email_counts[$e] = ($email_counts[$e] ?? 0) + 1;
+        }
+        ?>
         <?php foreach ($reviews as $idx => $rv):
             $period = $this->get_period($rv['visit_date'] ?? '');
             $hidden = $idx >= (int) $a['reviews_initial'] ? ' sj-card--overflow' : '';
+            $email = $rv['customer_email'] ?? '';
+            $contribs = ($email && isset($email_counts[$email])) ? $email_counts[$email] : 1;
         ?>
         <article class="sj-card<?php echo esc_attr($hidden); ?>"
                  data-rating="<?php echo esc_attr($rv['rating']); ?>"
                  data-language="<?php echo esc_attr($rv['language'] ?: 'fr'); ?>"
                  data-period="<?php echo esc_attr($period); ?>"
                  data-date="<?php echo esc_attr($rv['date']); ?>"
+                 data-travel="<?php echo esc_attr($rv['travel_type']); ?>"
+                 data-contributions="<?php echo esc_attr($contribs); ?>"
                  aria-label="Avis de <?php echo esc_attr($rv['author']); ?>">
 
             <!-- En-tête : avatar + auteur + source -->
@@ -387,9 +432,12 @@ class SummaryShortcode {
                         <?php if (!empty($rv['source']) && $rv['source'] !== 'direct'):
                             echo '<span class="sj-card__source-name">' . esc_html(ucfirst($rv['source'])) . '</span>';
                         endif; ?>
+                        <?php if ($contribs > 1): ?>
+                        <span class="sj-card__contributions">(<?php echo esc_html($contribs); ?> contributions)</span>
+                        <?php endif; ?>
                     </div>
                 </div>
-                <?php if (!empty($rv['certified'])): ?>
+                <?php if ($a['show_certified'] !== '0' && !empty($rv['certified'])): ?>
                 <span class="sj-card__certified">Certifié</span>
                 <?php endif; ?>
             </div>
@@ -422,7 +470,10 @@ class SummaryShortcode {
                    data-full="<?php echo esc_attr($rv['text']); ?>">
                     <?php echo esc_html($rv['text']); ?>
                 </p>
-                <?php if (mb_strlen($rv['text']) > 220): ?>
+                <?php
+                $word_count = str_word_count(strip_tags($rv['text']));
+                if ($word_count > (int)$a['text_words']):
+                ?>
                 <button type="button" class="sj-card__more" aria-expanded="false">
                     Voir plus
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
@@ -431,6 +482,30 @@ class SummaryShortcode {
                 </button>
                 <?php endif; ?>
             </div>
+            <?php endif; ?>
+
+            <?php if ($a['show_card_criteria'] !== '0'): ?>
+            <?php
+              $crit_labels_card = ['qualite_prix'=>'Qualité/prix','ambiance'=>'Ambiance','experience'=>'Expérience','paysage'=>'Paysage'];
+              $has_crit = array_filter(['qualite_prix'=>$rv['qualite_prix'],'ambiance'=>$rv['ambiance'],'experience'=>$rv['experience'],'paysage'=>$rv['paysage']], fn($v)=>$v!==null);
+              if (!empty($has_crit)):
+            ?>
+            <div class="sj-card__criteria">
+              <?php foreach ($crit_labels_card as $k => $lbl):
+                $v = $rv[$k]; if ($v === null) continue;
+                $pct = round(($v/5)*100);
+              ?>
+              <div class="sj-card__crit-row">
+                <span class="sj-card__crit-dot" data-val="<?php echo esc_attr($v); ?>"></span>
+                <span class="sj-card__crit-label"><?php echo esc_html($lbl); ?></span>
+                <div class="sj-card__crit-track">
+                  <div class="sj-card__crit-fill" style="width:<?php echo esc_attr($pct); ?>%"></div>
+                </div>
+                <span class="sj-card__crit-score"><?php echo esc_html(number_format($v,1,',','')); ?></span>
+              </div>
+              <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
             <?php endif; ?>
 
             <!-- Pied : date de rédaction -->
