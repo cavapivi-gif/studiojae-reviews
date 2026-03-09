@@ -1012,6 +1012,15 @@ class RestApi {
         update_post_meta($post_id, 'avis_ambiance',     $data['ambiance']);
         update_post_meta($post_id, 'avis_experience',   $data['experience']);
         update_post_meta($post_id, 'avis_paysage',      $data['paysage']);
+        // Auto-compute avis_rating depuis sous-critères si tous les 4 sont notés.
+        // Calculé au save (pas au fetch) : la distribution front reflète directement
+        // la moyenne des critères sans recalcul à chaque requête.
+        $crit_values = [$data['qualite_prix'], $data['ambiance'], $data['experience'], $data['paysage']];
+        $rated        = array_filter($crit_values, fn($v) => $v > 0);
+        if (count($rated) === 4) {
+            $auto_rating = max(1, min(5, (int) round(array_sum($rated) / 4)));
+            update_post_meta($post_id, 'avis_rating', $auto_rating);
+        }
         // Contexte de visite
         if ($data['visit_date']) {
             update_post_meta($post_id, 'avis_visit_date',  $data['visit_date']);

@@ -127,8 +127,11 @@ function sj_normalize_review(\WP_Post $post, bool $private = false): array {
         }
     }
 
-    $crit_int = fn(string $k): ?int => (function() use ($get, $k) {
-        $v = (int) $get($k);
+    // Sub-critères : lus directement via get_post_meta car sauvegardés via
+    // update_post_meta (REST API) sans passer par ACF — évite get_field()
+    // qui retourne false si le champ n'est pas dans un ACF field group.
+    $crit_int = fn(string $k): ?int => (function() use ($post, $k) {
+        $v = (int) get_post_meta($post->ID, $k, true);
         return ($v >= 1 && $v <= 5) ? $v : null;
     })();
 

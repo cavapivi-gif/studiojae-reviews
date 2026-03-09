@@ -262,8 +262,12 @@ class SummaryShortcode {
             <?php
             $crit_labels  = ['qualite_prix'=>'Qualité/prix','ambiance'=>'Ambiance','experience'=>'Expérience','paysage'=>'Paysage'];
             $has_criteria = $a['show_criteria'] !== '0' && array_filter($stats['criteria_avgs'], fn($v) => $v !== null);
-            if ($has_criteria):
+            if ($has_criteria && $a['show_distribution'] !== '0'):
             ?>
+            <!-- Séparateur vertical (desktop) / horizontal (mobile) -->
+            <div class="sj-summary__middle-divider" aria-hidden="true"></div>
+            <?php endif; ?>
+            <?php if ($has_criteria): ?>
             <!-- Sous-critères : grille 2 colonnes -->
             <div class="sj-summary__criteria">
                 <?php foreach ($crit_labels as $k => $lbl):
@@ -401,7 +405,7 @@ class SummaryShortcode {
             <?php endif; ?>
 
             <!-- Langue -->
-            <?php if ($a['show_language_filter'] !== '0' && count($avail_langs) > 1): ?>
+            <?php if ($a['show_language_filter'] !== '0' && count($avail_langs) >= 1): ?>
             <div class="sj-filter-modal__group">
                 <p class="sj-filter-modal__group-label">Langue</p>
                 <div class="sj-filter-modal__pills">

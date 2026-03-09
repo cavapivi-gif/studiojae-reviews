@@ -178,9 +178,8 @@
 
     /* ── Application des filtres ─────────────────────────────────────────── */
     function applyFilters() {
-      const cards = Array.from(reviews.querySelectorAll('.sj-card'))
-
-      cards.forEach(card => {
+      // 1. Visibilité filtrée
+      Array.from(reviews.querySelectorAll('.sj-card')).forEach(card => {
         let searchMatch = true
         if (active.search) {
           const q = active.search
@@ -200,18 +199,19 @@
         card.classList.toggle('sj-card--hidden', !pass)
       })
 
+      // 2. Tri dans le DOM
       sortCards()
+
+      // 3. Re-query dans l'ordre trié — sortCards() a réordonné le DOM,
+      //    utiliser l'ancien tableau ferait appliquer l'overflow dans l'ancien ordre
+      const sortedCards = Array.from(reviews.querySelectorAll('.sj-card'))
 
       const anyFilter = active.rating || active.period || active.language || active.travel || active.search
 
       if (!anyFilter && !allLoaded) {
-        cards.forEach((c, i) => {
-          if (c.classList.contains('sj-card--hidden')) return
-          // Compte les visibles pour déterminer overflow
-        })
-        // Ré-applique overflow sur base des cards non-cachées
+        // Ré-applique overflow sur les cards triées visibles
         let visibleCount = 0
-        cards.forEach(c => {
+        sortedCards.forEach(c => {
           if (c.classList.contains('sj-card--hidden')) {
             c.classList.remove('sj-card--overflow')
             return
@@ -219,14 +219,14 @@
           visibleCount++
           c.classList.toggle('sj-card--overflow', visibleCount > initial)
         })
-        const overflowCount = cards.filter(c => c.classList.contains('sj-card--overflow')).length
+        const overflowCount = sortedCards.filter(c => c.classList.contains('sj-card--overflow')).length
         if (loadMore) {
           const countEl = loadMore.querySelector('.sj-summary__load-count')
           if (countEl) countEl.textContent = overflowCount > 0 ? `(${overflowCount})` : ''
           loadMore.hidden = overflowCount === 0
         }
       } else {
-        cards.forEach(c => c.classList.remove('sj-card--overflow'))
+        sortedCards.forEach(c => c.classList.remove('sj-card--overflow'))
         if (loadMore && anyFilter) loadMore.hidden = true
       }
 

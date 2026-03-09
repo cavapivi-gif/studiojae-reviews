@@ -381,6 +381,21 @@ class SummaryWidget extends Widget_Base {
             ],
         ]);
 
+        $this->add_control('score_divider_color', [
+            'label'     => __('Couleur ligne séparatrice du score', 'sj-reviews'),
+            'type'      => Controls_Manager::COLOR,
+            'separator' => 'before',
+            'selectors' => ['{{WRAPPER}} .sj-summary__score-block' => '--sj-score-divider-color: {{VALUE}};'],
+        ]);
+
+        $this->add_responsive_control('score_divider_width', [
+            'label'      => __('Épaisseur ligne séparatrice', 'sj-reviews'),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => ['px'],
+            'range'      => ['px' => ['min' => 0, 'max' => 4]],
+            'selectors'  => ['{{WRAPPER}} .sj-summary__score-block' => '--sj-score-divider-width: {{SIZE}}{{UNIT}};'],
+        ]);
+
         $this->end_controls_section();
 
         /* ── Style : Distribution (barres ★) ───────────────────────── */
@@ -431,6 +446,13 @@ class SummaryWidget extends Widget_Base {
                 'selector' => '{{WRAPPER}} .sj-summary__dist-label, {{WRAPPER}} .sj-summary__dist-count',
             ]
         );
+
+        $this->add_control('middle_divider_color', [
+            'label'     => __('Couleur séparateur Distribution / Critères', 'sj-reviews'),
+            'type'      => Controls_Manager::COLOR,
+            'separator' => 'before',
+            'selectors' => ['{{WRAPPER}} .sj-summary__middle-divider' => 'background: {{VALUE}};'],
+        ]);
 
         $this->end_controls_section();
 
@@ -1030,6 +1052,59 @@ class SummaryWidget extends Widget_Base {
             'range'      => ['px' => ['min' => 2, 'max' => 12]],
             'default'    => ['size' => 4, 'unit' => 'px'],
             'selectors'  => ['{{WRAPPER}} .sj-card__crit-track' => 'height: {{SIZE}}{{UNIT}}'],
+        ]);
+
+        $this->add_control('crit_card_track_color', [
+            'label'     => __('Fond de barre (non rempli)', 'sj-reviews'),
+            'type'      => \Elementor\Controls_Manager::COLOR,
+            'selectors' => ['{{WRAPPER}} .sj-card__crit-track' => 'background: {{VALUE}};'],
+        ]);
+
+        $this->end_controls_section();
+
+        /* ── Style : Barre de recherche ─────────────────────────────── */
+        $this->start_controls_section('style_search', [
+            'label'     => __('Barre de recherche', 'sj-reviews'),
+            'tab'       => \Elementor\Controls_Manager::TAB_STYLE,
+            'condition' => ['show_search' => '1'],
+        ]);
+
+        $this->add_control('search_bg', [
+            'label'     => __('Fond', 'sj-reviews'),
+            'type'      => \Elementor\Controls_Manager::COLOR,
+            'selectors' => ['{{WRAPPER}} .sj-search__input' => '--sj-search-bg: {{VALUE}}; background: {{VALUE}};'],
+        ]);
+
+        $this->add_control('search_border_color', [
+            'label'     => __('Couleur bordure', 'sj-reviews'),
+            'type'      => \Elementor\Controls_Manager::COLOR,
+            'selectors' => ['{{WRAPPER}} .sj-search__input' => '--sj-search-border-color: {{VALUE}};'],
+        ]);
+
+        $this->add_control('search_focus_color', [
+            'label'     => __('Couleur bordure au focus', 'sj-reviews'),
+            'type'      => \Elementor\Controls_Manager::COLOR,
+            'selectors' => ['{{WRAPPER}} .sj-search__input' => '--sj-search-focus-color: {{VALUE}};'],
+        ]);
+
+        $this->add_responsive_control('search_radius', [
+            'label'      => __('Rayon des coins', 'sj-reviews'),
+            'type'       => \Elementor\Controls_Manager::SLIDER,
+            'size_units' => ['px', '%'],
+            'range'      => ['px' => ['min' => 0, 'max' => 50]],
+            'selectors'  => ['{{WRAPPER}} .sj-search__input' => '--sj-search-radius: {{SIZE}}{{UNIT}};'],
+        ]);
+
+        $this->add_control('search_icon_color', [
+            'label'     => __('Couleur icône loupe', 'sj-reviews'),
+            'type'      => \Elementor\Controls_Manager::COLOR,
+            'selectors' => ['{{WRAPPER}} .sj-search__icon' => '--sj-search-icon-color: {{VALUE}}; color: {{VALUE}};'],
+        ]);
+
+        $this->add_group_control(\Elementor\Group_Control_Typography::get_type(), [
+            'name'     => 'search_typography',
+            'label'    => __('Typographie', 'sj-reviews'),
+            'selector' => '{{WRAPPER}} .sj-search__input',
         ]);
 
         $this->end_controls_section();
