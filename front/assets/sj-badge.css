@@ -1,0 +1,217 @@
+/* ============================================================
+   SJ Rating Badge — 4 designs
+   ============================================================ */
+
+/* ── Variables ─────────────────────────────────────── */
+.sj-badge {
+  --sj-radius: 8px;
+  --sj-border: #e5e7eb;
+  --sj-bg:     #fff;
+  --sj-text:   #111;
+  --sj-sub:    #6b7280;
+  --sj-shadow: 0 1px 4px rgba(0,0,0,.08);
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+  box-sizing: border-box;
+}
+
+/* ── Grid wrapper (multi-lieux) ─────────────────────── */
+.sj-rating--grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+/* ── Étoiles communes ───────────────────────────────── */
+.sj-badge__stars {
+  display: inline-flex;
+  gap: 1px;
+  vertical-align: middle;
+  line-height: 1;
+}
+.sj-badge__stars svg { display: block; }
+
+/* ── Source icons ───────────────────────────────────── */
+.sj-badge__source-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.sj-badge__source-icon--google      { background: #4285F4; color: #fff; }
+.sj-badge__source-icon--tripadvisor { background: #00af87; color: #fff; }
+.sj-badge__source-icon--facebook    { background: #1877F2; color: #fff; }
+.sj-badge__source-icon--trustpilot  { background: #00b67a; color: #fff; }
+
+/* ══════════════════════════════════════════════════════
+   DESIGN 1 : compact — inline, pas de boîte
+   ══════════════════════════════════════════════════════ */
+.sj-badge--compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--sj-text);
+}
+.sj-badge--compact .sj-badge__rating {
+  font-weight: 700;
+  font-size: 15px;
+}
+.sj-badge--compact .sj-badge__count {
+  color: var(--sj-sub);
+  font-size: 12px;
+}
+
+/* ══════════════════════════════════════════════════════
+   DESIGN 2 : pill — badge arrondi horizontal
+   ══════════════════════════════════════════════════════ */
+.sj-badge--pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: var(--sj-bg);
+  border: 1px solid var(--sj-border);
+  border-radius: 999px;
+  box-shadow: var(--sj-shadow);
+  text-decoration: none;
+  color: var(--sj-text);
+  transition: box-shadow .2s;
+}
+.sj-badge--pill:hover { box-shadow: 0 2px 8px rgba(0,0,0,.14); }
+.sj-badge--pill .sj-badge__rating {
+  font-weight: 700;
+  font-size: 15px;
+}
+.sj-badge--pill .sj-badge__sep { color: var(--sj-border); }
+.sj-badge--pill .sj-badge__count { font-size: 12px; color: var(--sj-sub); }
+.sj-badge--pill .sj-badge__source {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--sj-sub);
+  padding-left: 4px;
+  border-left: 1px solid var(--sj-border);
+}
+
+/* ══════════════════════════════════════════════════════
+   DESIGN 3 : card — carte verticale compacte
+   ══════════════════════════════════════════════════════ */
+.sj-badge--card {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 20px;
+  background: var(--sj-bg);
+  border: 1px solid var(--sj-border);
+  border-radius: var(--sj-radius);
+  box-shadow: var(--sj-shadow);
+  text-decoration: none;
+  color: var(--sj-text);
+  transition: box-shadow .2s, transform .2s;
+  min-width: 140px;
+}
+.sj-badge--card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  transform: translateY(-2px);
+}
+.sj-badge--card .sj-badge__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sj-badge--card .sj-badge__name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sj-sub);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.sj-badge--card .sj-badge__body {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.sj-badge--card .sj-badge__rating {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+}
+.sj-badge--card .sj-badge__stars-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.sj-badge--card .sj-badge__count {
+  font-size: 11px;
+  color: var(--sj-sub);
+}
+
+/* ══════════════════════════════════════════════════════
+   DESIGN 4 : hero — grande vitrine
+   ══════════════════════════════════════════════════════ */
+.sj-badge--hero {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 36px;
+  background: var(--sj-bg);
+  border: 1px solid var(--sj-border);
+  border-radius: var(--sj-radius);
+  box-shadow: var(--sj-shadow);
+  text-align: center;
+  min-width: 180px;
+}
+.sj-badge--hero .sj-badge__name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sj-sub);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.sj-badge--hero .sj-badge__big-rating {
+  font-size: 56px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -.02em;
+  color: var(--sj-text);
+}
+.sj-badge--hero .sj-badge__stars { gap: 2px; }
+.sj-badge--hero .sj-badge__stars svg { width: 18px; height: 18px; }
+.sj-badge--hero .sj-badge__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--sj-sub);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.sj-badge--hero .sj-badge__source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--sj-sub);
+  text-decoration: none;
+  font-weight: 600;
+}
+.sj-badge--hero .sj-badge__source-link:hover { color: var(--sj-text); }
+
+/* ── Dark mode support ──────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  .sj-badge {
+    --sj-border: #374151;
+    --sj-bg:     #1f2937;
+    --sj-text:   #f9fafb;
+    --sj-sub:    #9ca3af;
+    --sj-shadow: 0 1px 4px rgba(0,0,0,.4);
+  }
+}

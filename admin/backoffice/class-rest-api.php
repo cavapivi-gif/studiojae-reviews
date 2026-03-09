@@ -501,10 +501,10 @@ class RestApi {
             return;
         }
 
+        // Agrégat uniquement : rating + total reviews (pas d'import de commentaires)
         $url = add_query_arg([
             'place_id' => $lieu['place_id'],
-            'fields'   => 'reviews',
-            'language' => 'fr',
+            'fields'   => 'rating,user_ratings_total',
             'key'      => $api_key,
         ], 'https://maps.googleapis.com/maps/api/place/details/json');
 
@@ -525,57 +525,26 @@ class RestApi {
             return;
         }
 
-        $google_reviews = $body['result']['reviews'] ?? [];
-        $imported = 0;
-        $skipped  = 0;
+        $g_rating  = round((float) ($body['result']['rating']             ?? 0), 1);
+        $g_count   = (int)         ($body['result']['user_ratings_total'] ?? 0);
 
-        foreach ($google_reviews as $gr) {
-            $author_name = sanitize_text_field($gr['author_name'] ?? 'Anonyme');
-            $rating      = max(1, min(5, (int) ($gr['rating'] ?? 5)));
-            $text        = sanitize_textarea_field($gr['text'] ?? '');
-            $time        = (int) ($gr['time'] ?? time());
-
-            $existing = get_posts([
-                'post_type'      => 'sj_avis',
-                'post_status'    => 'publish',
-                'posts_per_page' => 1,
-                'meta_query'     => [
-                    ['key' => 'avis_source',  'value' => 'google'],
-                    ['key' => 'avis_lieu_id', 'value' => $lieu_id],
-                    ['key' => 'avis_author',  'value' => $author_name],
-                ],
-            ]);
-
-            if (!empty($existing)) { $skipped++; continue; }
-
-            $post_id = wp_insert_post([
-                'post_type'   => 'sj_avis',
-                'post_title'  => $author_name,
-                'post_status' => 'publish',
-                'post_date'   => date('Y-m-d H:i:s', $time),
-            ]);
-
-            if (!is_wp_error($post_id)) {
-                update_post_meta($post_id, 'avis_author',    $author_name);
-                update_post_meta($post_id, 'avis_rating',    $rating);
-                update_post_meta($post_id, 'avis_text',      $text);
-                update_post_meta($post_id, 'avis_source',    'google');
-                update_post_meta($post_id, 'avis_place_id',  $lieu['place_id']);
-                update_post_meta($post_id, 'avis_lieu_id',   $lieu_id);
-                update_post_meta($post_id, 'avis_certified', 0);
-                $imported++;
+        // Persiste sur le lieu dans l'option sj_lieux
+        $all_lieux = $this->get_lieux();
+        foreach ($all_lieux as &$l) {
+            if ($l['id'] === $lieu_id) {
+                $l['rating']        = $g_rating;
+                $l['reviews_count'] = $g_count;
+                $l['last_sync']     = current_time('Y-m-d H:i:s');
+                break;
             }
         }
+        unset($l);
+        update_option('sj_lieux', $all_lieux);
 
         set_transient($status_key, [
-            'imported' => $imported,
-            'skipped'  => $skipped,
-            'total'    => count($google_reviews),
-            'message'  => (count($google_reviews) === 0)
-                ? 'Google n\'a retourné aucun avis pour ce Place ID. Vérifiez que c\'est bien l\'ID du lieu (format ChIJ...), que l\'API Places est activée pour votre clé, et que le lieu a des avis sur Google Maps.'
-                : null,
+            'rating'        => $g_rating,
+            'reviews_count' => $g_count,
         ], 5 * MINUTE_IN_SECONDS);
-
         delete_transient($lock_key);
     }
 

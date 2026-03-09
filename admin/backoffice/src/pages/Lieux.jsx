@@ -158,10 +158,12 @@ export default function Lieux() {
             setSyncing(null)
             if (s.error) {
               flash(s.error, 'error')
-            } else if ((s.total ?? 0) === 0 && s.message) {
+            } else if (s.rating && s.reviews_count) {
+              flash(`✓ ${s.rating}/5 — ${s.reviews_count} avis synchronisés depuis Google.`)
+            } else if (s.message) {
               flash(s.message, 'warn')
             } else {
-              flash(`✓ ${s.imported ?? 0} avis importés, ${s.skipped ?? 0} déjà existants.`)
+              flash('Synchronisation terminée.')
             }
             load()
           } else if (s.error) {
@@ -231,7 +233,13 @@ export default function Lieux() {
                     <span className="font-medium text-sm text-gray-900 truncate">{lieu.name}</span>
                     <Badge variant={lieu.source}>{SOURCE_OPTIONS.find(s => s.value === lieu.source)?.label ?? lieu.source}</Badge>
                     {!lieu.active && <Badge variant="warn">Inactif</Badge>}
-                    {lieu.avis_count > 0 && (
+                    {lieu.rating > 0 && (
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5">
+                        <IconStar size={10} strokeWidth={1.5} />
+                        {Number(lieu.rating).toFixed(1)} · {lieu.reviews_count?.toLocaleString()} avis Google
+                      </span>
+                    )}
+                    {!lieu.rating && lieu.avis_count > 0 && (
                       <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-0.5">
                         <IconStar size={10} strokeWidth={1.5} />
                         {lieu.avis_count} avis

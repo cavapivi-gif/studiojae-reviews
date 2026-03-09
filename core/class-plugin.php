@@ -27,15 +27,20 @@ class Plugin {
             (new \SJ_Reviews\Admin\Backoffice\RestApi())->init();
         }
 
-        // Shortcode
+        // Shortcodes
         require_once SJ_REVIEWS_DIR . 'front/class-shortcode.php';
+        require_once SJ_REVIEWS_DIR . 'front/class-rating-shortcode.php';
         (new \SJ_Reviews\Front\Shortcode())->init();
+        (new \SJ_Reviews\Front\RatingShortcode())->init();
 
         // Elementor
         add_action('elementor/widgets/register', function ($manager) {
             require_once SJ_REVIEWS_DIR . 'elementor/class-elementor-manager.php';
             require_once SJ_REVIEWS_DIR . 'elementor/widgets/class-reviews-widget.php';
+            require_once SJ_REVIEWS_DIR . 'front/class-rating-shortcode.php';
+            require_once SJ_REVIEWS_DIR . 'elementor/widgets/class-rating-badge-widget.php';
             $manager->register(new \SJ_Reviews\Elementor\Widgets\ReviewsWidget());
+            $manager->register(new \SJ_Reviews\Elementor\Widgets\RatingBadgeWidget());
         });
 
         add_action('elementor/frontend/after_enqueue_styles', [$this, 'enqueue_front_assets']);
@@ -46,6 +51,12 @@ class Plugin {
         wp_enqueue_style(
             'sj-reviews-front',
             SJ_REVIEWS_URL . 'front/assets/sj-front.css',
+            [],
+            SJ_REVIEWS_VERSION
+        );
+        wp_enqueue_style(
+            'sj-rating-badge',
+            SJ_REVIEWS_URL . 'front/assets/sj-badge.css',
             [],
             SJ_REVIEWS_VERSION
         );
