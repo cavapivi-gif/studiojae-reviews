@@ -3,21 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { PageHeader, StatCard, Table, Btn, Notice, Spinner, Stars, Badge, RatingBar } from '../components/ui'
 import { IconPlus } from '../components/Icons'
-
-const SOURCE_LABELS = {
-  google: 'Google', tripadvisor: 'TripAdvisor', facebook: 'Facebook',
-  trustpilot: 'Trustpilot', regiondo: 'Regiondo', direct: 'Direct', autre: 'Autre',
-}
-
-const SOURCE_COLORS = {
-  google:      'bg-blue-500',
-  tripadvisor: 'bg-emerald-500',
-  facebook:    'bg-blue-700',
-  trustpilot:  'bg-green-600',
-  regiondo:    'bg-orange-500',
-  direct:      'bg-gray-600',
-  autre:       'bg-gray-400',
-}
+import { SOURCE_LABELS, SOURCE_COLORS } from '../lib/constants'
 
 export default function Dashboard() {
   const navigate = useNavigate()

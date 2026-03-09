@@ -712,6 +712,56 @@ class RestApi {
     }
 
     /**
+     * Valide un tableau de lignes CSV et détecte les doublons en un seul batch.
+     *
+     * @return array<int, array{index:int, row:array, status:'new'|'duplicate'|'error', reason?:string}>
+     */
+    private function validate_rows(array $rows): array {
+        global $wpdb;
+
+        // Batch : récupère tous les order_id déjà en base en une seule requête
+        $order_ids = array_filter(array_map(fn($r) => trim((string) ($r['order_id'] ?? '')), $rows));
+        $existing_set = [];
+        if (!empty($order_ids)) {
+            $placeholders = implode(',', array_fill(0, count($order_ids), '%s'));
+            $existing_rows = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT meta_value, post_id FROM {$wpdb->postmeta}
+                     WHERE meta_key = 'avis_order_id' AND meta_value IN ({$placeholders})",
+                    ...$order_ids
+                )
+            );
+            foreach ($existing_rows as $e) {
+                $existing_set[$e->meta_value] = (int) $e->post_id;
+            }
+        }
+
+        $results = [];
+        foreach ($rows as $i => $row) {
+            $order_id = sanitize_text_field($row['order_id'] ?? '');
+            $rating   = (int) ($row['rating'] ?? 0);
+            $author   = sanitize_text_field($row['author'] ?? '');
+
+            if (empty($author)) {
+                $results[] = ['index' => $i, 'row' => $row, 'status' => 'error', 'reason' => 'Auteur manquant'];
+                continue;
+            }
+            if ($rating < 1 || $rating > 5) {
+                $results[] = ['index' => $i, 'row' => $row, 'status' => 'error', 'reason' => 'Note invalide (doit être 1–5)'];
+                continue;
+            }
+            if ($order_id && isset($existing_set[$order_id])) {
+                $results[] = ['index' => $i, 'row' => $row, 'status' => 'duplicate', 'reason' => "Doublon — N° commande {$order_id} déjà importé (ID #{$existing_set[$order_id]})"];
+                continue;
+            }
+
+            $results[] = ['index' => $i, 'row' => $row, 'status' => 'new'];
+        }
+
+        return $results;
+    }
+
+    /**
      * POST /import/preview
      *
      * Body: {
@@ -730,41 +780,8 @@ class RestApi {
             return new \WP_Error('no_rows', 'Aucune ligne à importer.', ['status' => 422]);
         }
 
-        $preview = [];
-        foreach ($rows as $i => $row) {
-            $order_id = sanitize_text_field($row['order_id'] ?? '');
-            $rating   = (int) ($row['rating'] ?? 0);
-            $author   = sanitize_text_field($row['author'] ?? '');
-
-            if (empty($author)) {
-                $preview[] = ['index' => $i, 'row' => $row, 'status' => 'error', 'reason' => 'Auteur manquant'];
-                continue;
-            }
-            if ($rating < 1 || $rating > 5) {
-                $preview[] = ['index' => $i, 'row' => $row, 'status' => 'error', 'reason' => 'Note invalide (doit être 1–5)'];
-                continue;
-            }
-
-            // Déduplication par order_id
-            if ($order_id) {
-                $existing = get_posts([
-                    'post_type'   => 'sj_avis',
-                    'post_status' => 'any',
-                    'meta_key'    => 'avis_order_id',
-                    'meta_value'  => $order_id,
-                    'fields'      => 'ids',
-                    'numberposts' => 1,
-                ]);
-                if (!empty($existing)) {
-                    $preview[] = ['index' => $i, 'row' => $row, 'status' => 'duplicate', 'reason' => "Doublon — N° commande {$order_id} déjà importé (ID #{$existing[0]})"];
-                    continue;
-                }
-            }
-
-            $preview[] = ['index' => $i, 'row' => $row, 'status' => 'new'];
-        }
-
-        $counts = ['new' => 0, 'duplicate' => 0, 'error' => 0];
+        $preview = $this->validate_rows($rows);
+        $counts  = ['new' => 0, 'duplicate' => 0, 'error' => 0];
         foreach ($preview as $p) { $counts[$p['status']]++; }
 
         return rest_ensure_response(['rows' => $preview, 'counts' => $counts]);
@@ -798,31 +815,24 @@ class RestApi {
         $skipped  = 0;
         $errors   = [];
 
-        foreach ($rows as $i => $row) {
-            $order_id = sanitize_text_field($row['order_id'] ?? '');
-            $rating   = (int) ($row['rating'] ?? 0);
-            $author   = sanitize_text_field($row['author'] ?? '');
+        $validated = $this->validate_rows($rows);
 
-            if (empty($author) || $rating < 1 || $rating > 5) {
-                $errors[] = "Ligne {$i}: auteur ou note invalide.";
+        foreach ($validated as $item) {
+            $i   = $item['index'];
+            $row = $item['row'];
+
+            if ($item['status'] === 'error') {
+                $errors[] = "Ligne {$i}: " . ($item['reason'] ?? 'invalide');
+                continue;
+            }
+            if ($item['status'] === 'duplicate') {
+                $skipped++;
                 continue;
             }
 
-            // Déduplication
-            if ($order_id) {
-                $existing = get_posts([
-                    'post_type'   => 'sj_avis',
-                    'post_status' => 'any',
-                    'meta_key'    => 'avis_order_id',
-                    'meta_value'  => $order_id,
-                    'fields'      => 'ids',
-                    'numberposts' => 1,
-                ]);
-                if (!empty($existing)) {
-                    $skipped++;
-                    continue;
-                }
-            }
+            $order_id = sanitize_text_field($row['order_id'] ?? '');
+            $rating   = (int) ($row['rating'] ?? 0);
+            $author   = sanitize_text_field($row['author'] ?? '');
 
             // Date de publication = date d'évaluation
             $eval_date = sanitize_text_field($row['eval_date'] ?? '');

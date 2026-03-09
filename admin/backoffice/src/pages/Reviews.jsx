@@ -5,16 +5,7 @@ import {
   PageHeader, Table, Btn, Notice, Spinner, Stars, Badge, Pagination, Input, Select
 } from '../components/ui'
 import { IconPlus, IconTrash, IconPencil, IconArrowUp, IconArrowDown } from '../components/Icons'
-
-const SOURCE_LABELS = {
-  google: 'Google', tripadvisor: 'TripAdvisor', facebook: 'Facebook',
-  trustpilot: 'Trustpilot', direct: 'Direct', autre: 'Autre',
-}
-
-const SOURCE_OPTIONS = [
-  { value: '', label: 'Toutes les sources' },
-  ...Object.entries(SOURCE_LABELS).map(([v, l]) => ({ value: v, label: l })),
-]
+import { SOURCE_LABELS, SOURCE_OPTIONS } from '../lib/constants'
 
 export default function Reviews() {
   const navigate = useNavigate()
@@ -59,7 +50,7 @@ export default function Reviews() {
   useEffect(() => { load() }, [load])
 
   const resetFilters = () => {
-    setSearch(''); setRating(0); setSource(''); setLieu(''); setPage(1)
+    setSearch(''); setRating(0); setSource(''); setLieu(''); setOrderby('date'); setOrder('DESC'); setPage(1)
   }
   const hasFilters = search || ratingFilter > 0 || sourceFilter || lieuFilter
 

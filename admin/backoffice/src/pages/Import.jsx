@@ -1,7 +1,8 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
-import { PageHeader, Btn, Notice, Spinner } from '../components/ui'
+import { PageHeader, Btn, Notice, Spinner, Toggle } from '../components/ui'
+import { SOURCE_LABELS } from '../lib/constants'
 
 /* ── Constantes ──────────────────────────────────────────────────── */
 const STEPS = ['Fichier', 'Colonnes', 'Défauts', 'Produits', 'Aperçu']
@@ -99,7 +100,7 @@ function StepBar({ current }) {
   return (
     <div className="flex items-center gap-0 mb-8">
       {STEPS.map((label, i) => (
-        <div key={i} className="flex items-center">
+        <div key={label} className="flex items-center">
           <div className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded ${
             i === current
               ? 'bg-black text-white'
@@ -272,16 +273,22 @@ function Step2Columns({ data, onNext, onBack }) {
 
 /* ── Step 3 : Défauts ────────────────────────────────────────────── */
 function Step3Defaults({ onNext, onBack }) {
-  const lieux = (window.sjReviews?.lieux ?? [])
-  const firstLieu = lieux.find(l => l.active) ?? lieux[0]
-
+  const [lieux, setLieux] = useState([])
   const [defaults, setDefaults] = useState({
-    lieu_id:           firstLieu?.id ?? '',
+    lieu_id:           '',
     source:            'regiondo',
     certified:         true,
     language:          'fr',
     sub_criteria_auto: true,
   })
+
+  useEffect(() => {
+    api.lieux().then(data => {
+      setLieux(data)
+      const first = data.find(l => l.active) ?? data[0]
+      if (first) setDefaults(prev => ({ ...prev, lieu_id: first.id }))
+    }).catch(() => {})
+  }, [])
 
   const set = (key, val) => setDefaults(prev => ({ ...prev, [key]: val }))
 
@@ -298,7 +305,7 @@ function Step3Defaults({ onNext, onBack }) {
             onChange={(e) => set('lieu_id', e.target.value)}
           >
             <option value="">— Aucun lieu —</option>
-            {lieux.filter(l => l.active).map(l => (
+            {lieux.map(l => (
               <option key={l.id} value={l.id}>{l.name}</option>
             ))}
           </select>
@@ -311,11 +318,9 @@ function Step3Defaults({ onNext, onBack }) {
             value={defaults.source}
             onChange={(e) => set('source', e.target.value)}
           >
-            <option value="regiondo">Regiondo</option>
-            <option value="google">Google</option>
-            <option value="tripadvisor">TripAdvisor</option>
-            <option value="direct">Direct</option>
-            <option value="autre">Autre</option>
+            {Object.entries(SOURCE_LABELS).map(([v, l]) => (
+              <option key={v} value={v}>{l}</option>
+            ))}
           </select>
         </div>
 
@@ -339,13 +344,7 @@ function Step3Defaults({ onNext, onBack }) {
             <p className="text-sm font-medium text-gray-700">Avis certifié</p>
             <p className="text-xs text-gray-500">Marquer tous les avis importés comme certifiés</p>
           </div>
-          <button
-            type="button"
-            onClick={() => set('certified', !defaults.certified)}
-            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${defaults.certified ? 'bg-black' : 'bg-gray-300'}`}
-          >
-            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${defaults.certified ? 'translate-x-4' : 'translate-x-0.5'}`} />
-          </button>
+          <Toggle checked={defaults.certified} onChange={(v) => set('certified', v)} />
         </div>
 
         <div className="flex items-center justify-between py-2 border-t border-gray-100">
@@ -353,13 +352,7 @@ function Step3Defaults({ onNext, onBack }) {
             <p className="text-sm font-medium text-gray-700">Sous-critères automatiques</p>
             <p className="text-xs text-gray-500">Hérite la note globale pour qualité/prix, ambiance, expérience, paysage</p>
           </div>
-          <button
-            type="button"
-            onClick={() => set('sub_criteria_auto', !defaults.sub_criteria_auto)}
-            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${defaults.sub_criteria_auto ? 'bg-black' : 'bg-gray-300'}`}
-          >
-            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${defaults.sub_criteria_auto ? 'translate-x-4' : 'translate-x-0.5'}`} />
-          </button>
+          <Toggle checked={defaults.sub_criteria_auto} onChange={(v) => set('sub_criteria_auto', v)} />
         </div>
       </div>
 
@@ -389,12 +382,12 @@ function Step4Products({ data, columnMap, onNext, onBack }) {
     return [...seen]
   }, [data.rows, productColIdx])
 
-  useState(() => {
+  useEffect(() => {
     api.importPostMatches()
       .then(setPosts)
       .catch(() => setPosts([]))
       .finally(() => setLoadingPosts(false))
-  })
+  }, [])
 
   if (!uniqueProducts.length) {
     return (
