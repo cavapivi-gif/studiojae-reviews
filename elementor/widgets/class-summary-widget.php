@@ -114,6 +114,18 @@ class SummaryWidget extends Widget_Base {
             'default'      => '1',
         ]);
 
+        $this->add_control('score_layout', [
+            'label'   => __('Layout du score', 'sj-reviews'),
+            'type'    => Controls_Manager::SELECT,
+            'options' => [
+                'default' => __('Score au-dessus (défaut)', 'sj-reviews'),
+                'left'    => __('Score à gauche (33/67)', 'sj-reviews'),
+                'right'   => __('Score à droite (67/33)', 'sj-reviews'),
+            ],
+            'default'   => 'default',
+            'separator' => 'before',
+        ]);
+
         $this->end_controls_section();
 
         /* ── SECTION : Avis clients ───────────────────────────────────── */
@@ -152,17 +164,19 @@ class SummaryWidget extends Widget_Base {
         ]);
 
         $this->add_control('show_card_criteria', [
-            'label'   => __('Afficher sous-critères sur chaque card', 'sj-reviews'),
-            'type'    => \Elementor\Controls_Manager::SWITCHER,
-            'default' => '',
-            'condition' => ['show_reviews' => '1'],
+            'label'        => __('Afficher sous-critères sur chaque card', 'sj-reviews'),
+            'type'         => \Elementor\Controls_Manager::SWITCHER,
+            'return_value' => '1',
+            'default'      => '',
+            'condition'    => ['show_reviews' => '1'],
         ]);
 
         $this->add_control('show_certified', [
-            'label'   => __('Afficher badge "Certifié"', 'sj-reviews'),
-            'type'    => \Elementor\Controls_Manager::SWITCHER,
-            'default' => 'yes',
-            'condition' => ['show_reviews' => 'yes'],
+            'label'        => __('Afficher badge "Certifié"', 'sj-reviews'),
+            'type'         => \Elementor\Controls_Manager::SWITCHER,
+            'return_value' => '1',
+            'default'      => '1',
+            'condition'    => ['show_reviews' => '1'],
         ]);
 
         $this->add_control('text_words', [
@@ -172,7 +186,7 @@ class SummaryWidget extends Widget_Base {
             'min'         => 10,
             'max'         => 500,
             'description' => __('Nombre de mots affichés avant troncature. 0 = désactivé.', 'sj-reviews'),
-            'condition'   => ['show_reviews' => 'yes'],
+            'condition'   => ['show_reviews' => '1'],
         ]);
 
         $this->end_controls_section();
@@ -221,6 +235,15 @@ class SummaryWidget extends Widget_Base {
             'return_value' => '1',
             'default'      => '1',
             'condition'    => ['show_filters' => '1'],
+        ]);
+
+        $this->add_control('show_search', [
+            'label'        => __('Barre de recherche (titre, texte, auteur)', 'sj-reviews'),
+            'type'         => Controls_Manager::SWITCHER,
+            'return_value' => '1',
+            'default'      => '',
+            'condition'    => ['show_reviews' => '1'],
+            'separator'    => 'before',
         ]);
 
         $this->end_controls_section();
@@ -621,6 +644,36 @@ class SummaryWidget extends Widget_Base {
             ]
         );
 
+        $this->add_control('modal_dot_heading', [
+            'label'     => __('— Modal : dots de note —', 'sj-reviews'),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ]);
+
+        $this->add_control('modal_dot_color', [
+            'label'     => __('Couleur des dots', 'sj-reviews'),
+            'type'      => Controls_Manager::COLOR,
+            'default'   => '#22c55e',
+            'selectors' => [
+                '{{WRAPPER}} .sj-filter-modal__dot'         => 'border-color: {{VALUE}}; --sj-dot-color: {{VALUE}};',
+                '{{WRAPPER}} .sj-filter-modal__dot--full'   => 'background: {{VALUE}};',
+                '{{WRAPPER}} .sj-filter-modal__dot-btn.is-active .sj-filter-modal__dot' => 'border-color: #fff;',
+                '{{WRAPPER}} .sj-filter-modal__dot-btn.is-active .sj-filter-modal__dot--full' => 'background: #fff;',
+            ],
+        ]);
+
+        $this->add_control('modal_accent_color', [
+            'label'     => __('Couleur accent hover/actif', 'sj-reviews'),
+            'type'      => Controls_Manager::COLOR,
+            'default'   => '#111111',
+            'selectors' => [
+                '{{WRAPPER}} .sj-filter-modal__dot-btn:hover'        => 'border-color: {{VALUE}};',
+                '{{WRAPPER}} .sj-filter-modal__dot-btn.is-active'    => 'background: {{VALUE}}; border-color: {{VALUE}};',
+                '{{WRAPPER}} .sj-filter-modal__pill:hover'            => 'border-color: {{VALUE}};',
+                '{{WRAPPER}} .sj-filter-modal__pill.is-active'        => 'background: {{VALUE}}; border-color: {{VALUE}};',
+            ],
+        ]);
+
         $this->end_controls_section();
 
         /* ── Style : Cards ──────────────────────────────────────────── */
@@ -911,7 +964,7 @@ class SummaryWidget extends Widget_Base {
         $this->start_controls_section('style_certified', [
             'label'     => __('Style — Badge Certifié', 'sj-reviews'),
             'tab'       => \Elementor\Controls_Manager::TAB_STYLE,
-            'condition' => ['show_certified' => 'yes', 'show_reviews' => 'yes'],
+            'condition' => ['show_certified' => '1', 'show_reviews' => '1'],
         ]);
 
         $this->add_control('certified_bg', [
@@ -1009,6 +1062,8 @@ class SummaryWidget extends Widget_Base {
             'schema_enabled'       => ($s['schema_enabled']       ?? '') === '1' ? '1' : '0',
             'source_filter'        => implode(',', (array) ($s['source_filter'] ?? [])),
             'lieu_ids'             => implode(',', (array) ($s['lieu_ids'] ?? [])),
+            'score_layout'         => $s['score_layout']  ?? 'default',
+            'show_search'          => ($s['show_search']  ?? '') === '1' ? '1' : '0',
         ]);
     }
 }

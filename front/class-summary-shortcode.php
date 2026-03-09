@@ -71,6 +71,8 @@ class SummaryShortcode {
             'schema_enabled'       => '1',
             'source_filter'        => '',
             'lieu_ids'             => '',
+            'score_layout'         => 'default',
+            'show_search'          => '0',
         ], $atts, 'sj_summary');
 
         $lieu_id  = $this->resolve_lieu($a['lieu_id']);
@@ -211,7 +213,8 @@ class SummaryShortcode {
      data-words="<?php echo esc_attr((int)$a['text_words']); ?>">
 
     <!-- ══ SECTION 1 : EN-TÊTE ══════════════════════════════════════════════ -->
-    <div class="sj-summary__header">
+    <?php $layout_cls = in_array($a['score_layout'], ['left','right'], true) ? ' sj-summary__header--side-' . $a['score_layout'] : ''; ?>
+    <div class="sj-summary__header<?php echo esc_attr($layout_cls); ?>">
 
         <!-- Score global -->
         <div class="sj-summary__score-block">
@@ -417,6 +420,19 @@ class SummaryShortcode {
             <button type="button" class="sj-filter-modal__btn-reset">Réinitialiser</button>
             <button type="button" class="sj-filter-modal__btn-apply">Appliquer</button>
         </div>
+    </div>
+</div>
+<?php endif; ?>
+
+    <?php if ($show_reviews && $a['show_search'] !== '0'): ?>
+<div class="sj-summary__search">
+    <div class="sj-search__wrap">
+        <svg class="sj-search__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="search"
+               class="sj-search__input"
+               placeholder="<?php esc_attr_e('Rechercher un avis…', 'sj-reviews'); ?>"
+               aria-label="<?php esc_attr_e('Rechercher dans les avis', 'sj-reviews'); ?>"
+               data-summary="<?php echo esc_attr($uid); ?>">
     </div>
 </div>
 <?php endif; ?>
