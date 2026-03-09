@@ -233,9 +233,17 @@ class SummaryShortcode {
         </div>
 
         <!-- ── SECTION 2 : DISTRIBUTION + SOUS-CRITÈRES (côte à côte) ──── -->
-        <div class="sj-summary__middle">
+        <?php
+        // Pré-calcul : nécessaire AVANT d'ouvrir le div pour la classe de grid
+        $crit_labels  = ['qualite_prix'=>'Qualité/prix','ambiance'=>'Ambiance','experience'=>'Expérience','paysage'=>'Paysage'];
+        $has_criteria = $a['show_criteria'] !== '0' && array_filter($stats['criteria_avgs'], fn($v) => $v !== null);
+        $show_dist    = $a['show_distribution'] !== '0';
+        // La classe --split active grid-template-columns: 1fr auto 1fr uniquement quand les deux colonnes existent
+        $middle_cls   = ($show_dist && $has_criteria) ? ' sj-summary__middle--split' : '';
+        ?>
+        <div class="sj-summary__middle<?php echo esc_attr($middle_cls); ?>">
 
-            <?php if ($a['show_distribution'] !== '0'): ?>
+            <?php if ($show_dist): ?>
             <!-- Distribution par étoiles -->
             <div class="sj-summary__distribution">
                 <?php
@@ -259,11 +267,7 @@ class SummaryShortcode {
             </div>
             <?php endif; ?>
 
-            <?php
-            $crit_labels  = ['qualite_prix'=>'Qualité/prix','ambiance'=>'Ambiance','experience'=>'Expérience','paysage'=>'Paysage'];
-            $has_criteria = $a['show_criteria'] !== '0' && array_filter($stats['criteria_avgs'], fn($v) => $v !== null);
-            if ($has_criteria && $a['show_distribution'] !== '0'):
-            ?>
+            <?php if ($has_criteria && $show_dist): ?>
             <!-- Séparateur vertical (desktop) / horizontal (mobile) -->
             <div class="sj-summary__middle-divider" aria-hidden="true"></div>
             <?php endif; ?>
