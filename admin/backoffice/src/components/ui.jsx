@@ -47,12 +47,13 @@ export function Textarea({ label, error, className = '', ...props }) {
       {...props}
     />
   )
-  if (!label) return field
+  const errorEl = error && <span className="text-xs text-red-500">{error}</span>
+  if (!label) return <div className="flex flex-col gap-1">{field}{errorEl}</div>
   return (
     <label className="flex flex-col gap-1">
       <span className="text-xs text-gray-500">{label}</span>
       {field}
-      {error && <span className="text-xs text-red-500">{error}</span>}
+      {errorEl}
     </label>
   )
 }
@@ -114,12 +115,17 @@ export function Stars({ rating, max = 5, size = 14 }) {
 
 export function Badge({ children, variant = 'default' }) {
   const variants = {
-    default:   'bg-gray-100 text-gray-600',
-    ok:        'bg-black text-white',
-    certified: 'bg-black text-white',
-    warn:      'bg-gray-100 text-gray-500',
-    google:    'bg-[#4285F4] text-white',
-    direct:    'bg-gray-800 text-white',
+    default:     'bg-gray-100 text-gray-600',
+    ok:          'bg-black text-white',
+    certified:   'bg-black text-white',
+    warn:        'bg-gray-100 text-gray-500',
+    google:      'bg-[#4285F4] text-white',
+    tripadvisor: 'bg-[#00AF87] text-white',
+    facebook:    'bg-[#1877F2] text-white',
+    trustpilot:  'bg-[#00B67A] text-white',
+    regiondo:    'bg-[#e85c2c] text-white',
+    direct:      'bg-gray-800 text-white',
+    autre:       'bg-gray-500 text-white',
   }
   return (
     <span className={`inline-block px-2 py-0.5 text-xs ${variants[variant] ?? variants.default}`}>
@@ -136,10 +142,13 @@ export function Card({ children, className = '' }) {
   )
 }
 
-export function PageHeader({ title, actions }) {
+export function PageHeader({ title, subtitle, actions }) {
   return (
     <div className="flex items-center justify-between px-8 py-6 border-b border-gray-200">
-      <h1 className="text-base tracking-wide uppercase text-gray-800">{title}</h1>
+      <div>
+        <h1 className="text-base tracking-wide uppercase text-gray-800">{title}</h1>
+        {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+      </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
     </div>
   )
@@ -203,9 +212,9 @@ export function Notice({ type = 'info', children }) {
 export function StatCard({ label, value, sub, accent = false }) {
   return (
     <div className={`border border-gray-200 px-6 py-5 ${accent ? 'bg-black text-white' : ''}`}>
-      <div className={`text-xs uppercase tracking-widest mb-2 ${accent ? 'text-gray-400' : 'text-gray-400'}`}>{label}</div>
+      <div className={`text-xs uppercase tracking-widest mb-2 ${accent ? 'text-gray-300' : 'text-gray-400'}`}>{label}</div>
       <div className="text-3xl">{value ?? '—'}</div>
-      {sub && <div className={`text-xs mt-1 ${accent ? 'text-gray-400' : 'text-gray-400'}`}>{sub}</div>}
+      {sub && <div className={`text-xs mt-1 ${accent ? 'text-gray-300' : 'text-gray-400'}`}>{sub}</div>}
     </div>
   )
 }

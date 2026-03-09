@@ -35,16 +35,29 @@ const AUTO_DETECT_RULES = [
   { required: ['date'], patterns: ['évènement', 'evenement', 'visite', 'event'], field: 'visit_date' },
   { required: ['date'], patterns: ['évaluation', 'evaluation', 'avis', 'submitted', 'eval'], field: 'eval_date' },
   { patterns: ['nom', 'name', 'auteur', 'author', 'prénom'], field: 'author' },
+  // "Résumé de l'évaluation" → title (résumé matche avant évaluation seul)
   { patterns: ['résumé', 'resume', 'summary', 'titre', 'title'], field: 'title' },
-  { patterns: ['note', 'rating', 'étoile', 'star', 'score', 'évaluation', 'evaluation'], field: 'rating' },
-  { patterns: ['texte', 'text', 'commentaire', 'comment', 'avis', 'review'], field: 'text' },
-  // En dernier : product contient des patterns génériques ('excursion', 'service')
-  // qui pourraient matcher des colonnes de type commentaire/avis
+  // Note/rating : exige "note", "rating", "étoile", "star", "score"
+  // OU le mot exact "évaluation" seul (pas dans "résumé de l'évaluation" ni "texte d'évaluation")
+  { patterns: ['note', 'rating', 'étoile', 'star', 'score'], field: 'rating' },
+  // Texte complet de l'avis
+  { patterns: ['texte', 'text', 'commentaire', 'comment', 'avis', 'review', 'évaluation', 'evaluation'], field: 'text' },
+  // En dernier : product contient des patterns génériques
   { patterns: ['produit', 'product', 'excursion', 'service'], field: 'product' },
 ]
 
-function detectField(header) {
+function detectField(header, sampleValues = []) {
   const h = header.toLowerCase().trim()
+
+  // Exact match : colonne nommée exactement "évaluation" (sans autre mot) → rating
+  if (/^[éeè]valuation$/i.test(h.replace(/\s+/g, ''))) {
+    // Vérifie les samples : si toutes les valeurs sont numériques 1-5, c'est la note
+    const nums = sampleValues.map(v => parseFloat(String(v).replace(',', '.'))).filter(n => !isNaN(n))
+    if (nums.length > 0 && nums.every(n => n >= 1 && n <= 5)) return 'rating'
+    // Sinon c'est le texte de l'avis
+    return 'text'
+  }
+
   for (const rule of AUTO_DETECT_RULES) {
     if (rule.required && !rule.required.every(r => h.includes(r))) continue
     if (rule.patterns.some(p => h.includes(p))) return rule.field
@@ -117,9 +130,10 @@ function mapRowToSJ(rawRow, headers, columnMap) {
       mapped[field] = (rawRow[i] ?? '').trim()
     }
   })
-  // Normalize rating
+  // Normalize rating : supporte "4,5" → 5 (arrondi), "5.0" → 5
   if (mapped.rating) {
-    mapped.rating = parseInt(mapped.rating.replace(',', '.'), 10) || 0
+    const parsed = parseFloat(String(mapped.rating).replace(',', '.'))
+    mapped.rating = !isNaN(parsed) ? Math.round(Math.min(5, Math.max(1, parsed))) : 0
   }
   return mapped
 }
@@ -238,7 +252,11 @@ function Step1File({ onNext }) {
 function Step2Columns({ data, onNext, onBack }) {
   const [columnMap, setColumnMap] = useState(() => {
     const map = {}
-    data.headers.forEach((h, i) => { map[i] = detectField(h) })
+    data.headers.forEach((h, i) => {
+      // Passe les 5 premières valeurs de cette colonne pour aider la détection
+      const samples = data.rows.slice(0, 5).map(row => row[i] ?? '')
+      map[i] = detectField(h, samples)
+    })
     return map
   })
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import {
@@ -23,11 +23,25 @@ export default function Reviews() {
   const [order, setOrder]         = useState('DESC')
   const [emailFilter, setEmail]   = useState('')
   const [deleting, setDeleting]   = useState(null)
+  const [searchInput, setSearchInput] = useState('')
+  const [emailInput, setEmailInput]   = useState('')
+  const debounceRef = useRef(null)
   const PER_PAGE = 20
 
   useEffect(() => {
     api.lieux().then(setLieux).catch(() => {})
   }, [])
+
+  // Debounce : attend 300ms après la dernière frappe avant de mettre à jour le filtre
+  useEffect(() => {
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      setSearch(searchInput)
+      setEmail(emailInput)
+      setPage(1)
+    }, 300)
+    return () => clearTimeout(debounceRef.current)
+  }, [searchInput, emailInput])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -52,7 +66,7 @@ export default function Reviews() {
   useEffect(() => { load() }, [load])
 
   const resetFilters = () => {
-    setSearch(''); setRating(0); setSource(''); setLieu(''); setOrderby('date'); setOrder('DESC'); setPage(1); setEmail('')
+    setSearch(''); setSearchInput(''); setRating(0); setSource(''); setLieu(''); setOrderby('date'); setOrder('DESC'); setPage(1); setEmail(''); setEmailInput('')
   }
   const hasFilters = search || ratingFilter > 0 || sourceFilter || lieuFilter || emailFilter
 
@@ -78,7 +92,9 @@ export default function Reviews() {
     setDeleting(id)
     try {
       await api.deleteReview(id)
-      await load()
+      // Si c'était le dernier item de la page, recule d'une page
+      if (items.length <= 1 && page > 1) setPage(p => p - 1)
+      else await load()
     } catch (e) {
       setError(e.message)
     } finally {
@@ -178,15 +194,15 @@ export default function Reviews() {
         <div className="w-52">
           <Input
             placeholder="Rechercher…"
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1) }}
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
           />
         </div>
         <div className="w-52">
           <Input
             placeholder="Filtrer par email client…"
-            value={emailFilter}
-            onChange={e => { setEmail(e.target.value); setPage(1) }}
+            value={emailInput}
+            onChange={e => setEmailInput(e.target.value)}
           />
         </div>
         <div className="w-36">

@@ -173,13 +173,16 @@ class SummaryShortcode {
         if (empty($reviews)) return [];
 
         $total        = count($reviews);
+        $total_rated  = 0;
         $rating_sum   = 0;
         $distribution = [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0];
         $crit_sums    = ['qualite_prix' => 0, 'ambiance' => 0, 'experience' => 0, 'paysage' => 0];
         $crit_counts  = array_fill_keys(array_keys($crit_sums), 0);
 
         foreach ($reviews as $r) {
-            $rating      = max(1, min(5, (int) $r['rating']));
+            $rating = (int) $r['rating'];
+            if ($rating < 1 || $rating > 5) continue; // skip avis sans note valide
+            $total_rated++;
             $rating_sum += $rating;
             $distribution[$rating]++;
             foreach (array_keys($crit_sums) as $c) {
@@ -191,7 +194,7 @@ class SummaryShortcode {
             }
         }
 
-        $avg           = round($rating_sum / $total, 1);
+        $avg           = $total_rated > 0 ? round($rating_sum / $total_rated, 1) : 0;
         $criteria_avgs = [];
         foreach (array_keys($crit_sums) as $c) {
             $criteria_avgs[$c] = $crit_counts[$c] > 0
@@ -596,6 +599,22 @@ class SummaryShortcode {
     <?php endif; // show_reviews ?>
 
 </div><!-- /.sj-summary -->
+<?php if ($a['schema_enabled'] !== '0' && !is_admin() && $stats['avg'] > 0): ?>
+<script type="application/ld+json"><?php
+    echo wp_json_encode([
+        '@context'        => 'https://schema.org',
+        '@type'           => 'LocalBusiness',
+        'name'            => get_the_title() ?: get_bloginfo('name'),
+        'aggregateRating' => [
+            '@type'       => 'AggregateRating',
+            'ratingValue' => $stats['avg'],
+            'reviewCount' => $stats['total'],
+            'bestRating'  => 5,
+            'worstRating' => 1,
+        ],
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+?></script>
+<?php endif; ?>
         <?php
         return ob_get_clean();
     }

@@ -97,12 +97,7 @@ class RestApi {
             'permission_callback' => [$this, 'is_manager'],
         ]);
 
-        // Statut de la sync (polling depuis le front)
-        register_rest_route($this->ns, '/lieux/(?P<id>[a-z0-9_-]+)/sync-status', [
-            'methods'             => 'GET',
-            'callback'            => [$this, 'sync_status'],
-            'permission_callback' => [$this, 'is_manager'],
-        ]);
+        // sync-status supprimé — endpoint mort
 
         register_rest_route($this->ns, '/lieux/(?P<id>[a-z0-9_-]+)', [
             [
@@ -293,7 +288,16 @@ class RestApi {
             $args['s'] = $search;
         }
 
-        $meta_query = [];
+        $meta_query = ['relation' => 'AND'];
+
+        // Étend la recherche au texte et titre de l'avis (pas juste le post_title WP)
+        if ($search) {
+            $meta_query[] = [
+                'relation' => 'OR',
+                ['key' => 'avis_text',  'value' => '%' . $wpdb->esc_like($search) . '%', 'compare' => 'LIKE'],
+                ['key' => 'avis_title', 'value' => '%' . $wpdb->esc_like($search) . '%', 'compare' => 'LIKE'],
+            ];
+        }
 
         if ($rating >= 1 && $rating <= 5) {
             $meta_query[] = ['key' => 'avis_rating', 'value' => $rating, 'type' => 'NUMERIC'];
@@ -308,10 +312,10 @@ class RestApi {
         }
 
         if ($email) {
-            $meta_query[] = ['key' => 'avis_customer_email', 'value' => $email, 'compare' => '='];
+            $meta_query[] = ['key' => 'avis_customer_email', 'value' => '%' . $wpdb->esc_like($email) . '%', 'compare' => 'LIKE'];
         }
 
-        if (!empty($meta_query)) {
+        if (count($meta_query) > 1) { // > 1 car 'relation' est toujours présent
             $args['meta_query'] = $meta_query;
         }
 
@@ -584,12 +588,7 @@ class RestApi {
         ]);
     }
 
-    /**
-     * GET /lieux/{id}/sync-status — conservé pour compatibilité (retourne toujours idle)
-     */
-    public function sync_status(\WP_REST_Request $req): \WP_REST_Response {
-        return rest_ensure_response(['status' => 'idle']);
-    }
+    // sync_status supprimé — endpoint mort (retournait toujours 'idle')
 
     // ── Settings ──────────────────────────────────────────────────────────────
 
@@ -771,7 +770,9 @@ class RestApi {
         $results = [];
         foreach ($rows as $i => $row) {
             $order_id = sanitize_text_field($row['order_id'] ?? '');
-            $rating   = (int) ($row['rating'] ?? 0);
+            $raw_rating = $row['rating'] ?? 0;
+            // Supporte float ("4.5" → 5) et virgule française ("4,5" → 5)
+            $rating   = (int) round((float) str_replace(',', '.', (string) $raw_rating));
             $author   = sanitize_text_field($row['author'] ?? '');
 
             if (empty($author)) {
@@ -779,7 +780,7 @@ class RestApi {
                 continue;
             }
             if ($rating < 1 || $rating > 5) {
-                $results[] = ['index' => $i, 'row' => $row, 'status' => 'error', 'reason' => 'Note invalide (doit être 1–5)'];
+                $results[] = ['index' => $i, 'row' => $row, 'status' => 'error', 'reason' => 'Note invalide (doit être 1–5) — reçu : ' . esc_html((string) $raw_rating)];
                 continue;
             }
             if ($order_id && isset($existing_set[$order_id])) {
@@ -863,7 +864,7 @@ class RestApi {
             }
 
             $order_id = sanitize_text_field($row['order_id'] ?? '');
-            $rating   = (int) ($row['rating'] ?? 0);
+            $rating   = (int) round((float) str_replace(',', '.', (string) ($row['rating'] ?? 0)));
             $author   = sanitize_text_field($row['author'] ?? '');
 
             // Date de publication = date d'évaluation
@@ -1012,15 +1013,8 @@ class RestApi {
         update_post_meta($post_id, 'avis_ambiance',     $data['ambiance']);
         update_post_meta($post_id, 'avis_experience',   $data['experience']);
         update_post_meta($post_id, 'avis_paysage',      $data['paysage']);
-        // Auto-compute avis_rating depuis sous-critères si tous les 4 sont notés.
-        // Calculé au save (pas au fetch) : la distribution front reflète directement
-        // la moyenne des critères sans recalcul à chaque requête.
-        $crit_values = [$data['qualite_prix'], $data['ambiance'], $data['experience'], $data['paysage']];
-        $rated        = array_filter($crit_values, fn($v) => $v > 0);
-        if (count($rated) === 4) {
-            $auto_rating = max(1, min(5, (int) round(array_sum($rated) / 4)));
-            update_post_meta($post_id, 'avis_rating', $auto_rating);
-        }
+        // Note : la note globale est toujours celle définie par l'utilisateur.
+        // Les sous-critères sont informatifs et ne l'écrasent plus.
         // Contexte de visite
         if ($data['visit_date']) {
             update_post_meta($post_id, 'avis_visit_date',  $data['visit_date']);

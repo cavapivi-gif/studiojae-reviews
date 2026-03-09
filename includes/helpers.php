@@ -140,7 +140,11 @@ function sj_normalize_review(\WP_Post $post, bool $private = false): array {
         'title'        => get_the_title($post),
         'avis_title'   => (string) ($get('avis_title') ?: ''),
         'author'       => (string) ($get('avis_author') ?: get_the_title($post)),
-        'rating'       => (int) ($get('avis_rating') ?: 5),
+        'rating'       => (function() use ($get) {
+            $v = $get('avis_rating');
+            $v = (int) $v;
+            return ($v >= 1 && $v <= 5) ? $v : 0;
+        })(),
         'text'         => (string) ($get('avis_text') ?: ''),
         'certified'    => (bool) $get('avis_certified'),
         'source'       => (string) ($get('avis_source') ?: 'google'),
@@ -160,9 +164,12 @@ function sj_normalize_review(\WP_Post $post, bool $private = false): array {
         'visit_date'    => (string) ($get('avis_visit_date')   ?: ''),
         'language'      => (string) ($get('avis_language')     ?: 'fr'),
         'travel_type'   => (string) ($get('avis_travel_type')  ?: ''),
-        // PII : email brut uniquement en contexte privé (admin/REST authentifié).
-        // En front, utiliser customer_hash pour dédoublonner sans exposer l'email.
+        // PII : données privées uniquement en contexte admin/REST authentifié.
+        // En front, seul customer_hash est disponible pour dédoublonner sans exposer l'email.
         'customer_email' => $private ? (string) ($get('avis_customer_email') ?: '') : '',
+        'customer_phone' => $private ? (string) ($get('avis_customer_phone') ?: '') : '',
+        'order_id'       => $private ? (string) ($get('avis_order_id') ?: '')       : '',
+        'booking_date'   => $private ? (string) ($get('avis_booking_date') ?: '')   : '',
         'customer_hash'  => (function() use ($get): string {
             $e = strtolower(trim((string) ($get('avis_customer_email') ?: '')));
             return $e ? md5($e) : '';
@@ -178,8 +185,9 @@ function sj_normalize_review(\WP_Post $post, bool $private = false): array {
  */
 function sj_aggregate(array $reviews): array {
     if (empty($reviews)) return ['avg' => 0.0, 'count' => 0];
-    $ratings = array_column($reviews, 'rating');
-    $avg     = round(array_sum($ratings) / count($ratings), 1);
+    $ratings = array_filter(array_column($reviews, 'rating'), fn($v) => $v >= 1 && $v <= 5);
+    if (empty($ratings)) return ['avg' => 0.0, 'count' => count($reviews)];
+    $avg = round(array_sum($ratings) / count($ratings), 1);
     return ['avg' => $avg, 'count' => count($reviews)];
 }
 

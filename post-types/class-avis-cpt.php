@@ -48,7 +48,7 @@ class AvisCpt {
             'publicly_queryable'  => false,
             'show_ui'             => true,
             'show_in_menu'        => false,
-            'show_in_rest'        => true,
+            'show_in_rest'        => false,
             'supports'            => ['title', 'custom-fields'],
             'capability_type'     => 'post',
             'has_archive'         => false,
@@ -314,7 +314,7 @@ class AvisCpt {
 
         $author        = get_post_meta($post->ID, 'avis_author', true);
         $avis_title    = get_post_meta($post->ID, 'avis_title', true);
-        $rating        = get_post_meta($post->ID, 'avis_rating', true) ?: 5;
+        $rating        = (int) get_post_meta($post->ID, 'avis_rating', true) ?: 1;
         $text          = get_post_meta($post->ID, 'avis_text', true);
         $certified     = get_post_meta($post->ID, 'avis_certified', true);
         $source        = get_post_meta($post->ID, 'avis_source', true) ?: 'google';
@@ -500,11 +500,16 @@ class AvisCpt {
         if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
         if (!current_user_can('edit_post', $post_id)) return;
 
-        $text_fields = ['avis_author', 'avis_title', 'avis_rating', 'avis_source', 'avis_lieu_id', 'avis_language', 'avis_travel_type'];
+        $text_fields = ['avis_author', 'avis_title', 'avis_source', 'avis_lieu_id', 'avis_language', 'avis_travel_type'];
         foreach ($text_fields as $field) {
             if (isset($_POST[$field])) {
                 update_post_meta($post_id, $field, sanitize_text_field($_POST[$field]));
             }
+        }
+        // Rating : validé comme entier 1-5
+        if (isset($_POST['avis_rating'])) {
+            $rating_val = max(1, min(5, (int) $_POST['avis_rating']));
+            update_post_meta($post_id, 'avis_rating', $rating_val);
         }
 
         // Date de visite (format YYYY-MM-DD)
