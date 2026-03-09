@@ -24,18 +24,24 @@ const SJ_FIELDS = [
 ]
 
 // Auto-détection des colonnes CSV
+// IMPORTANT : ordre du plus spécifique au plus générique.
+// Les règles les plus précises doivent passer avant 'product' car ses patterns
+// ('excursion', 'service') peuvent matcher des en-têtes de colonnes d'avis
+// comme "Commentaire de l'excursion" ou "Avis sur le service".
 const AUTO_DETECT_RULES = [
-  { patterns: ['produit', 'product', 'excursion', 'service'], field: 'product' },
+  { patterns: ['email', 'mail', 'courriel'], field: 'email' },
+  { patterns: ['phone', 'téléphone', 'telephone', 'mobile'], field: 'phone' },
+  { patterns: ['note', 'rating', 'étoile', 'star', 'score'], field: 'rating' },
   { patterns: ['commande', 'order', 'n°', 'numéro', 'numero', 'booking_id'], field: 'order_id' },
   { patterns: ['réservation', 'reservation', 'booking_date', 'date réservation'], field: 'booking_date' },
   { patterns: ['évènement', 'evenement', 'event', 'visite', 'visit'], field: 'visit_date' },
   { patterns: ['évaluation', 'evaluation', 'eval_date', 'date avis', 'submitted'], field: 'eval_date' },
-  { patterns: ['nom', 'name', 'client', 'auteur', 'author', 'prénom'], field: 'author' },
-  { patterns: ['email', 'mail', 'courriel'], field: 'email' },
-  { patterns: ['phone', 'téléphone', 'telephone', 'tel', 'mobile'], field: 'phone' },
-  { patterns: ['note', 'rating', 'étoile', 'star', 'score'], field: 'rating' },
+  { patterns: ['nom', 'name', 'auteur', 'author', 'prénom'], field: 'author' },
   { patterns: ['résumé', 'resume', 'summary', 'titre', 'title'], field: 'title' },
   { patterns: ['texte', 'text', 'commentaire', 'comment', 'avis', 'review'], field: 'text' },
+  // En dernier : product contient des patterns génériques ('excursion', 'service')
+  // qui pourraient matcher des colonnes de type commentaire/avis
+  { patterns: ['produit', 'product', 'excursion', 'service'], field: 'product' },
 ]
 
 function detectField(header) {
@@ -371,7 +377,8 @@ function Step4Products({ data, columnMap, onNext, onBack }) {
   const [productMap, setProductMap] = useState({})
 
   // Récupère les produits uniques depuis les lignes CSV
-  const productColIdx = Object.entries(columnMap).find(([, v]) => v === 'product')?.[0]
+  // On prend la DERNIÈRE colonne mappée à 'product' en cas de conflit d'auto-détection
+  const productColIdx = Object.entries(columnMap).filter(([, v]) => v === 'product').at(-1)?.[0]
   const uniqueProducts = useMemo(() => {
     if (productColIdx === undefined) return []
     const seen = new Set()
