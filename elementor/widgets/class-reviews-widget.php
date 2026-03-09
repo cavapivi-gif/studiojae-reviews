@@ -430,6 +430,73 @@ class ReviewsWidget extends \Elementor\Widget_Base {
 
         $this->end_controls_section();
 
+        // ── STYLE — Widget (conteneur) ───────────────────────────────────────
+        $this->start_controls_section('style_widget', [
+            'label' => __('Style — Widget', 'sj-reviews'),
+            'tab'   => \Elementor\Controls_Manager::TAB_STYLE,
+        ]);
+
+        $this->add_group_control(\Elementor\Group_Control_Background::get_type(), [
+            'name'     => 'widget_bg',
+            'label'    => __('Fond du widget', 'sj-reviews'),
+            'types'    => ['classic', 'gradient'],
+            'selector' => '{{WRAPPER}} .sj-reviews',
+        ]);
+
+        $this->add_group_control(\Elementor\Group_Control_Border::get_type(), [
+            'name'     => 'widget_border',
+            'selector' => '{{WRAPPER}} .sj-reviews',
+            'separator' => 'before',
+        ]);
+
+        $this->add_responsive_control('widget_radius', [
+            'label'      => __('Border radius', 'sj-reviews'),
+            'type'       => \Elementor\Controls_Manager::DIMENSIONS,
+            'size_units' => ['px', 'em', '%'],
+            'selectors'  => ['{{WRAPPER}} .sj-reviews' => 'border-radius: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}}'],
+        ]);
+
+        $this->add_group_control(\Elementor\Group_Control_Box_Shadow::get_type(), [
+            'name'     => 'widget_shadow',
+            'selector' => '{{WRAPPER}} .sj-reviews',
+        ]);
+
+        $this->add_responsive_control('widget_padding', [
+            'label'      => __('Padding', 'sj-reviews'),
+            'type'       => \Elementor\Controls_Manager::DIMENSIONS,
+            'size_units' => ['px', 'em'],
+            'selectors'  => ['{{WRAPPER}} .sj-reviews' => 'padding: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}}'],
+        ]);
+
+        $this->end_controls_section();
+
+        // ── STYLE — Titre de section ─────────────────────────────────────────
+        $this->start_controls_section('style_title', [
+            'label'     => __('Style — Titre de section', 'sj-reviews'),
+            'tab'       => \Elementor\Controls_Manager::TAB_STYLE,
+            'condition' => ['show_section_title' => 'yes'],
+        ]);
+
+        $this->add_group_control(\Elementor\Group_Control_Typography::get_type(), [
+            'name'     => 'title_typo',
+            'selector' => '{{WRAPPER}} .sj-reviews__title',
+        ]);
+
+        $this->add_control('title_color', [
+            'label'     => __('Couleur', 'sj-reviews'),
+            'type'      => \Elementor\Controls_Manager::COLOR,
+            'selectors' => ['{{WRAPPER}} .sj-reviews__title' => 'color: {{VALUE}}'],
+        ]);
+
+        $this->add_responsive_control('title_margin', [
+            'label'      => __('Marge bas', 'sj-reviews'),
+            'type'       => \Elementor\Controls_Manager::SLIDER,
+            'size_units' => ['px', 'em'],
+            'selectors'  => ['{{WRAPPER}} .sj-reviews__title' => 'margin-bottom: {{SIZE}}{{UNIT}}'],
+        ]);
+
+        $this->end_controls_section();
+
         // ── STYLE — Preset ───────────────────────────────────────────────────
         $this->start_controls_section('style_preset', [
             'label' => __('Preset de style', 'sj-reviews'),
@@ -472,10 +539,11 @@ class ReviewsWidget extends \Elementor\Widget_Base {
         // ── Tab Normal ──
         $this->start_controls_tab('card_tab_normal', ['label' => __('Normal', 'sj-reviews')]);
 
-        $this->add_control('card_bg', [
-            'label'     => __('Fond de carte', 'sj-reviews'),
-            'type'      => \Elementor\Controls_Manager::COLOR,
-            'selectors' => ['{{WRAPPER}} .sj-review-card' => 'background-color: {{VALUE}}'],
+        $this->add_group_control(\Elementor\Group_Control_Background::get_type(), [
+            'name'     => 'card_bg',
+            'label'    => __('Fond de carte', 'sj-reviews'),
+            'types'    => ['classic', 'gradient'],
+            'selector' => '{{WRAPPER}} .sj-review-card',
         ]);
 
         $this->add_group_control(\Elementor\Group_Control_Border::get_type(), [
@@ -493,10 +561,11 @@ class ReviewsWidget extends \Elementor\Widget_Base {
         // ── Tab Hover ──
         $this->start_controls_tab('card_tab_hover', ['label' => __('Hover', 'sj-reviews')]);
 
-        $this->add_control('card_bg_hover', [
-            'label'     => __('Fond au survol', 'sj-reviews'),
-            'type'      => \Elementor\Controls_Manager::COLOR,
-            'selectors' => ['{{WRAPPER}} .sj-review-card:hover' => 'background-color: {{VALUE}}'],
+        $this->add_group_control(\Elementor\Group_Control_Background::get_type(), [
+            'name'     => 'card_bg_hover',
+            'label'    => __('Fond au survol', 'sj-reviews'),
+            'types'    => ['classic', 'gradient'],
+            'selector' => '{{WRAPPER}} .sj-review-card:hover',
         ]);
 
         $this->add_control('card_border_color_hover', [
