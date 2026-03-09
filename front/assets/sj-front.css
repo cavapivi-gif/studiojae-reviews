@@ -390,3 +390,10 @@
   padding-left: 28px;
   padding-right: 28px;
 }
+
+/* ── Inline Rating ───────────────────────────────────────── */
+.sj-inline-rating { display:inline-flex; align-items:center; gap:.35em; line-height:1; }
+.sj-inline-rating__stars { letter-spacing:-.05em; }
+.sj-inline-rating__score { font-weight:600; }
+.sj-inline-rating__count { opacity:.75; }
+.sj-inline-rating__sources { opacity:.6; font-size:.85em; }

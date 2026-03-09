@@ -33,9 +33,11 @@ class Plugin {
         require_once SJ_REVIEWS_DIR . 'front/class-shortcode.php';
         require_once SJ_REVIEWS_DIR . 'front/class-rating-shortcode.php';
         require_once SJ_REVIEWS_DIR . 'front/class-summary-shortcode.php';
+        require_once SJ_REVIEWS_DIR . 'front/class-inline-rating-shortcode.php';
         (new \SJ_Reviews\Front\Shortcode())->init();
         (new \SJ_Reviews\Front\RatingShortcode())->init();
         (new \SJ_Reviews\Front\SummaryShortcode())->init();
+        new \SJ_Reviews\Front\InlineRatingShortcode();
 
         // Elementor
         add_action('elementor/widgets/register', function ($manager) {
@@ -43,11 +45,14 @@ class Plugin {
             require_once SJ_REVIEWS_DIR . 'elementor/widgets/class-reviews-widget.php';
             require_once SJ_REVIEWS_DIR . 'front/class-rating-shortcode.php';
             require_once SJ_REVIEWS_DIR . 'front/class-summary-shortcode.php';
+            require_once SJ_REVIEWS_DIR . 'front/class-inline-rating-shortcode.php';
             require_once SJ_REVIEWS_DIR . 'elementor/widgets/class-rating-badge-widget.php';
             require_once SJ_REVIEWS_DIR . 'elementor/widgets/class-summary-widget.php';
+            require_once SJ_REVIEWS_DIR . 'elementor/widgets/class-inline-rating-widget.php';
             $manager->register(new \SJ_Reviews\Elementor\Widgets\ReviewsWidget());
             $manager->register(new \SJ_Reviews\Elementor\Widgets\RatingBadgeWidget());
             $manager->register(new \SJ_Reviews\Elementor\Widgets\SummaryWidget());
+            $manager->register(new \SJ_Reviews\Elementor\Widgets\InlineRatingWidget());
         });
 
         add_action('elementor/frontend/after_enqueue_styles', [$this, 'enqueue_front_assets']);
