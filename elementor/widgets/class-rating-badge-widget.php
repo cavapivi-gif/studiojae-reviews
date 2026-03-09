@@ -9,7 +9,7 @@ defined('ABSPATH') || exit;
 class RatingBadgeWidget extends Widget_Base {
 
     public function get_name():  string { return 'sj_rating_badge'; }
-    public function get_title(): string { return 'SJ Rating Badge'; }
+    public function get_title(): string { return 'SJ — Badge de note'; }
     public function get_icon():  string { return 'eicon-rating'; }
     public function get_categories(): array { return ['studiojae']; }
     public function get_keywords(): array { return ['rating', 'badge', 'avis', 'google', 'note', 'sj']; }

@@ -685,6 +685,13 @@ class RestApi {
             'ambiance'       => $crit_val('ambiance'),
             'experience'     => $crit_val('experience'),
             'paysage'        => $crit_val('paysage'),
+            // Contexte de visite
+            'visit_date'     => (function() use ($body): string {
+                $d = sanitize_text_field($body['visit_date'] ?? '');
+                return preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) ? $d : '';
+            })(),
+            'language'       => in_array($body['language'] ?? 'fr', ['fr','en','it','de','es'], true) ? ($body['language'] ?? 'fr') : 'fr',
+            'travel_type'    => in_array($body['travel_type'] ?? '', ['','couple','solo','famille','amis','affaires'], true) ? ($body['travel_type'] ?? '') : '',
         ];
     }
 
@@ -701,6 +708,14 @@ class RestApi {
         update_post_meta($post_id, 'avis_ambiance',     $data['ambiance']);
         update_post_meta($post_id, 'avis_experience',   $data['experience']);
         update_post_meta($post_id, 'avis_paysage',      $data['paysage']);
+        // Contexte de visite
+        if ($data['visit_date']) {
+            update_post_meta($post_id, 'avis_visit_date',  $data['visit_date']);
+        } else {
+            delete_post_meta($post_id, 'avis_visit_date');
+        }
+        update_post_meta($post_id, 'avis_language',     $data['language']);
+        update_post_meta($post_id, 'avis_travel_type',  $data['travel_type']);
 
         // Auto-synchronise avis_place_id depuis le lieu si non défini
         if (!get_post_meta($post_id, 'avis_place_id', true) && !empty($data['lieu_id'])) {

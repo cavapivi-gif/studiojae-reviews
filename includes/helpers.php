@@ -148,10 +148,14 @@ function sj_normalize_review(\WP_Post $post): array {
         'linked_post_id' => $linked_post_id ?: null,
         'linked_post'    => $linked_post_obj,
         // Sous-critères (null = non noté)
-        'qualite_prix' => $crit_int('avis_qualite_prix'),
-        'ambiance'     => $crit_int('avis_ambiance'),
-        'experience'   => $crit_int('avis_experience'),
-        'paysage'      => $crit_int('avis_paysage'),
+        'qualite_prix'  => $crit_int('avis_qualite_prix'),
+        'ambiance'      => $crit_int('avis_ambiance'),
+        'experience'    => $crit_int('avis_experience'),
+        'paysage'       => $crit_int('avis_paysage'),
+        // Contexte de visite
+        'visit_date'    => (string) ($get('avis_visit_date')   ?: ''),
+        'language'      => (string) ($get('avis_language')     ?: 'fr'),
+        'travel_type'   => (string) ($get('avis_travel_type')  ?: ''),
     ];
 }
 

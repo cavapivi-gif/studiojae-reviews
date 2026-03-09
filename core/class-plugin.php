@@ -75,6 +75,14 @@ class Plugin {
         );
 
         wp_enqueue_script(
+            'sj-summary',
+            SJ_REVIEWS_URL . 'front/assets/sj-summary.js',
+            [],
+            SJ_REVIEWS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
             'sj-reviews-front',
             SJ_REVIEWS_URL . 'front/assets/sj-front.js',
             ['swiper'],

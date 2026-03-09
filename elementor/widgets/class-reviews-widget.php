@@ -18,7 +18,7 @@ defined('ABSPATH') || exit;
 class ReviewsWidget extends \Elementor\Widget_Base {
 
     public function get_name():       string { return 'sj-reviews'; }
-    public function get_title():      string { return 'SJ — Avis clients'; }
+    public function get_title():      string { return 'SJ — Carrousel / Grille'; }
     public function get_icon():       string { return 'eicon-rating'; }
     public function get_categories(): array  { return ['sj-reviews', 'general']; }
     public function get_keywords():   array  { return ['avis', 'reviews', 'rating', 'étoiles', 'slider', 'badge', 'sj']; }

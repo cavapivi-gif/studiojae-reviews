@@ -1,192 +1,549 @@
 /* ═══════════════════════════════════════════════════════════════
-   SJ Reviews — Widget Résumé (style TripAdvisor)
+   SJ Reviews — Page Avis (style TripAdvisor)
+   Sections :
+     1. Conteneur principal
+     2. En-tête : score + bulles
+     3. Zone centrale : distribution + sous-critères (2-col)
+     4. Barre de filtres
+     5. Grid de cards
+     6. Card avis
+     7. Voir plus
+     8. État vide
+     9. Responsive
    ═══════════════════════════════════════════════════════════════ */
 
+/* ── 1. Conteneur principal ───────────────────────────────────── */
 .sj-summary {
-    font-family: inherit;
-    color: #111;
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 28px 24px;
-    max-width: 480px;
+  font-family: inherit;
+  color: #111;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 28px 24px;
+  max-width: 900px;
 }
 
-/* ── Header : score + label + bulles ─────────────────────────── */
+/* ── 2. En-tête : score global ────────────────────────────────── */
 .sj-summary__header {
-    margin-bottom: 24px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 0;
 }
 
 .sj-summary__score-block {
-    display: flex;
-    align-items: center;
-    gap: 16px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 20px;
 }
 
 .sj-summary__score-num {
-    font-size: 3.5rem;
-    font-weight: 800;
-    line-height: 1;
-    letter-spacing: -0.04em;
-    color: #111;
+  font-size: 3.75rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  color: #111;
+  flex-shrink: 0;
 }
 
 .sj-summary__score-info {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
 .sj-summary__score-label {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #111;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111;
 }
 
 .sj-summary__count {
-    font-size: 0.78rem;
-    color: #6b7280;
+  font-size: 0.8rem;
+  color: #6b7280;
 }
 
-/* ── Bulles TripAdvisor ───────────────────────────────────────── */
+/* Bulles TripAdvisor */
 .sj-summary__bubbles {
-    display: flex;
-    gap: 4px;
-    align-items: center;
+  display: flex;
+  gap: 4px;
+  align-items: center;
 }
 
 .sj-summary__bubble {
-    display: inline-block;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #e5e7eb;
-    position: relative;
-    transition: transform 0.15s ease;
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
-.sj-summary__bubble--full {
-    background: #34d399;
+.sj-summary__bubble--full  { background: #34d399; }
+.sj-summary__bubble--half  { background: linear-gradient(90deg, #34d399 50%, #d1fae5 50%); }
+.sj-summary__bubble--empty { background: #d1fae5; }
+
+/* ── 3. Zone centrale : distribution + sous-critères ─────────── */
+.sj-summary__middle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px 32px;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
-.sj-summary__bubble--half {
-    background: linear-gradient(90deg, #34d399 50%, #e5e7eb 50%);
-}
-
-.sj-summary__bubble--empty {
-    background: #e5e7eb;
-}
-
-/* ── Distribution ────────────────────────────────────────────── */
+/* Distribution par étoiles */
 .sj-summary__distribution {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 20px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .sj-summary__dist-row {
-    display: grid;
-    grid-template-columns: 70px 1fr 28px;
-    align-items: center;
-    gap: 10px;
+  display: grid;
+  grid-template-columns: 72px 1fr 28px;
+  align-items: center;
+  gap: 8px;
 }
 
 .sj-summary__dist-label {
-    font-size: 0.75rem;
-    color: #374151;
-    font-weight: 500;
-    text-align: right;
+  font-size: 0.75rem;
+  color: #374151;
+  font-weight: 500;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .sj-summary__dist-track {
-    height: 8px;
-    background: #f3f4f6;
-    border-radius: 99px;
-    overflow: hidden;
+  height: 8px;
+  background: #f3f4f6;
+  border-radius: 99px;
+  overflow: hidden;
 }
 
 .sj-summary__dist-fill {
-    height: 100%;
-    background: #34d399;
-    border-radius: 99px;
-    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 100%;
+  background: #34d399;
+  border-radius: 99px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sj-summary__dist-count {
-    font-size: 0.75rem;
-    color: #6b7280;
-    font-weight: 600;
-    text-align: right;
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 600;
+  text-align: right;
 }
 
-/* ── Sous-critères ───────────────────────────────────────────── */
+/* Sous-critères : grille 2 colonnes */
 .sj-summary__criteria {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 16px;
+  align-content: start;
 }
 
 .sj-summary__criterion {
-    display: grid;
-    grid-template-columns: 100px 1fr 32px;
-    align-items: center;
-    gap: 10px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .sj-summary__crit-label {
-    font-size: 0.75rem;
-    color: #374151;
-    font-weight: 500;
+  font-size: 0.72rem;
+  color: #374151;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .sj-summary__crit-track {
-    height: 6px;
-    background: #f3f4f6;
-    border-radius: 99px;
-    overflow: hidden;
+  height: 6px;
+  background: #f3f4f6;
+  border-radius: 99px;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .sj-summary__crit-fill {
-    height: 100%;
-    background: #6366f1;
-    border-radius: 99px;
-    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 100%;
+  background: #6366f1;
+  border-radius: 99px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sj-summary__crit-score {
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: #111;
-    text-align: right;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #111;
+  text-align: right;
+  white-space: nowrap;
 }
 
-/* ── État vide ───────────────────────────────────────────────── */
+/* ── 4. Barre de filtres ──────────────────────────────────────── */
+.sj-summary__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 20px;
+}
+
+/* Sort */
+.sj-filters__sort {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sj-filters__sort-label {
+  font-size: 0.78rem;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.sj-filters__sort-select {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #111;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 5px 10px;
+  background: #fff;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 28px;
+}
+
+/* Groupes de pills */
+.sj-filters__group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.sj-filters__group-label {
+  font-size: 0.72rem;
+  color: #9ca3af;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.sj-filters__pills {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+/* Pills */
+.sj-filters__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #374151;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 99px;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.4;
+}
+
+.sj-filters__pill:hover {
+  border-color: #9ca3af;
+  background: #f3f4f6;
+}
+
+.sj-filters__pill.is-active,
+.sj-filters__pill[aria-pressed="true"] {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+
+/* Badge reset */
+.sj-filters__active {
+  margin-left: auto;
+}
+
+.sj-filters__reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: #6366f1;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.sj-filters__reset:hover { color: #4f46e5; }
+
+/* ── 5. Grid de cards ─────────────────────────────────────────── */
+.sj-cards-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.sj-cards-grid--1col { grid-template-columns: 1fr; }
+.sj-cards-grid--2col { grid-template-columns: repeat(2, 1fr); }
+.sj-cards-grid--3col { grid-template-columns: repeat(3, 1fr); }
+
+/* Cards cachées (overflow) */
+.sj-card--overflow,
+.sj-card--hidden {
+  display: none;
+}
+
+/* ── 6. Card avis ─────────────────────────────────────────────── */
+.sj-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.sj-card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
+  transform: translateY(-1px);
+}
+
+/* En-tête */
+.sj-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sj-card__author-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* Avatar */
+.sj-card__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.sj-card__avatar--initiale {
+  background: #e0e7ff;
+  color: #4f46e5;
+  font-size: 0.9rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sj-card__avatar--img {
+  border: 2px solid #f3f4f6;
+}
+
+/* Infos auteur */
+.sj-card__author-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sj-card__author-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #111;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sj-card__source-name {
+  font-size: 0.72rem;
+  color: #9ca3af;
+}
+
+/* Badge certifié */
+.sj-card__certified {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #86efac;
+  border-radius: 4px;
+  padding: 2px 7px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Rating + meta */
+.sj-card__rating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sj-card__meta {
+  font-size: 0.78rem;
+  color: #6b7280;
+}
+
+/* Titre */
+.sj-card__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #111;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Texte */
+.sj-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sj-card__text {
+  font-size: 0.88rem;
+  color: #374151;
+  line-height: 1.65;
+  margin: 0;
+  white-space: pre-line;
+}
+
+.sj-card__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6366f1;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.sj-card__more:hover { color: #4f46e5; }
+
+/* Pied */
+.sj-card__footer {
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid #f9fafb;
+}
+
+.sj-card__date {
+  font-size: 0.73rem;
+  color: #9ca3af;
+}
+
+/* ── 7. Voir plus (global) ───────────────────────────────────── */
+.sj-summary__loadmore {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.sj-summary__load-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #111;
+  background: #fff;
+  border: 2px solid #111;
+  border-radius: 99px;
+  padding: 10px 24px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sj-summary__load-btn:hover {
+  background: #111;
+  color: #fff;
+}
+
+.sj-summary__load-count {
+  font-weight: 400;
+  color: inherit;
+  opacity: 0.6;
+}
+
+/* ── 8. État vide ────────────────────────────────────────────── */
 .sj-summary--empty {
-    color: #9ca3af;
-    font-size: 0.875rem;
-    text-align: center;
-    padding: 24px;
+  color: #9ca3af;
+  font-size: 0.875rem;
+  text-align: center;
+  padding: 24px;
 }
 
-/* ── Responsive ──────────────────────────────────────────────── */
-@media (max-width: 480px) {
-    .sj-summary {
-        padding: 20px 16px;
-    }
-    .sj-summary__score-num {
-        font-size: 2.75rem;
-    }
-    .sj-summary__dist-row {
-        grid-template-columns: 60px 1fr 24px;
-        gap: 8px;
-    }
-    .sj-summary__criterion {
-        grid-template-columns: 80px 1fr 28px;
-        gap: 8px;
-    }
+/* ── 9. Responsive ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .sj-summary__middle {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .sj-summary__criteria {
+    grid-template-columns: 1fr;
+  }
+
+  .sj-cards-grid--2col,
+  .sj-cards-grid--3col {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1024px) {
+  .sj-cards-grid--3col {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .sj-summary {
+    padding: 18px 14px;
+    border-radius: 10px;
+  }
+
+  .sj-summary__score-num {
+    font-size: 2.75rem;
+  }
+
+  .sj-summary__filters {
+    gap: 8px 12px;
+  }
 }

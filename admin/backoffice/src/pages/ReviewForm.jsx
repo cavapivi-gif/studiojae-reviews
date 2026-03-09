@@ -21,10 +21,28 @@ const CRITERIA = [
   { key: 'paysage',      label: 'Paysage'      },
 ]
 
+const LANGUAGES = [
+  { value: 'fr', label: 'Français'  },
+  { value: 'en', label: 'Anglais'   },
+  { value: 'it', label: 'Italien'   },
+  { value: 'de', label: 'Allemand'  },
+  { value: 'es', label: 'Espagnol'  },
+]
+
+const TRAVEL_TYPES = [
+  { value: '',          label: '— Non précisé —'     },
+  { value: 'couple',    label: 'Couple'               },
+  { value: 'solo',      label: 'Solo'                 },
+  { value: 'famille',   label: 'Famille'              },
+  { value: 'amis',      label: 'Entre amis'           },
+  { value: 'affaires',  label: "Voyage d'affaires"    },
+]
+
 const EMPTY = {
   author: '', avis_title: '', rating: 5, text: '', certified: false,
   source: 'google', lieu_id: '', linked_post_id: 0,
   qualite_prix: 0, ambiance: 0, experience: 0, paysage: 0,
+  visit_date: '', language: 'fr', travel_type: '',
 }
 
 /** Picker 0-5 pour les sous-critères (0 = non noté) */
@@ -109,6 +127,9 @@ export default function ReviewForm() {
         ambiance:       r.ambiance      ?? 0,
         experience:     r.experience    ?? 0,
         paysage:        r.paysage       ?? 0,
+        visit_date:     r.visit_date    ?? '',
+        language:       r.language      ?? 'fr',
+        travel_type:    r.travel_type   ?? '',
       }))
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
@@ -289,8 +310,40 @@ export default function ReviewForm() {
               </div>
             )}
 
+            {/* Date de visite */}
+            <div>
+              <Input
+                label="Date de visite"
+                type="date"
+                value={form.visit_date}
+                onChange={e => set('visit_date')(e.target.value)}
+              />
+            </div>
+
+            {/* Type de voyage */}
+            <div>
+              <Select
+                label="Type de voyage"
+                value={form.travel_type}
+                onChange={e => set('travel_type')(e.target.value)}
+              >
+                {TRAVEL_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </Select>
+            </div>
+
+            {/* Langue */}
+            <div>
+              <Select
+                label="Langue de l'avis"
+                value={form.language}
+                onChange={e => set('language')(e.target.value)}
+              >
+                {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+              </Select>
+            </div>
+
             {/* Certifié */}
-            <div className="col-span-2 py-1">
+            <div className="py-1 flex items-end">
               <Toggle
                 label="Avis certifié / vérifié"
                 checked={form.certified}
@@ -335,6 +388,13 @@ export default function ReviewForm() {
                 <span className="inline-block px-2 py-0.5 text-xs bg-black text-white rounded-sm">Certifié</span>
               )}
             </div>
+            {(form.visit_date || form.travel_type) && (
+              <p className="text-xs text-gray-400 mt-1">
+                {form.visit_date && new Date(form.visit_date).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })}
+                {form.visit_date && form.travel_type && ' · '}
+                {form.travel_type && TRAVEL_TYPES.find(t => t.value === form.travel_type)?.label}
+              </p>
+            )}
             {/* Mini sous-critères dans l'aperçu */}
             {CRITERIA.some(c => form[c.key] > 0) && (
               <div className="flex flex-wrap gap-3 mt-2 pt-2 border-t border-gray-200">

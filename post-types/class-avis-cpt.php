@@ -201,6 +201,45 @@ class AvisCpt {
             ];
         }
 
+        // Contexte de visite
+        $fields[] = [
+            'key'           => 'field_avis_visit_date',
+            'name'          => 'avis_visit_date',
+            'label'         => 'Date de visite',
+            'type'          => 'date_picker',
+            'display_format' => 'd/m/Y',
+            'return_format'  => 'Y-m-d',
+            'first_day'      => 1,
+            'instructions'  => 'Quand le visiteur a effectué sa visite.',
+        ];
+        $fields[] = [
+            'key'           => 'field_avis_language',
+            'name'          => 'avis_language',
+            'label'         => 'Langue de l\'avis',
+            'type'          => 'select',
+            'choices'       => ['fr' => 'Français', 'en' => 'Anglais', 'it' => 'Italien', 'de' => 'Allemand', 'es' => 'Espagnol'],
+            'default_value' => 'fr',
+            'allow_null'    => 0,
+            'ui'            => 0,
+        ];
+        $fields[] = [
+            'key'           => 'field_avis_travel_type',
+            'name'          => 'avis_travel_type',
+            'label'         => 'Type de voyage',
+            'type'          => 'select',
+            'choices'       => [
+                ''          => '— Non précisé —',
+                'couple'    => 'Couple',
+                'solo'      => 'Solo',
+                'famille'   => 'Famille',
+                'amis'      => 'Entre amis',
+                'affaires'  => 'Voyage d\'affaires',
+            ],
+            'default_value' => '',
+            'allow_null'    => 1,
+            'ui'            => 0,
+        ];
+
         acf_add_local_field_group([
             'key'      => 'group_sj_avis',
             'title'    => 'Détails de l\'avis',
@@ -246,6 +285,9 @@ class AvisCpt {
         $ambiance      = (int) get_post_meta($post->ID, 'avis_ambiance', true);
         $experience    = (int) get_post_meta($post->ID, 'avis_experience', true);
         $paysage       = (int) get_post_meta($post->ID, 'avis_paysage', true);
+        $visit_date    = get_post_meta($post->ID, 'avis_visit_date', true);
+        $language      = get_post_meta($post->ID, 'avis_language', true) ?: 'fr';
+        $travel_type   = get_post_meta($post->ID, 'avis_travel_type', true);
 
         $settings      = get_option('sj_reviews_settings', []);
         $linked_types  = array_filter((array) ($settings['linked_post_types'] ?? []));
@@ -337,6 +379,29 @@ class AvisCpt {
                 <p style="font-size:11px;color:#888;margin:4px 0 0">Configurez les types dans <strong>Réglages → SJ Reviews</strong>.</p>
             </div>
             <?php endif; ?>
+            <!-- Contexte de visite -->
+            <div class="sj-meta-field">
+                <label for="avis_visit_date"><?php esc_html_e('Date de visite', 'sj-reviews'); ?></label>
+                <input type="date" id="avis_visit_date" name="avis_visit_date" value="<?php echo esc_attr($visit_date); ?>">
+            </div>
+            <div class="sj-meta-field">
+                <label for="avis_travel_type"><?php esc_html_e('Type de voyage', 'sj-reviews'); ?></label>
+                <select id="avis_travel_type" name="avis_travel_type">
+                    <option value="">— Non précisé —</option>
+                    <?php foreach (['couple' => 'Couple', 'solo' => 'Solo', 'famille' => 'Famille', 'amis' => 'Entre amis', 'affaires' => 'Voyage d\'affaires'] as $v => $l): ?>
+                        <option value="<?php echo esc_attr($v); ?>" <?php selected($travel_type, $v); ?>><?php echo esc_html($l); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="sj-meta-field">
+                <label for="avis_language"><?php esc_html_e('Langue de l\'avis', 'sj-reviews'); ?></label>
+                <select id="avis_language" name="avis_language">
+                    <?php foreach (['fr' => 'Français', 'en' => 'Anglais', 'it' => 'Italien', 'de' => 'Allemand', 'es' => 'Espagnol'] as $v => $l): ?>
+                        <option value="<?php echo esc_attr($v); ?>" <?php selected($language, $v); ?>><?php echo esc_html($l); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
             <!-- Sous-critères -->
             <div class="sj-meta-field sj-meta-full" style="margin-top:8px">
                 <label style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#333">
@@ -374,11 +439,19 @@ class AvisCpt {
         if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
         if (!current_user_can('edit_post', $post_id)) return;
 
-        $text_fields = ['avis_author', 'avis_title', 'avis_rating', 'avis_source', 'avis_lieu_id'];
+        $text_fields = ['avis_author', 'avis_title', 'avis_rating', 'avis_source', 'avis_lieu_id', 'avis_language', 'avis_travel_type'];
         foreach ($text_fields as $field) {
             if (isset($_POST[$field])) {
                 update_post_meta($post_id, $field, sanitize_text_field($_POST[$field]));
             }
+        }
+
+        // Date de visite (format YYYY-MM-DD)
+        $visit_date = sanitize_text_field($_POST['avis_visit_date'] ?? '');
+        if ($visit_date && preg_match('/^\d{4}-\d{2}-\d{2}$/', $visit_date)) {
+            update_post_meta($post_id, 'avis_visit_date', $visit_date);
+        } else {
+            delete_post_meta($post_id, 'avis_visit_date');
         }
         update_post_meta($post_id, 'avis_text', sanitize_textarea_field($_POST['avis_text'] ?? ''));
         update_post_meta($post_id, 'avis_certified', isset($_POST['avis_certified']) ? 1 : 0);
