@@ -2,18 +2,20 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import {
-  PageHeader, Table, Btn, Notice, Spinner, Stars, Badge, Pagination, Input, Select
+  PageHeader, Table, Btn, Spinner, Stars, Badge, Pagination, Input, Select
 } from '../components/ui'
 import { IconPlus, IconTrash, IconPencil, IconArrowUp, IconArrowDown } from '../components/Icons'
 import { SOURCE_LABELS, SOURCE_OPTIONS } from '../lib/constants'
+import { useToast } from '../components/Toast'
 
 export default function Reviews() {
   const navigate = useNavigate()
+  const toast = useToast()
   const [items, setItems]         = useState([])
   const [total, setTotal]         = useState(0)
   const [page, setPage]           = useState(1)
   const [loading, setLoading]     = useState(true)
-  const [error, setError]         = useState(null)
+  // errors shown via toast
   const [search, setSearch]       = useState('')
   const [ratingFilter, setRating] = useState(0)
   const [sourceFilter, setSource] = useState('')
@@ -45,7 +47,6 @@ export default function Reviews() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    setError(null)
     try {
       const res = await api.reviews({
         page, perPage: PER_PAGE,
@@ -57,7 +58,7 @@ export default function Reviews() {
       setItems(res.items)
       setTotal(res.total)
     } catch (e) {
-      setError(e.message)
+      toast.error(e.message)
     } finally {
       setLoading(false)
     }
@@ -92,11 +93,12 @@ export default function Reviews() {
     setDeleting(id)
     try {
       await api.deleteReview(id)
+      toast.success('Avis supprimé.')
       // Si c'était le dernier item de la page, recule d'une page
       if (items.length <= 1 && page > 1) setPage(p => p - 1)
       else await load()
     } catch (e) {
-      setError(e.message)
+      toast.error(e.message)
     } finally {
       setDeleting(null)
     }
@@ -245,7 +247,7 @@ export default function Reviews() {
         <span className="ml-auto text-xs text-gray-400">{total} avis</span>
       </div>
 
-      {error && <div className="px-8 pt-4"><Notice type="error">{error}</Notice></div>}
+      {/* errors shown via toast */}
 
       <div className="border-t border-gray-100">
         <Table columns={columns} data={items} loading={loading} empty="Aucun avis trouvé." />

@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot }  from 'react-dom/client'
 import { HashRouter }  from 'react-router-dom'
+import { ToastProvider } from './components/Toast'
 import App             from './App'
 import './index.css'
 
@@ -14,7 +15,9 @@ if (el) {
   createRoot(el).render(
     <StrictMode>
       <HashRouter>
-        <App />
+        <ToastProvider>
+          <App />
+        </ToastProvider>
       </HashRouter>
     </StrictMode>
   )

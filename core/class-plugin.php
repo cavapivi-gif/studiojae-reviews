@@ -15,6 +15,10 @@ class Plugin {
         // Helpers
         require_once SJ_REVIEWS_DIR . 'includes/helpers.php';
 
+        // Cron — auto-sync
+        require_once SJ_REVIEWS_DIR . 'includes/class-cron.php';
+        (new \SJ_Reviews\Includes\Cron())->init();
+
         // Admin backoffice
         if (is_admin()) {
             require_once SJ_REVIEWS_DIR . 'admin/backoffice/class-backoffice.php';
