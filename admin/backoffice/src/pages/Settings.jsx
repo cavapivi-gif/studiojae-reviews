@@ -4,12 +4,13 @@ import { PageHeader, Input, Select, Btn, Notice, Spinner } from '../components/u
 import { IconCheck } from '../components/Icons'
 
 const DEFAULTS = {
-  default_layout:  'slider-i',
-  default_preset:  'minimal',
-  star_color:      '#f5a623',
-  certified_label: 'Certifié',
-  max_front:       '5',
-  google_api_key:  '',
+  default_layout:    'slider-i',
+  default_preset:    'minimal',
+  star_color:        '#f5a623',
+  certified_label:   'Certifié',
+  max_front:         '5',
+  google_api_key:    '',
+  linked_post_types: [],
 }
 
 export default function Settings() {
@@ -20,10 +21,14 @@ export default function Settings() {
   const [error, setError]     = useState(null)
   const [keyStatus, setKeyStatus] = useState(null) // null | 'testing' | 'ok' | 'error'
   const [keyMsg, setKeyMsg]   = useState('')
+  const [availablePostTypes, setAvailablePostTypes] = useState([])
 
   useEffect(() => {
-    api.settings()
-      .then(s => setForm({ ...DEFAULTS, ...s }))
+    Promise.all([api.settings(), api.postTypes()])
+      .then(([s, pts]) => {
+        setForm({ ...DEFAULTS, ...s, linked_post_types: Array.isArray(s.linked_post_types) ? s.linked_post_types : [] })
+        setAvailablePostTypes(pts)
+      })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
@@ -196,6 +201,41 @@ export default function Settings() {
                 placeholder="Certifié"
               />
             </div>
+          </section>
+
+          <section>
+            <div className="text-xs text-gray-400 uppercase tracking-widest mb-3 pb-2 border-b border-gray-100">
+              Liaison avis → post
+            </div>
+            <p className="text-xs text-gray-400 mb-3">
+              Sélectionnez les types de contenu auxquels un avis peut être lié. Le champ de liaison n'apparaît dans le formulaire que si au moins un type est coché.
+            </p>
+            {availablePostTypes.length === 0 ? (
+              <p className="text-xs text-gray-400 italic">Aucun post type public trouvé.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {availablePostTypes.map(pt => {
+                  const checked = form.linked_post_types.includes(pt.slug)
+                  return (
+                    <label key={pt.slug} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          const next = checked
+                            ? form.linked_post_types.filter(s => s !== pt.slug)
+                            : [...form.linked_post_types, pt.slug]
+                          setForm(f => ({ ...f, linked_post_types: next }))
+                        }}
+                        className="w-4 h-4 accent-black"
+                      />
+                      <span className="text-sm text-gray-700">{pt.label}</span>
+                      <code className="text-xs text-gray-400 font-mono">{pt.slug}</code>
+                    </label>
+                  )
+                })}
+              </div>
+            )}
           </section>
 
           <section>

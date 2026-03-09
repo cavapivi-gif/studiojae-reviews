@@ -165,14 +165,25 @@ class RatingShortcode {
             'tripadvisor' => 'TripAdvisor',
             'facebook'    => 'Facebook',
             'trustpilot'  => 'Trustpilot',
+            'regiondo'    => 'Regiondo',
             default       => ucfirst($source),
         };
     }
 
     private function source_icon_html(string $source): string {
+        if ($source === 'regiondo') {
+            $svg_path = SJ_REVIEWS_DIR . 'front/assets/logos/regiondo.svg';
+            if (file_exists($svg_path)) {
+                $svg = file_get_contents($svg_path); // phpcs:ignore WordPress.WP.AlternativeFunctions
+                if ($svg) {
+                    return '<span class="sj-badge__source-icon sj-badge__source-icon--regiondo" aria-hidden="true" style="width:auto;height:20px;background:none;padding:0">' . $svg . '</span>';
+                }
+            }
+            return '<span class="sj-badge__source-icon sj-badge__source-icon--regiondo" aria-hidden="true">R</span>';
+        }
         // Utilise les couleurs officielles des marques
         $icons = [
-            'google' => '<span class="sj-badge__source-icon sj-badge__source-icon--google" aria-hidden="true">G</span>',
+            'google'      => '<span class="sj-badge__source-icon sj-badge__source-icon--google" aria-hidden="true">G</span>',
             'tripadvisor' => '<span class="sj-badge__source-icon sj-badge__source-icon--tripadvisor" aria-hidden="true">T</span>',
             'facebook'    => '<span class="sj-badge__source-icon sj-badge__source-icon--facebook" aria-hidden="true">f</span>',
             'trustpilot'  => '<span class="sj-badge__source-icon sj-badge__source-icon--trustpilot" aria-hidden="true">✓</span>',

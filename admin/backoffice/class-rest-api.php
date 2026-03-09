@@ -116,6 +116,23 @@ class RestApi {
             ],
         ]);
 
+        // Post types publics disponibles pour la liaison
+        register_rest_route($this->ns, '/post-types', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'list_post_types'],
+            'permission_callback' => [$this, 'is_manager'],
+        ]);
+
+        // Posts des types liés (pour le sélecteur dans le formulaire avis)
+        register_rest_route($this->ns, '/linked-posts', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'list_linked_posts'],
+            'permission_callback' => [$this, 'is_manager'],
+            'args'                => [
+                'post_type' => ['type' => 'string', 'default' => ''],
+            ],
+        ]);
+
         // Test de la clé API Google
         register_rest_route($this->ns, '/settings/test-google-key', [
             'methods'             => 'POST',
@@ -507,14 +524,63 @@ class RestApi {
 
     public function get_settings(\WP_REST_Request $req): \WP_REST_Response {
         $defaults = [
-            'default_layout'  => 'slider-i',
-            'default_preset'  => 'minimal',
-            'star_color'      => '#f5a623',
-            'certified_label' => 'Certifié',
-            'max_front'       => 5,
-            'google_api_key'  => '',
+            'default_layout'    => 'slider-i',
+            'default_preset'    => 'minimal',
+            'star_color'        => '#f5a623',
+            'certified_label'   => 'Certifié',
+            'max_front'         => 5,
+            'google_api_key'    => '',
+            'linked_post_types' => [],
         ];
-        return rest_ensure_response(array_merge($defaults, get_option('sj_reviews_settings', [])));
+        $saved = get_option('sj_reviews_settings', []);
+        // Ensure linked_post_types is always an array
+        if (isset($saved['linked_post_types']) && !is_array($saved['linked_post_types'])) {
+            $saved['linked_post_types'] = [];
+        }
+        return rest_ensure_response(array_merge($defaults, $saved));
+    }
+
+    public function list_post_types(\WP_REST_Request $req): \WP_REST_Response {
+        $post_types = get_post_types(['public' => true, 'show_ui' => true], 'objects');
+        $excluded   = ['sj_avis', 'attachment'];
+        $result     = [];
+        foreach ($post_types as $slug => $pt) {
+            if (in_array($slug, $excluded, true)) continue;
+            $result[] = [
+                'slug'  => $slug,
+                'label' => $pt->labels->singular_name ?? $pt->label ?? $slug,
+            ];
+        }
+        return rest_ensure_response($result);
+    }
+
+    public function list_linked_posts(\WP_REST_Request $req): \WP_REST_Response {
+        $settings      = get_option('sj_reviews_settings', []);
+        $allowed_types = array_map('sanitize_key', (array) ($settings['linked_post_types'] ?? []));
+
+        if (empty($allowed_types)) {
+            return rest_ensure_response([]);
+        }
+
+        $requested_type = sanitize_key($req->get_param('post_type'));
+        if ($requested_type && !in_array($requested_type, $allowed_types, true)) {
+            return rest_ensure_response([]);
+        }
+        $types_to_query = $requested_type ? [$requested_type] : $allowed_types;
+
+        $posts = get_posts([
+            'post_type'      => $types_to_query,
+            'post_status'    => 'publish',
+            'posts_per_page' => 200,
+            'orderby'        => 'title',
+            'order'          => 'ASC',
+        ]);
+
+        return rest_ensure_response(array_map(fn($p) => [
+            'id'        => $p->ID,
+            'title'     => get_the_title($p),
+            'post_type' => $p->post_type,
+        ], $posts));
     }
 
     public function test_google_key(\WP_REST_Request $req): \WP_REST_Response|\WP_Error {
@@ -551,10 +617,13 @@ class RestApi {
 
     public function save_settings(\WP_REST_Request $req): \WP_REST_Response {
         $body    = $req->get_json_params();
-        $allowed = ['default_layout', 'default_preset', 'star_color', 'certified_label', 'max_front', 'google_api_key'];
+        $allowed = ['default_layout', 'default_preset', 'star_color', 'certified_label', 'max_front', 'google_api_key', 'linked_post_types'];
         $clean   = [];
         foreach ($allowed as $key) {
-            if (isset($body[$key])) {
+            if (!isset($body[$key])) continue;
+            if ($key === 'linked_post_types') {
+                $clean[$key] = array_values(array_map('sanitize_key', array_filter((array) $body[$key])));
+            } else {
                 $clean[$key] = sanitize_text_field((string) $body[$key]);
             }
         }
@@ -573,7 +642,7 @@ class RestApi {
         if (empty($body['name'])) {
             return new \WP_Error('missing_name', 'Le nom du lieu est requis.', ['status' => 422]);
         }
-        $allowed_sources = ['google', 'tripadvisor', 'facebook', 'trustpilot', 'direct', 'autre'];
+        $allowed_sources = ['google', 'tripadvisor', 'facebook', 'trustpilot', 'regiondo', 'direct', 'autre'];
         return [
             'name'     => sanitize_text_field($body['name']),
             'place_id' => sanitize_text_field($body['place_id'] ?? ''),
@@ -592,25 +661,29 @@ class RestApi {
         if ($rating < 1 || $rating > 5) {
             return new \WP_Error('invalid_rating', 'La note doit être entre 1 et 5.', ['status' => 422]);
         }
-        $allowed_sources = ['google', 'tripadvisor', 'facebook', 'trustpilot', 'direct', 'autre'];
+        $allowed_sources = ['google', 'tripadvisor', 'facebook', 'trustpilot', 'regiondo', 'direct', 'autre'];
         return [
-            'author'    => sanitize_text_field($body['author']),
-            'rating'    => $rating,
-            'text'      => sanitize_textarea_field($body['text'] ?? ''),
-            'certified' => (bool) ($body['certified'] ?? false),
-            'source'    => in_array($body['source'] ?? 'google', $allowed_sources, true) ? $body['source'] : 'google',
-            'place_id'  => sanitize_text_field($body['place_id'] ?? ''),
-            'lieu_id'   => sanitize_key($body['lieu_id'] ?? ''),
+            'author'         => sanitize_text_field($body['author']),
+            'avis_title'     => sanitize_text_field($body['avis_title'] ?? ''),
+            'rating'         => $rating,
+            'text'           => sanitize_textarea_field($body['text'] ?? ''),
+            'certified'      => (bool) ($body['certified'] ?? false),
+            'source'         => in_array($body['source'] ?? 'google', $allowed_sources, true) ? $body['source'] : 'google',
+            'place_id'       => sanitize_text_field($body['place_id'] ?? ''),
+            'lieu_id'        => sanitize_key($body['lieu_id'] ?? ''),
+            'linked_post_id' => (int) ($body['linked_post_id'] ?? 0),
         ];
     }
 
     private function save_meta(int $post_id, array $data): void {
-        update_post_meta($post_id, 'avis_author',    $data['author']);
-        update_post_meta($post_id, 'avis_rating',    $data['rating']);
-        update_post_meta($post_id, 'avis_text',      $data['text']);
-        update_post_meta($post_id, 'avis_certified', $data['certified'] ? 1 : 0);
-        update_post_meta($post_id, 'avis_source',    $data['source']);
-        update_post_meta($post_id, 'avis_place_id',  $data['place_id']);
-        update_post_meta($post_id, 'avis_lieu_id',   $data['lieu_id']);
+        update_post_meta($post_id, 'avis_author',      $data['author']);
+        update_post_meta($post_id, 'avis_title',       $data['avis_title'] ?? '');
+        update_post_meta($post_id, 'avis_rating',      $data['rating']);
+        update_post_meta($post_id, 'avis_text',        $data['text']);
+        update_post_meta($post_id, 'avis_certified',   $data['certified'] ? 1 : 0);
+        update_post_meta($post_id, 'avis_source',      $data['source']);
+        update_post_meta($post_id, 'avis_place_id',    $data['place_id']);
+        update_post_meta($post_id, 'avis_lieu_id',     $data['lieu_id']);
+        update_post_meta($post_id, 'avis_linked_post', $data['linked_post_id'] ?: '');
     }
 }

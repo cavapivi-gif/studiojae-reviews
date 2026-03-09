@@ -62,85 +62,116 @@ class AvisCpt {
     public function register_acf_fields(): void {
         if (!function_exists('acf_add_local_field_group')) return;
 
+        $settings      = get_option('sj_reviews_settings', []);
+        $linked_types  = array_filter((array) ($settings['linked_post_types'] ?? []));
+
+        $fields = [
+            [
+                'key'           => 'field_avis_author',
+                'name'          => 'avis_author',
+                'label'         => 'Auteur',
+                'type'          => 'text',
+                'required'      => 1,
+                'placeholder'   => 'Prénom Nom',
+                'instructions'  => 'Prénom et nom de l\'auteur de l\'avis.',
+            ],
+            [
+                'key'           => 'field_avis_title',
+                'name'          => 'avis_title',
+                'label'         => 'Titre de l\'avis',
+                'type'          => 'text',
+                'required'      => 0,
+                'placeholder'   => 'Ex : Excellent service, très professionnel…',
+                'instructions'  => 'Titre court de l\'avis (optionnel).',
+            ],
+            [
+                'key'           => 'field_avis_rating',
+                'name'          => 'avis_rating',
+                'label'         => 'Note (étoiles)',
+                'type'          => 'number',
+                'required'      => 1,
+                'min'           => 1,
+                'max'           => 5,
+                'step'          => 1,
+                'default_value' => 5,
+                'instructions'  => 'Note de 1 à 5.',
+            ],
+            [
+                'key'           => 'field_avis_text',
+                'name'          => 'avis_text',
+                'label'         => 'Texte de l\'avis',
+                'type'          => 'textarea',
+                'required'      => 0,
+                'rows'          => 4,
+                'instructions'  => 'Contenu complet de l\'avis.',
+            ],
+            [
+                'key'           => 'field_avis_certified',
+                'name'          => 'avis_certified',
+                'label'         => 'Avis certifié',
+                'type'          => 'true_false',
+                'default_value' => 0,
+                'ui'            => 1,
+                'ui_on_text'    => 'Certifié',
+                'ui_off_text'   => 'Non certifié',
+                'instructions'  => 'Marquer cet avis comme vérifié/certifié.',
+            ],
+            [
+                'key'           => 'field_avis_source',
+                'name'          => 'avis_source',
+                'label'         => 'Source',
+                'type'          => 'select',
+                'choices'       => [
+                    'google'      => 'Google',
+                    'tripadvisor' => 'TripAdvisor',
+                    'facebook'    => 'Facebook',
+                    'trustpilot'  => 'Trustpilot',
+                    'regiondo'    => 'Regiondo',
+                    'direct'      => 'Direct',
+                    'autre'       => 'Autre',
+                ],
+                'default_value' => 'google',
+                'allow_null'    => 0,
+                'ui'            => 1,
+            ],
+            [
+                'key'           => 'field_avis_avatar',
+                'name'          => 'avis_avatar',
+                'label'         => 'Avatar / Photo',
+                'type'          => 'image',
+                'return_format' => 'array',
+                'preview_size'  => 'thumbnail',
+                'instructions'  => 'Photo optionnelle de l\'auteur.',
+            ],
+            [
+                'key'           => 'field_avis_place_id',
+                'name'          => 'avis_place_id',
+                'label'         => 'Google Place ID',
+                'type'          => 'text',
+                'instructions'  => 'Si cet avis vient de Google Maps, indiquez le Place ID pour le lien.',
+            ],
+        ];
+
+        // Champ de liaison uniquement si des post types sont configurés dans Réglages
+        if (!empty($linked_types)) {
+            $fields[] = [
+                'key'           => 'field_avis_linked_post',
+                'name'          => 'avis_linked_post',
+                'label'         => 'Post lié',
+                'type'          => 'post_object',
+                'post_type'     => array_values(array_map('sanitize_key', $linked_types)),
+                'return_format' => 'id',
+                'ui'            => 1,
+                'allow_null'    => 1,
+                'multiple'      => 0,
+                'instructions'  => 'Lier cet avis à un contenu (article, produit, page…). Configurez les types dans Réglages.',
+            ];
+        }
+
         acf_add_local_field_group([
             'key'      => 'group_sj_avis',
             'title'    => 'Détails de l\'avis',
-            'fields'   => [
-                [
-                    'key'           => 'field_avis_author',
-                    'name'          => 'avis_author',
-                    'label'         => 'Auteur',
-                    'type'          => 'text',
-                    'required'      => 1,
-                    'placeholder'   => 'Prénom Nom',
-                    'instructions'  => 'Prénom et nom de l\'auteur de l\'avis.',
-                ],
-                [
-                    'key'           => 'field_avis_rating',
-                    'name'          => 'avis_rating',
-                    'label'         => 'Note (étoiles)',
-                    'type'          => 'number',
-                    'required'      => 1,
-                    'min'           => 1,
-                    'max'           => 5,
-                    'step'          => 1,
-                    'default_value' => 5,
-                    'instructions'  => 'Note de 1 à 5.',
-                ],
-                [
-                    'key'           => 'field_avis_text',
-                    'name'          => 'avis_text',
-                    'label'         => 'Texte de l\'avis',
-                    'type'          => 'textarea',
-                    'required'      => 0,
-                    'rows'          => 4,
-                    'instructions'  => 'Contenu complet de l\'avis.',
-                ],
-                [
-                    'key'           => 'field_avis_certified',
-                    'name'          => 'avis_certified',
-                    'label'         => 'Avis certifié',
-                    'type'          => 'true_false',
-                    'default_value' => 0,
-                    'ui'            => 1,
-                    'ui_on_text'    => 'Certifié',
-                    'ui_off_text'   => 'Non certifié',
-                    'instructions'  => 'Marquer cet avis comme vérifié/certifié.',
-                ],
-                [
-                    'key'           => 'field_avis_source',
-                    'name'          => 'avis_source',
-                    'label'         => 'Source',
-                    'type'          => 'select',
-                    'choices'       => [
-                        'google'      => 'Google',
-                        'tripadvisor' => 'TripAdvisor',
-                        'facebook'    => 'Facebook',
-                        'trustpilot'  => 'Trustpilot',
-                        'direct'      => 'Direct',
-                        'autre'       => 'Autre',
-                    ],
-                    'default_value' => 'google',
-                    'allow_null'    => 0,
-                    'ui'            => 1,
-                ],
-                [
-                    'key'           => 'field_avis_avatar',
-                    'name'          => 'avis_avatar',
-                    'label'         => 'Avatar / Photo',
-                    'type'          => 'image',
-                    'return_format' => 'array',
-                    'preview_size'  => 'thumbnail',
-                    'instructions'  => 'Photo optionnelle de l\'auteur.',
-                ],
-                [
-                    'key'           => 'field_avis_place_id',
-                    'name'          => 'avis_place_id',
-                    'label'         => 'Google Place ID',
-                    'type'          => 'text',
-                    'instructions'  => 'Si cet avis vient de Google Maps, indiquez le Place ID pour le lien.',
-                ],
-            ],
+            'fields'   => $fields,
             'location' => [[
                 ['param' => 'post_type', 'operator' => '==', 'value' => 'sj_avis'],
             ]],
@@ -170,16 +201,22 @@ class AvisCpt {
     public function render_fallback_metabox(\WP_Post $post): void {
         wp_nonce_field('sj_avis_meta', 'sj_avis_nonce');
 
-        $author    = get_post_meta($post->ID, 'avis_author', true);
-        $rating    = get_post_meta($post->ID, 'avis_rating', true) ?: 5;
-        $text      = get_post_meta($post->ID, 'avis_text', true);
-        $certified = get_post_meta($post->ID, 'avis_certified', true);
-        $source    = get_post_meta($post->ID, 'avis_source', true) ?: 'google';
-        $place_id  = get_post_meta($post->ID, 'avis_place_id', true);
+        $author      = get_post_meta($post->ID, 'avis_author', true);
+        $avis_title  = get_post_meta($post->ID, 'avis_title', true);
+        $rating      = get_post_meta($post->ID, 'avis_rating', true) ?: 5;
+        $text        = get_post_meta($post->ID, 'avis_text', true);
+        $certified   = get_post_meta($post->ID, 'avis_certified', true);
+        $source      = get_post_meta($post->ID, 'avis_source', true) ?: 'google';
+        $place_id    = get_post_meta($post->ID, 'avis_place_id', true);
+        $linked_post = (int) get_post_meta($post->ID, 'avis_linked_post', true);
+
+        $settings      = get_option('sj_reviews_settings', []);
+        $linked_types  = array_filter((array) ($settings['linked_post_types'] ?? []));
 
         $sources = [
             'google' => 'Google', 'tripadvisor' => 'TripAdvisor',
             'facebook' => 'Facebook', 'trustpilot' => 'Trustpilot',
+            'regiondo' => 'Regiondo',
             'direct' => 'Direct', 'autre' => 'Autre',
         ];
         ?>
@@ -198,6 +235,10 @@ class AvisCpt {
             <div class="sj-meta-field">
                 <label for="avis_author"><?php esc_html_e('Auteur', 'sj-reviews'); ?></label>
                 <input type="text" id="avis_author" name="avis_author" value="<?php echo esc_attr($author); ?>" placeholder="Prénom Nom" required>
+            </div>
+            <div class="sj-meta-field">
+                <label for="avis_title"><?php esc_html_e('Titre de l\'avis', 'sj-reviews'); ?></label>
+                <input type="text" id="avis_title" name="avis_title" value="<?php echo esc_attr($avis_title); ?>" placeholder="Ex : Excellent service…">
             </div>
             <div class="sj-meta-field">
                 <label for="avis_rating"><?php esc_html_e('Note (1-5)', 'sj-reviews'); ?></label>
@@ -227,6 +268,29 @@ class AvisCpt {
                     <?php esc_html_e('Avis certifié / vérifié', 'sj-reviews'); ?>
                 </label>
             </div>
+            <?php if (!empty($linked_types)): ?>
+            <div class="sj-meta-field sj-meta-full">
+                <label for="avis_linked_post"><?php esc_html_e('Post lié', 'sj-reviews'); ?></label>
+                <select id="avis_linked_post" name="avis_linked_post">
+                    <option value=""><?php esc_html_e('— Aucun —', 'sj-reviews'); ?></option>
+                    <?php
+                    $linked_posts = get_posts([
+                        'post_type'      => array_values(array_map('sanitize_key', $linked_types)),
+                        'post_status'    => 'publish',
+                        'posts_per_page' => 200,
+                        'orderby'        => 'title',
+                        'order'          => 'ASC',
+                    ]);
+                    foreach ($linked_posts as $lp):
+                    ?>
+                        <option value="<?php echo esc_attr($lp->ID); ?>" <?php selected($linked_post, $lp->ID); ?>>
+                            <?php echo esc_html(get_the_title($lp) . ' (' . $lp->post_type . ')'); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <p style="font-size:11px;color:#888;margin:4px 0 0">Configurez les types dans <strong>Réglages → SJ Reviews</strong>.</p>
+            </div>
+            <?php endif; ?>
         </div>
         <?php
     }
@@ -237,7 +301,7 @@ class AvisCpt {
         if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
         if (!current_user_can('edit_post', $post_id)) return;
 
-        $fields = ['avis_author', 'avis_rating', 'avis_text', 'avis_source', 'avis_place_id'];
+        $fields = ['avis_author', 'avis_title', 'avis_rating', 'avis_source', 'avis_place_id'];
         foreach ($fields as $field) {
             if (isset($_POST[$field])) {
                 update_post_meta($post_id, $field, sanitize_text_field($_POST[$field]));
@@ -245,5 +309,6 @@ class AvisCpt {
         }
         update_post_meta($post_id, 'avis_text', sanitize_textarea_field($_POST['avis_text'] ?? ''));
         update_post_meta($post_id, 'avis_certified', isset($_POST['avis_certified']) ? 1 : 0);
+        update_post_meta($post_id, 'avis_linked_post', (int) ($_POST['avis_linked_post'] ?? 0) ?: '');
     }
 }

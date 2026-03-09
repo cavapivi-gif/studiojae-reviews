@@ -9,11 +9,12 @@ const SOURCES = [
   { value: 'tripadvisor', label: 'TripAdvisor' },
   { value: 'facebook',    label: 'Facebook' },
   { value: 'trustpilot',  label: 'Trustpilot' },
+  { value: 'regiondo',    label: 'Regiondo' },
   { value: 'direct',      label: 'Direct' },
   { value: 'autre',       label: 'Autre' },
 ]
 
-const EMPTY = { author: '', rating: 5, text: '', certified: false, source: 'google', place_id: '', lieu_id: '' }
+const EMPTY = { author: '', avis_title: '', rating: 5, text: '', certified: false, source: 'google', place_id: '', lieu_id: '', linked_post_id: 0 }
 
 export default function ReviewForm() {
   const { id }    = useParams()
@@ -27,22 +28,35 @@ export default function ReviewForm() {
   const [error, setError]     = useState(null)
   const [saved, setSaved]     = useState(false)
   const [lieux, setLieux]     = useState([])
+  const [linkedPosts, setLinkedPosts]     = useState([])
+  const [hasLinkedTypes, setHasLinkedTypes] = useState(false)
 
   useEffect(() => {
     api.lieux().then(setLieux).catch(() => {})
+    api.settings()
+      .then(s => {
+        const types = Array.isArray(s.linked_post_types) ? s.linked_post_types : []
+        if (types.length > 0) {
+          setHasLinkedTypes(true)
+          api.linkedPosts().then(setLinkedPosts).catch(() => {})
+        }
+      })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
     if (!isEdit) return
     api.review(id)
       .then(r => setForm({
-        author:    r.author ?? '',
-        rating:    r.rating ?? 5,
-        text:      r.text ?? '',
-        certified: r.certified ?? false,
-        source:    r.source ?? 'google',
-        place_id:  r.place_id ?? '',
-        lieu_id:   r.lieu_id ?? '',
+        author:         r.author ?? '',
+        avis_title:     r.avis_title ?? '',
+        rating:         r.rating ?? 5,
+        text:           r.text ?? '',
+        certified:      r.certified ?? false,
+        source:         r.source ?? 'google',
+        place_id:       r.place_id ?? '',
+        lieu_id:        r.lieu_id ?? '',
+        linked_post_id: r.linked_post_id ?? 0,
       }))
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
@@ -125,13 +139,23 @@ export default function ReviewForm() {
 
         <div className="grid grid-cols-2 gap-5">
           {/* Auteur */}
-          <div className="col-span-2">
+          <div>
             <Input
               label="Auteur *"
               value={form.author}
               onChange={e => set('author')(e.target.value)}
               placeholder="Prénom Nom"
               required
+            />
+          </div>
+
+          {/* Titre de l'avis */}
+          <div>
+            <Input
+              label="Titre de l'avis"
+              value={form.avis_title}
+              onChange={e => set('avis_title')(e.target.value)}
+              placeholder="Ex : Excellent service, très pro…"
             />
           </div>
 
@@ -189,6 +213,24 @@ export default function ReviewForm() {
               placeholder="ChIJ…"
             />
           </div>
+
+          {/* Post lié (si types configurés dans les réglages) */}
+          {hasLinkedTypes && (
+            <div className="col-span-2">
+              <Select
+                label="Post lié (optionnel)"
+                value={form.linked_post_id || ''}
+                onChange={e => set('linked_post_id')(parseInt(e.target.value, 10) || 0)}
+              >
+                <option value="">— Aucun —</option>
+                {linkedPosts.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.title} ({p.post_type})
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
 
           {/* Certifié */}
           <div className="col-span-2 py-2">

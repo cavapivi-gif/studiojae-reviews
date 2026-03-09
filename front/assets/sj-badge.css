@@ -48,6 +48,7 @@
 .sj-badge__source-icon--tripadvisor { background: #00af87; color: #fff; }
 .sj-badge__source-icon--facebook    { background: #1877F2; color: #fff; }
 .sj-badge__source-icon--trustpilot  { background: #00b67a; color: #fff; }
+.sj-badge__source-icon--regiondo    { background: #e85c2c; color: #fff; }
 
 /* ══════════════════════════════════════════════════════
    DESIGN 1 : compact — inline, pas de boîte

@@ -81,4 +81,13 @@ export const api = {
   /** Tester la clé API Google Maps */
   testGoogleKey: async (key) =>
     (await req('/settings/test-google-key', { method: 'POST', body: JSON.stringify({ key }) })).json(),
+
+  /** Post types publics disponibles pour la liaison */
+  postTypes: async () => (await req('/post-types')).json(),
+
+  /** Posts des types liés (pour le sélecteur de liaison) */
+  linkedPosts: async (postType = '') => {
+    const qs = postType ? `?post_type=${encodeURIComponent(postType)}` : ''
+    return (await req(`/linked-posts${qs}`)).json()
+  },
 }

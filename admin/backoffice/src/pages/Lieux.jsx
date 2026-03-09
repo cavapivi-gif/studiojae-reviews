@@ -11,6 +11,7 @@ const SOURCE_OPTIONS = [
   { value: 'tripadvisor', label: 'TripAdvisor' },
   { value: 'facebook',    label: 'Facebook' },
   { value: 'trustpilot',  label: 'Trustpilot' },
+  { value: 'regiondo',    label: 'Regiondo' },
   { value: 'direct',      label: 'Direct' },
   { value: 'autre',       label: 'Autre' },
 ]
