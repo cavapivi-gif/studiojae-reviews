@@ -67,9 +67,27 @@ export const api = {
   syncGoogle: async (id) =>
     (await req(`/lieux/${id}/sync-google`, { method: 'POST' })).json(),
 
-  /** Statut de la sync (polling) */
-  syncGoogleStatus: async (id) =>
-    (await req(`/lieux/${id}/sync-status`)).json(),
+  /** Sync Trustpilot pour un lieu */
+  syncTrustpilot: async (id) =>
+    (await req(`/lieux/${id}/sync-trustpilot`, { method: 'POST' })).json(),
+
+  /** Sync TripAdvisor pour un lieu */
+  syncTripadvisor: async (id) =>
+    (await req(`/lieux/${id}/sync-tripadvisor`, { method: 'POST' })).json(),
+
+  /** Tester clé API Trustpilot */
+  testTrustpilotKey: async (key) =>
+    (await req('/settings/test-trustpilot-key', { method: 'POST', body: JSON.stringify({ key }) })).json(),
+
+  /** Tester clé API TripAdvisor */
+  testTripadvisorKey: async (key) =>
+    (await req('/settings/test-tripadvisor-key', { method: 'POST', body: JSON.stringify({ key }) })).json(),
+
+  /** Export CSV */
+  exportCsv: async ({ source = '', lieu_id = '', rating = 0 } = {}) => {
+    const p = new URLSearchParams({ source, lieu_id, rating })
+    return (await req(`/export?${p}`)).json()
+  },
 
   /** Réglages */
   settings: async () => (await req('/settings')).json(),

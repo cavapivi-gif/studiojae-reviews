@@ -154,6 +154,25 @@
       modal.hidden = true
       document.body.classList.remove('sj-modal-open')
       trigger?.setAttribute('aria-expanded', 'false')
+      trigger?.focus()
+    }
+
+    // Focus trap inside modal (a11y)
+    if (modal) {
+      modal.addEventListener('keydown', function (e) {
+        if (e.key !== 'Tab') return
+        const focusable = Array.from(modal.querySelectorAll(
+          'button:not([hidden]):not([disabled]), [tabindex]:not([tabindex="-1"]), input, select, textarea, a[href]'
+        ))
+        if (!focusable.length) return
+        const first = focusable[0]
+        const last  = focusable[focusable.length - 1]
+        if (e.shiftKey) {
+          if (document.activeElement === first) { e.preventDefault(); last.focus() }
+        } else {
+          if (document.activeElement === last) { e.preventDefault(); first.focus() }
+        }
+      })
     }
 
     function syncModalUI() {

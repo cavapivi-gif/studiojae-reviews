@@ -18,6 +18,9 @@ defined('ABSPATH') || exit;
  * DEL  /lieux/{id}         → supprimer un lieu
  * GET  /settings           → lire les réglages
  * POST /settings           → enregistrer les réglages
+ * POST /lieux/{id}/sync-trustpilot  → sync Trustpilot
+ * POST /lieux/{id}/sync-tripadvisor → sync TripAdvisor
+ * GET  /export              → export CSV
  */
 class RestApi {
 
@@ -97,10 +100,17 @@ class RestApi {
             'permission_callback' => [$this, 'is_manager'],
         ]);
 
-        // Statut de la sync (polling depuis le front)
-        register_rest_route($this->ns, '/lieux/(?P<id>[a-z0-9_-]+)/sync-status', [
-            'methods'             => 'GET',
-            'callback'            => [$this, 'sync_status'],
+        // Sync Trustpilot pour un lieu
+        register_rest_route($this->ns, '/lieux/(?P<id>[a-z0-9_-]+)/sync-trustpilot', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'sync_trustpilot'],
+            'permission_callback' => [$this, 'is_manager'],
+        ]);
+
+        // Sync TripAdvisor pour un lieu
+        register_rest_route($this->ns, '/lieux/(?P<id>[a-z0-9_-]+)/sync-tripadvisor', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'sync_tripadvisor'],
             'permission_callback' => [$this, 'is_manager'],
         ]);
 
@@ -134,11 +144,33 @@ class RestApi {
             ],
         ]);
 
-        // Test de la clé API Google
+        // Test des clés API
         register_rest_route($this->ns, '/settings/test-google-key', [
             'methods'             => 'POST',
             'callback'            => [$this, 'test_google_key'],
             'permission_callback' => [$this, 'is_manager'],
+        ]);
+        register_rest_route($this->ns, '/settings/test-trustpilot-key', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'test_trustpilot_key'],
+            'permission_callback' => [$this, 'is_manager'],
+        ]);
+        register_rest_route($this->ns, '/settings/test-tripadvisor-key', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'test_tripadvisor_key'],
+            'permission_callback' => [$this, 'is_manager'],
+        ]);
+
+        // Export CSV
+        register_rest_route($this->ns, '/export', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'export_csv'],
+            'permission_callback' => [$this, 'is_manager'],
+            'args'                => [
+                'source'  => ['default' => '', 'type' => 'string'],
+                'lieu_id' => ['default' => '', 'type' => 'string'],
+                'rating'  => ['default' => 0,  'type' => 'integer'],
+            ],
         ]);
 
         register_rest_route($this->ns, '/settings', [
@@ -293,7 +325,16 @@ class RestApi {
             $args['s'] = $search;
         }
 
-        $meta_query = [];
+        $meta_query = ['relation' => 'AND'];
+
+        // Étend la recherche au texte et titre de l'avis (pas juste le post_title WP)
+        if ($search) {
+            $meta_query[] = [
+                'relation' => 'OR',
+                ['key' => 'avis_text',  'value' => '%' . $wpdb->esc_like($search) . '%', 'compare' => 'LIKE'],
+                ['key' => 'avis_title', 'value' => '%' . $wpdb->esc_like($search) . '%', 'compare' => 'LIKE'],
+            ];
+        }
 
         if ($rating >= 1 && $rating <= 5) {
             $meta_query[] = ['key' => 'avis_rating', 'value' => $rating, 'type' => 'NUMERIC'];
@@ -308,10 +349,10 @@ class RestApi {
         }
 
         if ($email) {
-            $meta_query[] = ['key' => 'avis_customer_email', 'value' => $email, 'compare' => '='];
+            $meta_query[] = ['key' => 'avis_customer_email', 'value' => '%' . $wpdb->esc_like($email) . '%', 'compare' => 'LIKE'];
         }
 
-        if (!empty($meta_query)) {
+        if (count($meta_query) > 1) { // > 1 car 'relation' est toujours présent
             $args['meta_query'] = $meta_query;
         }
 
@@ -584,31 +625,266 @@ class RestApi {
         ]);
     }
 
+    // ── Trustpilot Sync ─────────────────────────────────────────────────────
+
     /**
-     * GET /lieux/{id}/sync-status — conservé pour compatibilité (retourne toujours idle)
+     * POST /lieux/{id}/sync-trustpilot
+     *
+     * Fetch Trustpilot Business Unit API : trustScore + numberOfReviews.
      */
-    public function sync_status(\WP_REST_Request $req): \WP_REST_Response {
-        return rest_ensure_response(['status' => 'idle']);
+    public function sync_trustpilot(\WP_REST_Request $req): \WP_REST_Response|\WP_Error {
+        $lieu_id = sanitize_key($req['id']);
+        $lieux   = $this->get_lieux();
+        $lieu    = null;
+        foreach ($lieux as $l) {
+            if ($l['id'] === $lieu_id) { $lieu = $l; break; }
+        }
+
+        if (!$lieu) {
+            return new \WP_Error('not_found', 'Lieu introuvable.', ['status' => 404]);
+        }
+
+        $domain = $lieu['trustpilot_domain'] ?? '';
+        if (empty($domain)) {
+            return new \WP_Error('no_domain', 'Ce lieu n\'a pas de domaine Trustpilot configuré.', ['status' => 400]);
+        }
+
+        $settings = get_option('sj_reviews_settings', []);
+        $api_key  = $settings['trustpilot_api_key'] ?? '';
+        if (empty($api_key)) {
+            return new \WP_Error('no_api_key', 'Clé API Trustpilot non configurée dans Réglages.', ['status' => 400]);
+        }
+
+        // Anti-loop
+        $lock_key = 'sj_sync_tp_lock_' . $lieu_id;
+        if (get_transient($lock_key)) {
+            return new \WP_Error('rate_limited', 'Sync en cours, réessayez dans 30 secondes.', ['status' => 429]);
+        }
+        set_transient($lock_key, 1, 30);
+
+        $url = 'https://api.trustpilot.com/v1/business-units/find?' . http_build_query([
+            'name'   => $domain,
+            'apikey' => $api_key,
+        ]);
+
+        $response = wp_remote_get($url, ['timeout' => 10, 'sslverify' => true]);
+        delete_transient($lock_key);
+
+        if (is_wp_error($response)) {
+            return new \WP_Error('http_error', $response->get_error_message(), ['status' => 502]);
+        }
+
+        $code = wp_remote_retrieve_response_code($response);
+        $body = json_decode(wp_remote_retrieve_body($response), true);
+
+        if ($code !== 200 || empty($body['id'])) {
+            $msg = $body['message'] ?? "Erreur Trustpilot (HTTP {$code})";
+            return new \WP_Error('trustpilot_error', $msg, ['status' => 502]);
+        }
+
+        $tp_rating = round((float) ($body['score']['trustScore'] ?? 0), 1);
+        $tp_count  = (int) ($body['numberOfReviews']['total'] ?? 0);
+        $bu_id     = $body['id'];
+
+        // Persist
+        $all_lieux = $this->get_lieux();
+        foreach ($all_lieux as &$l) {
+            if ($l['id'] === $lieu_id) {
+                $l['rating']           = $tp_rating;
+                $l['reviews_count']    = $tp_count;
+                $l['trustpilot_bu_id'] = $bu_id;
+                $l['last_sync']        = current_time('Y-m-d H:i:s');
+                break;
+            }
+        }
+        unset($l);
+        update_option('sj_lieux', $all_lieux);
+
+        return rest_ensure_response([
+            'rating'        => $tp_rating,
+            'reviews_count' => $tp_count,
+            'last_sync'     => current_time('Y-m-d H:i:s'),
+        ]);
+    }
+
+    // ── TripAdvisor Sync ──────────────────────────────────────────────────────
+
+    /**
+     * POST /lieux/{id}/sync-tripadvisor
+     *
+     * Fetch TripAdvisor Content API : rating + num_reviews.
+     */
+    public function sync_tripadvisor(\WP_REST_Request $req): \WP_REST_Response|\WP_Error {
+        $lieu_id = sanitize_key($req['id']);
+        $lieux   = $this->get_lieux();
+        $lieu    = null;
+        foreach ($lieux as $l) {
+            if ($l['id'] === $lieu_id) { $lieu = $l; break; }
+        }
+
+        if (!$lieu) {
+            return new \WP_Error('not_found', 'Lieu introuvable.', ['status' => 404]);
+        }
+
+        $location_id = $lieu['tripadvisor_location_id'] ?? '';
+        if (empty($location_id)) {
+            return new \WP_Error('no_location_id', 'Ce lieu n\'a pas de Location ID TripAdvisor configuré.', ['status' => 400]);
+        }
+
+        $settings = get_option('sj_reviews_settings', []);
+        $api_key  = $settings['tripadvisor_api_key'] ?? '';
+        if (empty($api_key)) {
+            return new \WP_Error('no_api_key', 'Clé API TripAdvisor non configurée dans Réglages.', ['status' => 400]);
+        }
+
+        // Anti-loop
+        $lock_key = 'sj_sync_ta_lock_' . $lieu_id;
+        if (get_transient($lock_key)) {
+            return new \WP_Error('rate_limited', 'Sync en cours, réessayez dans 30 secondes.', ['status' => 429]);
+        }
+        set_transient($lock_key, 1, 30);
+
+        $url = "https://api.content.tripadvisor.com/api/v1/location/{$location_id}/details?" . http_build_query([
+            'key'      => $api_key,
+            'language' => 'fr',
+        ]);
+
+        $response = wp_remote_get($url, [
+            'timeout'   => 10,
+            'sslverify' => true,
+            'headers'   => ['accept' => 'application/json'],
+        ]);
+        delete_transient($lock_key);
+
+        if (is_wp_error($response)) {
+            return new \WP_Error('http_error', $response->get_error_message(), ['status' => 502]);
+        }
+
+        $code = wp_remote_retrieve_response_code($response);
+        $body = json_decode(wp_remote_retrieve_body($response), true);
+
+        if ($code !== 200) {
+            $msg = $body['message'] ?? "Erreur TripAdvisor (HTTP {$code})";
+            return new \WP_Error('tripadvisor_error', $msg, ['status' => 502]);
+        }
+
+        $ta_rating = round((float) ($body['rating'] ?? 0), 1);
+        $ta_count  = (int) ($body['num_reviews'] ?? 0);
+
+        // Persist
+        $all_lieux = $this->get_lieux();
+        foreach ($all_lieux as &$l) {
+            if ($l['id'] === $lieu_id) {
+                $l['rating']        = $ta_rating;
+                $l['reviews_count'] = $ta_count;
+                $l['last_sync']     = current_time('Y-m-d H:i:s');
+                break;
+            }
+        }
+        unset($l);
+        update_option('sj_lieux', $all_lieux);
+
+        return rest_ensure_response([
+            'rating'        => $ta_rating,
+            'reviews_count' => $ta_count,
+            'last_sync'     => current_time('Y-m-d H:i:s'),
+        ]);
+    }
+
+    // ── Export CSV ─────────────────────────────────────────────────────────────
+
+    /**
+     * GET /export — CSV download of all reviews.
+     */
+    public function export_csv(\WP_REST_Request $req): \WP_REST_Response {
+        $source  = sanitize_text_field($req->get_param('source'));
+        $lieu_id = sanitize_text_field($req->get_param('lieu_id'));
+        $rating  = (int) $req->get_param('rating');
+
+        $args = [
+            'post_type'      => 'sj_avis',
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+            'orderby'        => 'date',
+            'order'          => 'DESC',
+        ];
+
+        $meta_query = ['relation' => 'AND'];
+        if ($source) {
+            $meta_query[] = ['key' => 'avis_source', 'value' => $source, 'compare' => '='];
+        }
+        if ($lieu_id) {
+            $meta_query[] = ['key' => 'avis_lieu_id', 'value' => $lieu_id, 'compare' => '='];
+        }
+        if ($rating >= 1 && $rating <= 5) {
+            $meta_query[] = ['key' => 'avis_rating', 'value' => $rating, 'type' => 'NUMERIC'];
+        }
+        if (count($meta_query) > 1) {
+            $args['meta_query'] = $meta_query;
+        }
+
+        $posts   = get_posts($args);
+        $reviews = array_map(fn($p) => sj_normalize_review($p, true), $posts);
+
+        $headers = ['id', 'author', 'rating', 'source', 'title', 'text', 'certified', 'lieu_id', 'visit_date', 'language', 'travel_type', 'date', 'customer_email', 'order_id'];
+
+        $csv = fopen('php://temp', 'r+');
+        fputcsv($csv, $headers, ';');
+        foreach ($reviews as $r) {
+            $row = [];
+            foreach ($headers as $h) {
+                $val = $r[$h] ?? '';
+                if (is_bool($val)) $val = $val ? '1' : '0';
+                $row[] = (string) $val;
+            }
+            fputcsv($csv, $row, ';');
+        }
+        rewind($csv);
+        $content = stream_get_contents($csv);
+        fclose($csv);
+
+        return rest_ensure_response([
+            'csv'      => $content,
+            'filename' => 'sj-reviews-export-' . wp_date('Y-m-d') . '.csv',
+            'count'    => count($reviews),
+        ]);
     }
 
     // ── Settings ──────────────────────────────────────────────────────────────
 
     public function get_settings(\WP_REST_Request $req): \WP_REST_Response {
         $defaults = [
-            'default_layout'    => 'slider-i',
-            'default_preset'    => 'minimal',
-            'star_color'        => '#f5a623',
-            'certified_label'   => 'Certifié',
-            'max_front'         => 5,
-            'google_api_key'    => '',
-            'linked_post_types' => [],
+            'default_layout'      => 'slider-i',
+            'default_preset'      => 'minimal',
+            'star_color'          => '#f5a623',
+            'certified_label'     => 'Certifié',
+            'max_front'           => 5,
+            'google_api_key'      => '',
+            'trustpilot_api_key'  => '',
+            'tripadvisor_api_key' => '',
+            'linked_post_types'   => [],
+            'sync_frequency'      => 'off',
+            'criteria_labels'     => [
+                'qualite_prix' => 'Qualité/prix',
+                'ambiance'     => 'Ambiance',
+                'experience'   => 'Expérience',
+                'paysage'      => 'Paysage',
+            ],
+            'bubble_color'        => '#34d399',
+            'text_words'          => 40,
+            'autoplay_delay'      => 4000,
+            'last_sync'           => get_option('sj_reviews_last_sync', ''),
         ];
         $saved = get_option('sj_reviews_settings', []);
-        // Ensure linked_post_types is always an array
         if (isset($saved['linked_post_types']) && !is_array($saved['linked_post_types'])) {
             $saved['linked_post_types'] = [];
         }
-        return rest_ensure_response(array_merge($defaults, $saved));
+        if (isset($saved['criteria_labels']) && !is_array($saved['criteria_labels'])) {
+            $saved['criteria_labels'] = $defaults['criteria_labels'];
+        }
+        $merged = array_merge($defaults, $saved);
+        $merged['last_sync'] = get_option('sj_reviews_last_sync', '');
+        return rest_ensure_response($merged);
     }
 
     public function list_post_types(\WP_REST_Request $req): \WP_REST_Response {
@@ -692,18 +968,95 @@ class RestApi {
         return rest_ensure_response(['ok' => false, 'message' => $messages[$status] ?? ($body['error_message'] ?? "Statut Google: $status")]);
     }
 
+    public function test_trustpilot_key(\WP_REST_Request $req): \WP_REST_Response {
+        $key = sanitize_text_field($req['key'] ?? '');
+        if (empty($key)) {
+            return rest_ensure_response(['ok' => false, 'message' => 'Clé API manquante.']);
+        }
+
+        // Test avec un domaine connu
+        $url = 'https://api.trustpilot.com/v1/business-units/find?' . http_build_query([
+            'name'   => 'trustpilot.com',
+            'apikey' => $key,
+        ]);
+
+        $response = wp_remote_get($url, ['timeout' => 10, 'sslverify' => true]);
+        if (is_wp_error($response)) {
+            return rest_ensure_response(['ok' => false, 'message' => $response->get_error_message()]);
+        }
+
+        $code = wp_remote_retrieve_response_code($response);
+        if ($code === 200) {
+            return rest_ensure_response(['ok' => true, 'message' => '']);
+        }
+
+        $body = json_decode(wp_remote_retrieve_body($response), true);
+        return rest_ensure_response(['ok' => false, 'message' => $body['message'] ?? "HTTP {$code}"]);
+    }
+
+    public function test_tripadvisor_key(\WP_REST_Request $req): \WP_REST_Response {
+        $key = sanitize_text_field($req['key'] ?? '');
+        if (empty($key)) {
+            return rest_ensure_response(['ok' => false, 'message' => 'Clé API manquante.']);
+        }
+
+        // Test avec la Tour Eiffel (location_id = 188757)
+        $url = "https://api.content.tripadvisor.com/api/v1/location/188757/details?" . http_build_query([
+            'key'      => $key,
+            'language' => 'fr',
+        ]);
+
+        $response = wp_remote_get($url, [
+            'timeout'   => 10,
+            'sslverify' => true,
+            'headers'   => ['accept' => 'application/json'],
+        ]);
+        if (is_wp_error($response)) {
+            return rest_ensure_response(['ok' => false, 'message' => $response->get_error_message()]);
+        }
+
+        $code = wp_remote_retrieve_response_code($response);
+        if ($code === 200) {
+            return rest_ensure_response(['ok' => true, 'message' => '']);
+        }
+
+        $body = json_decode(wp_remote_retrieve_body($response), true);
+        return rest_ensure_response(['ok' => false, 'message' => $body['message'] ?? "HTTP {$code}"]);
+    }
+
     public function save_settings(\WP_REST_Request $req): \WP_REST_Response {
         $body    = $req->get_json_params();
-        $allowed = ['default_layout', 'default_preset', 'star_color', 'certified_label', 'max_front', 'google_api_key', 'linked_post_types'];
-        $clean   = [];
+        $allowed = [
+            'default_layout', 'default_preset', 'star_color', 'certified_label',
+            'max_front', 'google_api_key', 'trustpilot_api_key', 'tripadvisor_api_key',
+            'linked_post_types', 'sync_frequency', 'criteria_labels',
+            'bubble_color', 'text_words', 'autoplay_delay',
+        ];
+        // Merge with existing to avoid losing keys not sent
+        $existing = get_option('sj_reviews_settings', []);
+        $clean    = $existing;
         foreach ($allowed as $key) {
             if (!isset($body[$key])) continue;
             if ($key === 'linked_post_types') {
                 $clean[$key] = array_values(array_map('sanitize_key', array_filter((array) $body[$key])));
+            } elseif ($key === 'criteria_labels') {
+                $labels = (array) $body[$key];
+                $clean[$key] = array_map('sanitize_text_field', $labels);
+            } elseif (in_array($key, ['text_words', 'autoplay_delay', 'max_front'], true)) {
+                $clean[$key] = max(1, (int) $body[$key]);
             } else {
                 $clean[$key] = sanitize_text_field((string) $body[$key]);
             }
         }
+
+        // Reschedule cron if sync_frequency changed
+        $old_freq = $existing['sync_frequency'] ?? 'off';
+        $new_freq = $clean['sync_frequency'] ?? 'off';
+        if ($old_freq !== $new_freq) {
+            require_once SJ_REVIEWS_DIR . 'includes/class-cron.php';
+            \SJ_Reviews\Includes\Cron::reschedule($new_freq);
+        }
+
         update_option('sj_reviews_settings', $clean);
         return rest_ensure_response($clean);
     }
@@ -771,7 +1124,9 @@ class RestApi {
         $results = [];
         foreach ($rows as $i => $row) {
             $order_id = sanitize_text_field($row['order_id'] ?? '');
-            $rating   = (int) ($row['rating'] ?? 0);
+            $raw_rating = $row['rating'] ?? 0;
+            // Supporte float ("4.5" → 5) et virgule française ("4,5" → 5)
+            $rating   = (int) round((float) str_replace(',', '.', (string) $raw_rating));
             $author   = sanitize_text_field($row['author'] ?? '');
 
             if (empty($author)) {
@@ -779,7 +1134,7 @@ class RestApi {
                 continue;
             }
             if ($rating < 1 || $rating > 5) {
-                $results[] = ['index' => $i, 'row' => $row, 'status' => 'error', 'reason' => 'Note invalide (doit être 1–5)'];
+                $results[] = ['index' => $i, 'row' => $row, 'status' => 'error', 'reason' => 'Note invalide (doit être 1–5) — reçu : ' . esc_html((string) $raw_rating)];
                 continue;
             }
             if ($order_id && isset($existing_set[$order_id])) {
@@ -863,7 +1218,7 @@ class RestApi {
             }
 
             $order_id = sanitize_text_field($row['order_id'] ?? '');
-            $rating   = (int) ($row['rating'] ?? 0);
+            $rating   = (int) round((float) str_replace(',', '.', (string) ($row['rating'] ?? 0)));
             $author   = sanitize_text_field($row['author'] ?? '');
 
             // Date de publication = date d'évaluation
@@ -954,11 +1309,13 @@ class RestApi {
         }
         $allowed_sources = ['google', 'tripadvisor', 'facebook', 'trustpilot', 'regiondo', 'direct', 'autre'];
         return [
-            'name'     => sanitize_text_field($body['name']),
-            'place_id' => sanitize_text_field($body['place_id'] ?? ''),
-            'source'   => in_array($body['source'] ?? 'google', $allowed_sources, true) ? $body['source'] : 'google',
-            'address'  => sanitize_text_field($body['address'] ?? ''),
-            'active'   => (bool) ($body['active'] ?? true),
+            'name'                     => sanitize_text_field($body['name']),
+            'place_id'                 => sanitize_text_field($body['place_id'] ?? ''),
+            'source'                   => in_array($body['source'] ?? 'google', $allowed_sources, true) ? $body['source'] : 'google',
+            'address'                  => sanitize_text_field($body['address'] ?? ''),
+            'active'                   => (bool) ($body['active'] ?? true),
+            'trustpilot_domain'        => sanitize_text_field($body['trustpilot_domain'] ?? ''),
+            'tripadvisor_location_id'  => sanitize_text_field($body['tripadvisor_location_id'] ?? ''),
         ];
     }
 
@@ -1012,15 +1369,8 @@ class RestApi {
         update_post_meta($post_id, 'avis_ambiance',     $data['ambiance']);
         update_post_meta($post_id, 'avis_experience',   $data['experience']);
         update_post_meta($post_id, 'avis_paysage',      $data['paysage']);
-        // Auto-compute avis_rating depuis sous-critères si tous les 4 sont notés.
-        // Calculé au save (pas au fetch) : la distribution front reflète directement
-        // la moyenne des critères sans recalcul à chaque requête.
-        $crit_values = [$data['qualite_prix'], $data['ambiance'], $data['experience'], $data['paysage']];
-        $rated        = array_filter($crit_values, fn($v) => $v > 0);
-        if (count($rated) === 4) {
-            $auto_rating = max(1, min(5, (int) round(array_sum($rated) / 4)));
-            update_post_meta($post_id, 'avis_rating', $auto_rating);
-        }
+        // Note : la note globale est toujours celle définie par l'utilisateur.
+        // Les sous-critères sont informatifs et ne l'écrasent plus.
         // Contexte de visite
         if ($data['visit_date']) {
             update_post_meta($post_id, 'avis_visit_date',  $data['visit_date']);

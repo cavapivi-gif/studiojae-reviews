@@ -946,3 +946,29 @@ body.sj-modal-open { overflow: hidden; }
   box-shadow: 0 0 0 3px rgba(17, 17, 17, .07);
 }
 .sj-search__input::-webkit-search-cancel-button { cursor: pointer; }
+
+/* ── Accessibility: reduced motion ──────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .sj-summary,
+  .sj-summary *,
+  .sj-card,
+  .sj-filter-modal,
+  .sj-filter-modal__panel {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ── Accessibility: focus visible ───────────────────────── */
+.sj-filter-trigger:focus-visible,
+.sj-filter-modal__pill:focus-visible,
+.sj-filter-modal__dot-btn:focus-visible,
+.sj-filter-modal__btn-apply:focus-visible,
+.sj-filter-modal__btn-reset:focus-visible,
+.sj-filter-modal__close:focus-visible,
+.sj-card__more:focus-visible,
+.sj-summary__load-btn:focus-visible,
+.sj-search__input:focus-visible {
+  outline: 2px solid #111;
+  outline-offset: 2px;
+}

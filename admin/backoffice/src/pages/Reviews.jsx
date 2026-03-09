@@ -1,19 +1,21 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import {
-  PageHeader, Table, Btn, Notice, Spinner, Stars, Badge, Pagination, Input, Select
+  PageHeader, Table, Btn, Spinner, Stars, Badge, Pagination, Input, Select
 } from '../components/ui'
 import { IconPlus, IconTrash, IconPencil, IconArrowUp, IconArrowDown } from '../components/Icons'
 import { SOURCE_LABELS, SOURCE_OPTIONS } from '../lib/constants'
+import { useToast } from '../components/Toast'
 
 export default function Reviews() {
   const navigate = useNavigate()
+  const toast = useToast()
   const [items, setItems]         = useState([])
   const [total, setTotal]         = useState(0)
   const [page, setPage]           = useState(1)
   const [loading, setLoading]     = useState(true)
-  const [error, setError]         = useState(null)
+  // errors shown via toast
   const [search, setSearch]       = useState('')
   const [ratingFilter, setRating] = useState(0)
   const [sourceFilter, setSource] = useState('')
@@ -23,15 +25,28 @@ export default function Reviews() {
   const [order, setOrder]         = useState('DESC')
   const [emailFilter, setEmail]   = useState('')
   const [deleting, setDeleting]   = useState(null)
+  const [searchInput, setSearchInput] = useState('')
+  const [emailInput, setEmailInput]   = useState('')
+  const debounceRef = useRef(null)
   const PER_PAGE = 20
 
   useEffect(() => {
     api.lieux().then(setLieux).catch(() => {})
   }, [])
 
+  // Debounce : attend 300ms après la dernière frappe avant de mettre à jour le filtre
+  useEffect(() => {
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      setSearch(searchInput)
+      setEmail(emailInput)
+      setPage(1)
+    }, 300)
+    return () => clearTimeout(debounceRef.current)
+  }, [searchInput, emailInput])
+
   const load = useCallback(async () => {
     setLoading(true)
-    setError(null)
     try {
       const res = await api.reviews({
         page, perPage: PER_PAGE,
@@ -43,7 +58,7 @@ export default function Reviews() {
       setItems(res.items)
       setTotal(res.total)
     } catch (e) {
-      setError(e.message)
+      toast.error(e.message)
     } finally {
       setLoading(false)
     }
@@ -52,7 +67,7 @@ export default function Reviews() {
   useEffect(() => { load() }, [load])
 
   const resetFilters = () => {
-    setSearch(''); setRating(0); setSource(''); setLieu(''); setOrderby('date'); setOrder('DESC'); setPage(1); setEmail('')
+    setSearch(''); setSearchInput(''); setRating(0); setSource(''); setLieu(''); setOrderby('date'); setOrder('DESC'); setPage(1); setEmail(''); setEmailInput('')
   }
   const hasFilters = search || ratingFilter > 0 || sourceFilter || lieuFilter || emailFilter
 
@@ -78,9 +93,12 @@ export default function Reviews() {
     setDeleting(id)
     try {
       await api.deleteReview(id)
-      await load()
+      toast.success('Avis supprimé.')
+      // Si c'était le dernier item de la page, recule d'une page
+      if (items.length <= 1 && page > 1) setPage(p => p - 1)
+      else await load()
     } catch (e) {
-      setError(e.message)
+      toast.error(e.message)
     } finally {
       setDeleting(null)
     }
@@ -178,15 +196,15 @@ export default function Reviews() {
         <div className="w-52">
           <Input
             placeholder="Rechercher…"
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1) }}
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
           />
         </div>
         <div className="w-52">
           <Input
             placeholder="Filtrer par email client…"
-            value={emailFilter}
-            onChange={e => { setEmail(e.target.value); setPage(1) }}
+            value={emailInput}
+            onChange={e => setEmailInput(e.target.value)}
           />
         </div>
         <div className="w-36">
@@ -229,7 +247,7 @@ export default function Reviews() {
         <span className="ml-auto text-xs text-gray-400">{total} avis</span>
       </div>
 
-      {error && <div className="px-8 pt-4"><Notice type="error">{error}</Notice></div>}
+      {/* errors shown via toast */}
 
       <div className="border-t border-gray-100">
         <Table columns={columns} data={items} loading={loading} empty="Aucun avis trouvé." />
