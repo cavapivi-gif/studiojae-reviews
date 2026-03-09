@@ -23,13 +23,14 @@
     const loadBtn  = widget.querySelector('.sj-summary__load-btn')
     const loadMore = widget.querySelector('.sj-summary__loadmore')
     const modal    = document.getElementById(uid + '-modal')
+    const searchInput = widget.querySelector('.sj-search__input')
 
     if (!reviews) return
 
     // État des filtres (en cours d'édition dans modal)
     const pending = { rating: null, period: null, language: null, travel: null }
     // État appliqué
-    const active  = { rating: null, period: null, language: null, travel: null, sort: 'recent' }
+    const active  = { rating: null, period: null, language: null, travel: null, sort: 'recent', search: '' }
 
     /* ── Troncature par mots ─────────────────────────────────────────────── */
     reviews.querySelectorAll('.sj-card__text').forEach(p => {
@@ -77,6 +78,14 @@
       if (resetBtn) {
         resetBtn.addEventListener('click', function () {
           resetAll()
+          applyFilters()
+        })
+      }
+
+      // Recherche
+      if (searchInput) {
+        searchInput.addEventListener('input', function () {
+          active.search = this.value.trim().toLowerCase()
           applyFilters()
         })
       }
@@ -172,7 +181,18 @@
       const cards = Array.from(reviews.querySelectorAll('.sj-card'))
 
       cards.forEach(card => {
+        let searchMatch = true
+        if (active.search) {
+          const q = active.search
+          const cardText = [
+            card.querySelector('.sj-card__author-name')?.textContent || '',
+            card.querySelector('.sj-card__title')?.textContent || '',
+            card.querySelector('.sj-card__text')?.dataset.full || card.querySelector('.sj-card__text')?.textContent || '',
+          ].join(' ').toLowerCase()
+          searchMatch = cardText.includes(q)
+        }
         const pass =
+          searchMatch &&
           (!active.rating   || card.dataset.rating   === active.rating)   &&
           (!active.period   || card.dataset.period   === active.period)   &&
           (!active.language || card.dataset.language === active.language) &&
@@ -182,7 +202,7 @@
 
       sortCards()
 
-      const anyFilter = active.rating || active.period || active.language || active.travel
+      const anyFilter = active.rating || active.period || active.language || active.travel || active.search
 
       if (!anyFilter && !allLoaded) {
         cards.forEach((c, i) => {
@@ -225,8 +245,10 @@
 
     function resetAll() {
       active.rating = active.period = active.language = active.travel = null
+      active.search = ''
       pending.rating = pending.period = pending.language = pending.travel = null
       allLoaded = false
+      if (searchInput) searchInput.value = ''
     }
 
     function updateBadges(anyFilter) {
