@@ -250,7 +250,7 @@ class RestApi {
             'orderby'        => 'date',
             'order'          => 'DESC',
         ]);
-        $recent = array_map(fn($p) => sj_normalize_review($p), $recent_posts);
+        $recent = array_map(fn($p) => sj_normalize_review($p, true), $recent_posts);
 
         return rest_ensure_response([
             'total'        => $total,
@@ -316,7 +316,7 @@ class RestApi {
         }
 
         $query   = new \WP_Query($args);
-        $reviews = array_map(fn($p) => sj_normalize_review($p), $query->posts);
+        $reviews = array_map(fn($p) => sj_normalize_review($p, true), $query->posts);
 
         // Batch: compter les contributions par email
         $emails_in_page = array_filter(array_column($reviews, 'customer_email'));
@@ -357,7 +357,7 @@ class RestApi {
         if (!$post || $post->post_type !== 'sj_avis') {
             return new \WP_Error('not_found', 'Avis introuvable.', ['status' => 404]);
         }
-        return rest_ensure_response(sj_normalize_review($post));
+        return rest_ensure_response(sj_normalize_review($post, true));
     }
 
     // ── Create review ─────────────────────────────────────────────────────────
@@ -375,7 +375,7 @@ class RestApi {
         if (is_wp_error($post_id)) return $post_id;
 
         $this->save_meta($post_id, $data);
-        return rest_ensure_response(sj_normalize_review(get_post($post_id)));
+        return rest_ensure_response(sj_normalize_review(get_post($post_id), true));
     }
 
     // ── Update review ─────────────────────────────────────────────────────────
@@ -392,7 +392,7 @@ class RestApi {
         wp_update_post(['ID' => $post->ID, 'post_title' => $data['author']]);
         $this->save_meta($post->ID, $data);
 
-        return rest_ensure_response(sj_normalize_review(get_post($post->ID)));
+        return rest_ensure_response(sj_normalize_review(get_post($post->ID), true));
     }
 
     // ── Delete review ─────────────────────────────────────────────────────────

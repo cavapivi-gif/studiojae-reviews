@@ -392,18 +392,18 @@ class SummaryShortcode {
          data-summary="<?php echo esc_attr($uid); ?>"
          aria-live="polite">
         <?php
-        // Contributions par email
-        $email_counts = [];
+        // Contributions par reviewer (via hash anonyme, email non exposé en front)
+        $hash_counts = [];
         foreach ($reviews as $rv2) {
-            $e = $rv2['customer_email'] ?? '';
-            if ($e) $email_counts[$e] = ($email_counts[$e] ?? 0) + 1;
+            $h = $rv2['customer_hash'] ?? '';
+            if ($h) $hash_counts[$h] = ($hash_counts[$h] ?? 0) + 1;
         }
         ?>
         <?php foreach ($reviews as $idx => $rv):
             $period = $this->get_period($rv['visit_date'] ?? '');
             $hidden = $idx >= (int) $a['reviews_initial'] ? ' sj-card--overflow' : '';
-            $email = $rv['customer_email'] ?? '';
-            $contribs = ($email && isset($email_counts[$email])) ? $email_counts[$email] : 1;
+            $hash   = $rv['customer_hash'] ?? '';
+            $contribs = ($hash && isset($hash_counts[$hash])) ? $hash_counts[$hash] : 1;
         ?>
         <article class="sj-card<?php echo esc_attr($hidden); ?>"
                  data-rating="<?php echo esc_attr($rv['rating']); ?>"

@@ -61,7 +61,7 @@ function sj_stars_html(int $rating, int $max = 5, string $color = '#f5a623'): st
  * @param array $args  WP_Query args supplémentaires.
  * @return array  Tableau de tableaux normalisés.
  */
-function sj_get_reviews(array $args = []): array {
+function sj_get_reviews(array $args = [], bool $private = false): array {
     $defaults = [
         'post_type'      => 'sj_avis',
         'post_status'    => 'publish',
@@ -73,7 +73,7 @@ function sj_get_reviews(array $args = []): array {
 
     $reviews = [];
     foreach ($query->posts as $post) {
-        $reviews[] = sj_normalize_review($post);
+        $reviews[] = sj_normalize_review($post, $private);
     }
     return $reviews;
 }
@@ -83,9 +83,10 @@ function sj_get_reviews(array $args = []): array {
  * qu'ACF soit actif ou non.
  *
  * @param WP_Post $post
+ * @param bool    $private Inclure les données PII (email brut). Faux par défaut → front-end safe.
  * @return array
  */
-function sj_normalize_review(\WP_Post $post): array {
+function sj_normalize_review(\WP_Post $post, bool $private = false): array {
     $get = fn(string $key) => function_exists('get_field')
         ? get_field($key, $post->ID)
         : get_post_meta($post->ID, $key, true);
@@ -156,7 +157,13 @@ function sj_normalize_review(\WP_Post $post): array {
         'visit_date'    => (string) ($get('avis_visit_date')   ?: ''),
         'language'      => (string) ($get('avis_language')     ?: 'fr'),
         'travel_type'   => (string) ($get('avis_travel_type')  ?: ''),
-        'customer_email' => (string) ($get('avis_customer_email') ?: ''),
+        // PII : email brut uniquement en contexte privé (admin/REST authentifié).
+        // En front, utiliser customer_hash pour dédoublonner sans exposer l'email.
+        'customer_email' => $private ? (string) ($get('avis_customer_email') ?: '') : '',
+        'customer_hash'  => (function() use ($get): string {
+            $e = strtolower(trim((string) ($get('avis_customer_email') ?: '')));
+            return $e ? md5($e) : '';
+        })(),
     ];
 }
 
