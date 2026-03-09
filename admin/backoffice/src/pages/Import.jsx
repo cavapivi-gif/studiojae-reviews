@@ -25,19 +25,18 @@ const SJ_FIELDS = [
 
 // Auto-détection des colonnes CSV
 // IMPORTANT : ordre du plus spécifique au plus générique.
-// Les règles les plus précises doivent passer avant 'product' car ses patterns
-// ('excursion', 'service') peuvent matcher des en-têtes de colonnes d'avis
-// comme "Commentaire de l'excursion" ou "Avis sur le service".
+// Les règles avec `required` n'activent que si TOUS les mots requis sont présents dans l'en-tête.
+// Ex: "Résumé de l'évaluation" contient 'évaluation' mais PAS 'date' → ne match pas eval_date.
 const AUTO_DETECT_RULES = [
   { patterns: ['email', 'mail', 'courriel'], field: 'email' },
   { patterns: ['phone', 'téléphone', 'telephone', 'mobile'], field: 'phone' },
-  { patterns: ['note', 'rating', 'étoile', 'star', 'score'], field: 'rating' },
   { patterns: ['commande', 'order', 'n°', 'numéro', 'numero', 'booking_id'], field: 'order_id' },
-  { patterns: ['réservation', 'reservation', 'booking_date', 'date réservation'], field: 'booking_date' },
-  { patterns: ['évènement', 'evenement', 'event', 'visite', 'visit'], field: 'visit_date' },
-  { patterns: ['évaluation', 'evaluation', 'eval_date', 'date avis', 'submitted'], field: 'eval_date' },
+  { required: ['date'], patterns: ['réservation', 'reservation', 'booking'], field: 'booking_date' },
+  { required: ['date'], patterns: ['évènement', 'evenement', 'visite', 'event'], field: 'visit_date' },
+  { required: ['date'], patterns: ['évaluation', 'evaluation', 'avis', 'submitted', 'eval'], field: 'eval_date' },
   { patterns: ['nom', 'name', 'auteur', 'author', 'prénom'], field: 'author' },
   { patterns: ['résumé', 'resume', 'summary', 'titre', 'title'], field: 'title' },
+  { patterns: ['note', 'rating', 'étoile', 'star', 'score', 'évaluation', 'evaluation'], field: 'rating' },
   { patterns: ['texte', 'text', 'commentaire', 'comment', 'avis', 'review'], field: 'text' },
   // En dernier : product contient des patterns génériques ('excursion', 'service')
   // qui pourraient matcher des colonnes de type commentaire/avis
@@ -47,43 +46,67 @@ const AUTO_DETECT_RULES = [
 function detectField(header) {
   const h = header.toLowerCase().trim()
   for (const rule of AUTO_DETECT_RULES) {
+    if (rule.required && !rule.required.every(r => h.includes(r))) continue
     if (rule.patterns.some(p => h.includes(p))) return rule.field
   }
   return '_ignore'
 }
 
 /* ── Helpers CSV ─────────────────────────────────────────────────── */
+// Parser RFC 4180 complet : gère les champs multi-lignes entre guillemets.
+// Ne pré-découpe PAS sur \n — parcourt le texte caractère par caractère
+// pour maintenir l'état inQuotes entre les sauts de ligne.
 function parseCSV(text) {
-  const lines = text.trim().split(/\r?\n/)
-  if (lines.length < 2) return null
-
-  // Détecte le séparateur (virgule, point-virgule, tabulation)
-  const firstLine = lines[0]
+  // Détecte le séparateur sur la première ligne (avant tout parsing)
+  const firstNewline = text.indexOf('\n')
+  const firstLine = (firstNewline >= 0 ? text.slice(0, firstNewline) : text).replace(/\r$/, '').trim()
   const sep = firstLine.includes(';') ? ';' : firstLine.includes('\t') ? '\t' : ','
 
-  const parseRow = (line) => {
-    const result = []
-    let current = ''
-    let inQuotes = false
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i]
+  const rows = []
+  let row = []
+  let current = ''
+  let inQuotes = false
+
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]
+
+    if (inQuotes) {
       if (c === '"') {
-        inQuotes = !inQuotes
-      } else if (c === sep && !inQuotes) {
-        result.push(current.trim())
+        // Guillemet doublé = guillemet littéral
+        if (text[i + 1] === '"') { current += '"'; i++; }
+        else inQuotes = false
+      } else if (c === '\r') {
+        // ignore \r inside quoted field
+      } else {
+        current += c  // newline inclus dans le champ
+      }
+    } else {
+      if (c === '"') {
+        inQuotes = true
+      } else if (c === sep) {
+        row.push(current.trim())
         current = ''
+      } else if (c === '\r') {
+        // ignore \r outside quotes
+      } else if (c === '\n') {
+        row.push(current.trim())
+        current = ''
+        // N'ajoute la ligne que si elle contient au moins une cellule non vide
+        if (row.some(cell => cell !== '')) rows.push(row)
+        row = []
       } else {
         current += c
       }
     }
-    result.push(current.trim())
-    return result
+  }
+  // Dernière ligne sans \n final
+  if (current || row.length > 0) {
+    row.push(current.trim())
+    if (row.some(cell => cell !== '')) rows.push(row)
   }
 
-  const headers = parseRow(lines[0])
-  const rows = lines.slice(1).filter(l => l.trim()).map(parseRow)
-
-  return { headers, rows, sep }
+  if (rows.length < 2) return null
+  return { headers: rows[0], rows: rows.slice(1), sep }
 }
 
 function mapRowToSJ(rawRow, headers, columnMap) {
