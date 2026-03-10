@@ -569,10 +569,10 @@ class RestApi {
         );
         // phpcs:enable
 
-        // Merge into unified data points
-        $points = [];
+        // Merge DB rows into a keyed map
+        $data_map = [];
         foreach ($count_rows as $row) {
-            $points[$row->date_key] = [
+            $data_map[$row->date_key] = [
                 'date'    => $row->date_key,
                 'count'   => (int) $row->cnt,
                 'avg'     => 0,
@@ -580,20 +580,74 @@ class RestApi {
             ];
         }
         foreach ($avg_rows as $row) {
-            if (isset($points[$row->date_key])) {
-                $points[$row->date_key]['avg'] = round((float) $row->avg_rating, 2);
+            if (isset($data_map[$row->date_key])) {
+                $data_map[$row->date_key]['avg'] = round((float) $row->avg_rating, 2);
             }
         }
         foreach ($source_rows as $row) {
-            if (isset($points[$row->date_key])) {
-                $points[$row->date_key]['sources'][$row->source] = (int) $row->cnt;
+            if (isset($data_map[$row->date_key])) {
+                $data_map[$row->date_key]['sources'][$row->source] = (int) $row->cnt;
             }
         }
 
+        // Gap-fill: generate all expected buckets so charts don't have misleading jumps
+        $points = $this->fill_trend_gaps($data_map, $period, $granularity);
+
         return rest_ensure_response([
             'granularity' => $granularity,
-            'points'      => array_values($points),
+            'points'      => $points,
         ]);
+    }
+
+    /**
+     * Fill time gaps with zero-count entries so charts render continuous axes.
+     */
+    private function fill_trend_gaps(array $data_map, string $period, string $granularity): array {
+        if (empty($data_map)) {
+            return [];
+        }
+
+        $empty_point = fn(string $key) => ['date' => $key, 'count' => 0, 'avg' => 0, 'sources' => []];
+
+        // Determine date range
+        switch ($period) {
+            case '7d':  $start = strtotime('-7 days'); break;
+            case '30d': $start = strtotime('-30 days'); break;
+            case '90d': $start = strtotime('-90 days'); break;
+            case '12m': $start = strtotime('-12 months'); break;
+            default:    $start = strtotime('-12 months'); break;
+        }
+
+        $all_keys = [];
+        $current  = new \DateTime(gmdate('Y-m-d', $start));
+        $end      = new \DateTime();
+
+        if ($granularity === 'day') {
+            while ($current <= $end) {
+                $all_keys[] = $current->format('Y-m-d');
+                $current->modify('+1 day');
+            }
+        } elseif ($granularity === 'week') {
+            // Align to ISO week start (Monday)
+            $current->modify('monday this week');
+            while ($current <= $end) {
+                $all_keys[] = $current->format('Y') . '-W' . $current->format('W');
+                $current->modify('+7 days');
+            }
+        } else {
+            // month
+            $current->modify('first day of this month');
+            while ($current <= $end) {
+                $all_keys[] = $current->format('Y-m');
+                $current->modify('+1 month');
+            }
+        }
+
+        $points = [];
+        foreach ($all_keys as $key) {
+            $points[] = $data_map[$key] ?? $empty_point($key);
+        }
+        return $points;
     }
 
     // ── Dashboard season comparison ─────────────────────────────────────────
