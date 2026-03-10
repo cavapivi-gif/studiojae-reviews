@@ -45,10 +45,13 @@
     var active  = { rating: null, period: null, language: null, travel: null, sort: 'recent', search: '' }
 
     // AJAX state
-    var currentPage   = 1
-    var totalFound    = parseInt(widget.dataset.totalReviews, 10) || 0
-    var ajaxLoading   = false
-    var searchTimer   = null
+    var currentPage     = 1
+    var totalFound      = parseInt(widget.dataset.totalReviews, 10) || 0
+    var ajaxLoading     = false
+    var searchTimer     = null
+    var filtersActive   = false   // true when any filter is applied
+    var filteredTotal   = 0       // total matching filtered results
+    var filteredPage    = 1       // current page within filtered results
 
     /* ── Troncature par mots ─────────────────────────────────────────────── */
     function truncateCards(container) {
@@ -222,14 +225,11 @@
     /* ── AJAX Load More ──────────────────────────────────────────────────── */
     if (loadBtn) {
       loadBtn.addEventListener('click', function () {
-        var anyFilter = active.rating || active.period || active.language || active.travel || active.search
-        if (anyFilter) {
-          // When filters active, client-side reveal remaining
-          reviews.querySelectorAll('.sj-card--overflow').forEach(function (c) { c.classList.remove('sj-card--overflow') })
-          if (loadMore) loadMore.hidden = true
-          return
+        if (filtersActive) {
+          loadNextFilteredPage()
+        } else {
+          loadNextPage()
         }
-        loadNextPage()
       })
     }
 
@@ -266,8 +266,6 @@
             reviews.insertAdjacentHTML('beforeend', card)
           })
           // Initialize new cards
-          var newCards = reviews.querySelectorAll('.sj-card:not([data-init])')
-          newCards.forEach(function (c) { c.setAttribute('data-init', '1') })
           truncateCards(reviews)
           bindCardMoreButtons(reviews)
 
@@ -298,19 +296,22 @@
       var anyFilter = active.rating || active.period || active.language || active.travel || active.search
 
       if (anyFilter) {
-        // Use AJAX to fetch filtered results from backend
-        fetchFilteredReviews()
+        filtersActive = true
+        filteredPage = 1
+        fetchFilteredReviews(true) // true = replace all cards (page 1)
       } else {
-        // No filter: show server-rendered cards with overflow logic
+        filtersActive = false
+        // No filter: re-fetch page 1 from server
         showServerCards()
       }
 
       updateBadges(anyFilter)
     }
 
-    function fetchFilteredReviews() {
+    function buildFilterParams(page) {
       var params = new URLSearchParams({
-        per_page: 200,
+        page: page,
+        per_page: initial,
         sort: active.sort,
         lieu_id: ajaxParams.lieu_id,
         lieu_ids: ajaxParams.lieu_ids,
@@ -321,36 +322,73 @@
       if (active.language) params.set('language', active.language)
       if (active.travel)   params.set('travel', active.travel)
       if (active.search)   params.set('search', active.search)
+      return params
+    }
+
+    function fetchFilteredReviews(replaceAll) {
+      if (ajaxLoading) return
+      ajaxLoading = true
+
+      var params = buildFilterParams(replaceAll ? 1 : filteredPage + 1)
 
       reviews.classList.add('sj-summary__reviews--loading')
-      if (loadMore) loadMore.hidden = true
+      if (loadBtn) loadBtn.disabled = true
 
       fetch(restUrl + 'front/reviews?' + params.toString(), {
         headers: nonce ? { 'X-WP-Nonce': nonce } : {}
       })
-        .then(function (res) { return res.json() })
+        .then(function (res) {
+          filteredTotal = parseInt(res.headers.get('X-WP-Total'), 10) || 0
+          return res.json()
+        })
         .then(function (data) {
           if (!Array.isArray(data)) return
-          // Replace all cards with filtered results
-          reviews.innerHTML = ''
+
+          if (replaceAll) {
+            // Replace all cards (first page of filtered results)
+            reviews.innerHTML = ''
+            filteredPage = 1
+          } else {
+            filteredPage++
+          }
+
           data.forEach(function (r) {
             reviews.insertAdjacentHTML('beforeend', buildCardHtml(r))
           })
           truncateCards(reviews)
           bindCardMoreButtons(reviews)
-          if (data.length === 0) {
+
+          if (replaceAll && data.length === 0) {
             reviews.innerHTML = '<p class="sj-summary--empty">Aucun avis ne correspond à vos critères.</p>'
+            if (loadMore) loadMore.hidden = true
+          } else {
+            // Show/hide load more based on filtered total
+            var totalLoaded = reviews.querySelectorAll('.sj-card').length
+            var remaining = filteredTotal - totalLoaded
+            if (remaining > 0) {
+              updateLoadMoreCount(remaining)
+            } else {
+              if (loadMore) loadMore.hidden = true
+            }
           }
         })
         .catch(function () {})
         .finally(function () {
           reviews.classList.remove('sj-summary__reviews--loading')
+          ajaxLoading = false
+          if (loadBtn) loadBtn.disabled = false
         })
+    }
+
+    function loadNextFilteredPage() {
+      fetchFilteredReviews(false) // false = append (next page)
     }
 
     function showServerCards() {
       // Re-fetch from page 1 (reset to server state)
-      // For simplicity, reload initial page
+      if (ajaxLoading) return
+      ajaxLoading = true
+
       var params = new URLSearchParams({
         per_page: initial,
         sort: active.sort,
@@ -383,18 +421,18 @@
         .catch(function () {})
         .finally(function () {
           reviews.classList.remove('sj-summary__reviews--loading')
+          ajaxLoading = false
         })
     }
 
     // Initialize load more count from server-rendered data
     var serverCardCount = reviews.querySelectorAll('.sj-card').length
-    var overflowCount   = reviews.querySelectorAll('.sj-card--overflow').length
     if (totalFound === 0) {
-      totalFound = serverCardCount + overflowCount
+      totalFound = serverCardCount
     }
     // Fix initial count display
     if (loadMore) {
-      var remainingInit = totalFound - initial
+      var remainingInit = totalFound - serverCardCount
       if (remainingInit > 0) {
         updateLoadMoreCount(remainingInit)
       }
@@ -405,6 +443,7 @@
       active.search = ''
       pending.rating = pending.period = pending.language = pending.travel = null
       if (searchInput) searchInput.value = ''
+      filtersActive = false
     }
 
     function updateBadges(anyFilter) {
@@ -483,7 +522,7 @@
     }
 
     function buildBubblesHtml(rating) {
-      var html = '<div class="sj-summary__bubbles" aria-label="' + rating + ' sur 5">'
+      var html = '<div class="sj-summary__bubbles sj-summary__bubbles--sm" aria-label="' + rating + ' sur 5">'
       for (var i = 1; i <= 5; i++) {
         var fill = Math.min(1, Math.max(0, rating - (i - 1)))
         var cls = fill >= 0.75 ? 'full' : (fill >= 0.25 ? 'half' : 'empty')

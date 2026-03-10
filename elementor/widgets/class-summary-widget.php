@@ -298,6 +298,21 @@ class SummaryWidget extends Widget_Base {
             'selectors'  => ['{{WRAPPER}} .sj-summary' => 'padding: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};'],
         ]);
 
+        $this->add_responsive_control('widget_max_width', [
+            'label'      => __('Largeur max.', 'sj-reviews'),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => ['px', '%', 'vw'],
+            'range'      => [
+                'px' => ['min' => 200, 'max' => 1600, 'step' => 10],
+                '%'  => ['min' => 10, 'max' => 100],
+                'vw' => ['min' => 10, 'max' => 100],
+            ],
+            'selectors'  => [
+                '{{WRAPPER}} .sj-summary' => 'max-width: {{SIZE}}{{UNIT}}; margin-left: auto; margin-right: auto;',
+            ],
+            'separator' => 'before',
+        ]);
+
         $this->end_controls_section();
 
         /* ── Style : En-tête & Score ────────────────────────────────── */

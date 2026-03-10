@@ -73,6 +73,9 @@ class SummaryShortcode {
             'lieu_ids'             => '',
             'score_layout'         => 'default',
             'show_search'          => '0',
+            'max_width'            => '',
+            'max_width_tablet'     => '',
+            'max_width_mobile'     => '',
         ], $atts, 'sj_summary');
 
         $lieu_id  = $this->resolve_lieu($a['lieu_id']);
@@ -294,7 +297,21 @@ class SummaryShortcode {
         $uid = 'sj-' . wp_unique_id();
         ob_start();
         ?>
-<div class="sj-summary" id="<?php echo esc_attr($uid); ?>"
+<?php
+// Container width inline style
+$container_style = '';
+if (!empty($a['max_width'])) {
+    $container_style .= '--sj-max-width:' . esc_attr($a['max_width']) . ';';
+}
+if (!empty($a['max_width_tablet'])) {
+    $container_style .= '--sj-max-width-tablet:' . esc_attr($a['max_width_tablet']) . ';';
+}
+if (!empty($a['max_width_mobile'])) {
+    $container_style .= '--sj-max-width-mobile:' . esc_attr($a['max_width_mobile']) . ';';
+}
+?>
+<div class="sj-summary<?php echo $container_style ? ' sj-summary--has-max-width' : ''; ?>" id="<?php echo esc_attr($uid); ?>"
+     <?php if ($container_style): ?>style="<?php echo $container_style; ?>"<?php endif; ?>
      data-initial="<?php echo esc_attr((int) $a['reviews_initial']); ?>"
      data-words="<?php echo esc_attr((int)$a['text_words']); ?>"
      data-total-reviews="<?php echo esc_attr($stats['total']); ?>"
@@ -444,6 +461,18 @@ class SummaryShortcode {
     <div class="sj-filters__active" aria-live="polite" hidden>
         <button type="button" class="sj-filters__reset">Réinitialiser <span class="sj-filters__active-count"></span></button>
     </div>
+
+    <?php if ($a['show_search'] !== '0'): ?>
+    <!-- Recherche inline dans la barre -->
+    <div class="sj-search__wrap sj-search__wrap--inline">
+        <svg class="sj-search__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="search"
+               class="sj-search__input"
+               placeholder="<?php esc_attr_e('Rechercher un avis…', 'sj-reviews'); ?>"
+               aria-label="<?php esc_attr_e('Rechercher dans les avis', 'sj-reviews'); ?>"
+               data-summary="<?php echo esc_attr($uid); ?>">
+    </div>
+    <?php endif; ?>
 </div>
 
 <!-- Modal filtres -->
@@ -540,18 +569,6 @@ class SummaryShortcode {
 </div>
 <?php endif; ?>
 
-    <?php if ($show_reviews && $a['show_search'] !== '0'): ?>
-<div class="sj-summary__search">
-    <div class="sj-search__wrap">
-        <svg class="sj-search__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="search"
-               class="sj-search__input"
-               placeholder="<?php esc_attr_e('Rechercher un avis…', 'sj-reviews'); ?>"
-               aria-label="<?php esc_attr_e('Rechercher dans les avis', 'sj-reviews'); ?>"
-               data-summary="<?php echo esc_attr($uid); ?>">
-    </div>
-</div>
-<?php endif; ?>
 
     <?php if ($show_reviews): ?>
     <!-- ══ SECTION 4 : CARDS D'AVIS ══════════════════════════════════════════ -->

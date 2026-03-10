@@ -523,6 +523,13 @@
     text-align: center;
   }
 
+  .sj-search__wrap--inline {
+    flex: 1 1 100%;
+    max-width: 100%;
+    margin-left: 0;
+    order: 10;
+  }
+
   .sj-card {
     padding: 14px 16px;
   }
@@ -541,7 +548,7 @@
     padding: 12px 20px;
   }
 
-  .sj-search__wrap {
+  .sj-search__wrap:not(.sj-search__wrap--inline) {
     max-width: 100%;
   }
 }
@@ -731,10 +738,10 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  border: 1.5px solid var(--sj-dot-color, #22c55e);
+  border: 1.5px solid var(--sj-dot-color, #34d399);
   background: transparent;
 }
-.sj-filter-modal__dot--full { background: var(--sj-dot-color, #22c55e); }
+.sj-filter-modal__dot--full { background: var(--sj-dot-color, #34d399); }
 .sj-filter-modal__dot-count { font-size: 13px; font-weight: 600; margin-left: 2px; }
 /* Pills ─────────────────────────────────────────────────────────────────── */
 .sj-filter-modal__pills {
@@ -913,16 +920,38 @@ body.sj-modal-open { overflow: hidden; }
   }
 }
 
-/* ── Barre de recherche (shadcn-like) ────────────────────────── */
-.sj-summary__search {
-  margin-bottom: 16px;
+/* ── Container max-width ──────────────────────────────────────── */
+.sj-summary--has-max-width {
+  max-width: var(--sj-max-width, none);
+  margin-left: auto;
+  margin-right: auto;
 }
 
+@media (max-width: 1024px) {
+  .sj-summary--has-max-width {
+    max-width: var(--sj-max-width-tablet, var(--sj-max-width, none));
+  }
+}
+
+@media (max-width: 600px) {
+  .sj-summary--has-max-width {
+    max-width: var(--sj-max-width-mobile, var(--sj-max-width-tablet, var(--sj-max-width, none)));
+  }
+}
+
+/* ── Barre de recherche (shadcn-like) ────────────────────────── */
 .sj-search__wrap {
   position: relative;
   display: flex;
   align-items: center;
   max-width: 480px;
+}
+
+/* Inline variant inside filterbar */
+.sj-search__wrap--inline {
+  margin-left: auto;
+  flex: 0 1 260px;
+  max-width: 260px;
 }
 
 .sj-search__icon {
