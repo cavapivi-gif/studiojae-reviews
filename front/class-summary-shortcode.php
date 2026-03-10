@@ -76,8 +76,10 @@ class SummaryShortcode {
         ], $atts, 'sj_summary');
 
         $lieu_id  = $this->resolve_lieu($a['lieu_id']);
-        $reviews  = $this->get_reviews($lieu_id, $a);
-        $stats    = $this->compute_stats($reviews);
+        $initial  = max(1, (int) $a['reviews_initial']);
+
+        // Compute stats from ALL reviews via SQL (accurate count/avg)
+        $stats = $this->compute_stats_sql($lieu_id, $a);
 
         if (empty($stats) || $stats['total'] === 0) {
             return '<div class="sj-summary sj-summary--empty"><p>'
@@ -85,7 +87,10 @@ class SummaryShortcode {
                 . '</p></div>';
         }
 
-        return $this->render_html($reviews, $stats, $a);
+        // Only load initial cards for server render (rest loaded via AJAX)
+        $reviews = $this->get_reviews($lieu_id, $a, $initial);
+
+        return $this->render_html($reviews, $stats, $a, $lieu_id);
     }
 
     // ── Résolution du lieu ────────────────────────────────────────────────────
@@ -118,11 +123,11 @@ class SummaryShortcode {
 
     // ── Récupération des avis ─────────────────────────────────────────────────
 
-    private function get_reviews(string $lieu_id, array $a = []): array {
+    private function get_reviews(string $lieu_id, array $a = [], int $limit = 200): array {
         $args = [
             'post_type'      => 'sj_avis',
             'post_status'    => 'publish',
-            'posts_per_page' => 200,
+            'posts_per_page' => $limit,
             'no_found_rows'  => true,
             'orderby'        => 'date',
             'order'          => 'DESC',
@@ -205,9 +210,87 @@ class SummaryShortcode {
         return compact('total', 'avg', 'distribution', 'criteria_avgs');
     }
 
+    /**
+     * Compute stats from ALL reviews via SQL — not limited by posts_per_page.
+     * This ensures the header score, count, and distribution are always accurate.
+     */
+    private function compute_stats_sql(string $lieu_id, array $a): array {
+        global $wpdb;
+
+        // Build WHERE conditions for lieu/source filters
+        $joins  = '';
+        $wheres = "AND p.post_type = 'sj_avis' AND p.post_status = 'publish'";
+
+        if (!empty($a['lieu_ids'])) {
+            $lieux = array_filter(array_map('trim', explode(',', $a['lieu_ids'])));
+            if (!empty($lieux)) {
+                $joins  .= " INNER JOIN {$wpdb->postmeta} pm_lieu ON pm_lieu.post_id = p.ID AND pm_lieu.meta_key = 'avis_lieu_id'";
+                $in = implode(',', array_map(fn($l) => $wpdb->prepare('%s', $l), $lieux));
+                $wheres .= " AND pm_lieu.meta_value IN ({$in})";
+            }
+        } elseif ($lieu_id && $lieu_id !== 'all') {
+            $joins  .= " INNER JOIN {$wpdb->postmeta} pm_lieu ON pm_lieu.post_id = p.ID AND pm_lieu.meta_key = 'avis_lieu_id'";
+            $wheres .= $wpdb->prepare(" AND pm_lieu.meta_value = %s", $lieu_id);
+        }
+
+        if (!empty($a['source_filter'])) {
+            $sources = array_filter(array_map('trim', explode(',', $a['source_filter'])));
+            if (!empty($sources)) {
+                $joins  .= " INNER JOIN {$wpdb->postmeta} pm_src ON pm_src.post_id = p.ID AND pm_src.meta_key = 'avis_source'";
+                $in = implode(',', array_map(fn($s) => $wpdb->prepare('%s', $s), $sources));
+                $wheres .= " AND pm_src.meta_value IN ({$in})";
+            }
+        }
+
+        // Total + average
+        $row = $wpdb->get_row(
+            "SELECT COUNT(*) AS total, AVG(CAST(pm_r.meta_value AS DECIMAL(3,1))) AS avg_rating
+             FROM {$wpdb->posts} p
+             INNER JOIN {$wpdb->postmeta} pm_r ON pm_r.post_id = p.ID AND pm_r.meta_key = 'avis_rating'
+             {$joins}
+             WHERE 1=1 {$wheres}"
+        );
+
+        $total = (int) ($row->total ?? 0);
+        $avg   = round((float) ($row->avg_rating ?? 0), 1);
+
+        if ($total === 0) return [];
+
+        // Distribution
+        $distribution = [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0];
+        $dist_rows = $wpdb->get_results(
+            "SELECT CAST(pm_r.meta_value AS UNSIGNED) AS rating, COUNT(*) AS cnt
+             FROM {$wpdb->posts} p
+             INNER JOIN {$wpdb->postmeta} pm_r ON pm_r.post_id = p.ID AND pm_r.meta_key = 'avis_rating'
+             {$joins}
+             WHERE 1=1 {$wheres}
+             AND pm_r.meta_value BETWEEN '1' AND '5'
+             GROUP BY rating"
+        );
+        foreach ($dist_rows as $dr) {
+            $distribution[(int) $dr->rating] = (int) $dr->cnt;
+        }
+
+        // Sub-criteria averages
+        $criteria_avgs = [];
+        foreach (['qualite_prix', 'ambiance', 'experience', 'paysage'] as $crit) {
+            $crit_row = $wpdb->get_row(
+                "SELECT AVG(CAST(pm_c.meta_value AS DECIMAL(3,1))) AS cavg, COUNT(*) AS cnt
+                 FROM {$wpdb->posts} p
+                 INNER JOIN {$wpdb->postmeta} pm_c ON pm_c.post_id = p.ID AND pm_c.meta_key = 'avis_{$crit}'
+                 {$joins}
+                 WHERE 1=1 {$wheres}
+                 AND pm_c.meta_value BETWEEN '1' AND '5'"
+            );
+            $criteria_avgs[$crit] = ($crit_row && $crit_row->cnt > 0) ? round((float) $crit_row->cavg, 1) : null;
+        }
+
+        return compact('total', 'avg', 'distribution', 'criteria_avgs');
+    }
+
     // ── Rendu HTML global ─────────────────────────────────────────────────────
 
-    private function render_html(array $reviews, array $stats, array $a): string {
+    private function render_html(array $reviews, array $stats, array $a, string $lieu_id = 'all'): string {
         $uid = 'sj-' . wp_unique_id();
         ob_start();
         ?>
@@ -308,17 +391,30 @@ class SummaryShortcode {
     $show_filters  = $a['show_filters']  !== '0';
     $show_reviews  = $a['show_reviews']  !== '0';
 
-    // Collecte les valeurs disponibles pour les pills de filtres
-    $avail_ratings  = array_unique(array_filter(array_column($reviews, 'rating')));
-    rsort($avail_ratings);
-    $avail_langs    = array_unique(array_filter(array_column($reviews, 'language')));
-    $avail_periods  = [];
-    foreach ($reviews as $rv) {
-        if (!empty($rv['visit_date'])) {
-            $m = (int) date('n', strtotime($rv['visit_date']));
-            foreach (self::PERIODS as $slug => $pd) {
-                if (in_array($m, $pd['months'], true)) { $avail_periods[$slug] = $pd['label']; break; }
-            }
+    // Collecte les valeurs disponibles pour les pills de filtres (via SQL — all reviews, not just initial)
+    global $wpdb;
+    $avail_ratings = [5, 4, 3, 2, 1]; // Always show all ratings
+
+    // Available languages
+    $avail_langs = $wpdb->get_col(
+        "SELECT DISTINCT pm.meta_value FROM {$wpdb->postmeta} pm
+         INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+         WHERE pm.meta_key = 'avis_language' AND pm.meta_value != ''
+         AND p.post_type = 'sj_avis' AND p.post_status = 'publish'"
+    );
+
+    // Available periods from visit_date
+    $avail_periods = [];
+    $visit_months = $wpdb->get_col(
+        "SELECT DISTINCT MONTH(pm.meta_value) FROM {$wpdb->postmeta} pm
+         INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+         WHERE pm.meta_key = 'avis_visit_date' AND pm.meta_value != ''
+         AND p.post_type = 'sj_avis' AND p.post_status = 'publish'"
+    );
+    foreach ($visit_months as $vm) {
+        $m = (int) $vm;
+        foreach (self::PERIODS as $slug => $pd) {
+            if (in_array($m, $pd['months'], true)) { $avail_periods[$slug] = $pd['label']; break; }
         }
     }
     ?>
@@ -382,7 +478,12 @@ class SummaryShortcode {
 
             <!-- Type de voyageur -->
             <?php
-            $avail_travel_types = array_unique(array_filter(array_column($reviews, 'travel_type')));
+            $avail_travel_types = $wpdb->get_col(
+                "SELECT DISTINCT pm.meta_value FROM {$wpdb->postmeta} pm
+                 INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+                 WHERE pm.meta_key = 'avis_travel_type' AND pm.meta_value != ''
+                 AND p.post_type = 'sj_avis' AND p.post_status = 'publish'"
+            );
             if (!empty($avail_travel_types)):
             ?>
             <div class="sj-filter-modal__group">
@@ -467,14 +568,12 @@ class SummaryShortcode {
         }
         ?>
         <?php
-        $initial = max(1, (int) ($a['reviews_initial'] ?? 5));
         foreach ($reviews as $idx => $rv):
             $period = $this->get_period($rv['visit_date'] ?? '');
-            $hidden = $idx >= $initial ? ' sj-card--overflow' : '';
             $hash   = $rv['customer_hash'] ?? '';
             $contribs = ($hash && isset($hash_counts[$hash])) ? $hash_counts[$hash] : 1;
         ?>
-        <article class="sj-card<?php echo esc_attr($hidden); ?>"
+        <article class="sj-card"
                  data-rating="<?php echo esc_attr($rv['rating']); ?>"
                  data-language="<?php echo esc_attr($rv['language'] ?: 'fr'); ?>"
                  data-period="<?php echo esc_attr($period); ?>"
@@ -537,7 +636,7 @@ class SummaryShortcode {
 
             <!-- Note + meta visite -->
             <div class="sj-card__rating">
-                <?php echo $this->bubbles_html((float) $rv['rating']); ?>
+                <?php echo $this->bubbles_html((float) $rv['rating'], 'sm'); ?>
                 <?php
                 $meta_parts = [];
                 if (!empty($rv['visit_date'])) {
@@ -614,14 +713,14 @@ class SummaryShortcode {
     </div><!-- /.sj-summary__reviews -->
 
     <!-- ══ SECTION 5 : VOIR PLUS ══════════════════════════════════════════════ -->
-    <?php $hidden_count = max(0, count($reviews) - $initial); ?>
-    <?php if ($hidden_count > 0): ?>
+    <?php $remaining = max(0, $stats['total'] - count($reviews)); ?>
+    <?php if ($remaining > 0): ?>
     <div class="sj-summary__loadmore">
         <button type="button" class="sj-summary__load-btn"
                 data-summary="<?php echo esc_attr($uid); ?>"
                 aria-controls="<?php echo esc_attr($uid); ?>-reviews">
             Voir plus d'avis
-            <span class="sj-summary__load-count">(<?php echo esc_html($hidden_count); ?>)</span>
+            <span class="sj-summary__load-count">(<?php echo esc_html($remaining); ?>)</span>
         </button>
     </div>
     <?php endif; ?>
@@ -720,9 +819,10 @@ class SummaryShortcode {
         return                   'Mauvais';
     }
 
-    private function bubbles_html(float $rating): string {
-        $label = number_format($rating, 1, ',', '') . ' sur 5 bulles';
-        $html  = '<div class="sj-summary__bubbles" aria-label="' . esc_attr($label) . '">';
+    private function bubbles_html(float $rating, string $size = ''): string {
+        $label    = number_format($rating, 1, ',', '') . ' sur 5 bulles';
+        $size_cls = $size ? ' sj-summary__bubbles--' . $size : '';
+        $html     = '<div class="sj-summary__bubbles' . esc_attr($size_cls) . '" aria-label="' . esc_attr($label) . '">';
         for ($i = 1; $i <= 5; $i++) {
             $fill = min(1.0, max(0.0, $rating - ($i - 1)));
             if ($fill >= 0.75)     $cls = 'full';

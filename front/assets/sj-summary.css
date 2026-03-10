@@ -81,6 +81,15 @@
 .sj-summary__bubble--half  { background: linear-gradient(90deg, #34d399 50%, #d1fae5 50%); }
 .sj-summary__bubble--empty { background: #d1fae5; }
 
+/* Small bubbles variant (inside cards) */
+.sj-summary__bubbles--sm .sj-summary__bubble {
+  width: 12px;
+  height: 12px;
+}
+.sj-summary__bubbles--sm {
+  gap: 3px;
+}
+
 /* ── 3. Zone centrale : distribution + sous-critères ─────────── */
 .sj-summary__middle {
   display: grid;
