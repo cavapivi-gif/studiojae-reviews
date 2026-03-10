@@ -269,6 +269,16 @@ class RestApi {
             ],
         ]);
 
+        // Public: aggregate rating data for front-end badge hydration
+        register_rest_route($this->ns, '/front/aggregate', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'front_aggregate'],
+            'permission_callback' => '__return_true',
+            'args'                => [
+                'lieu_id' => ['default' => '', 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field'],
+            ],
+        ]);
+
         // Import Regiondo CSV
         register_rest_route($this->ns, '/import/post-matches', [
             'methods'             => 'GET',
@@ -1036,6 +1046,63 @@ class RestApi {
         'autumn' => [9,10,11],
         'winter' => [12,1,2],
     ];
+
+    public function front_aggregate(\WP_REST_Request $req): \WP_REST_Response {
+        $lieu_id   = sanitize_text_field($req->get_param('lieu_id') ?? '');
+        $all_lieux = \SJ_Reviews\Includes\Settings::lieux();
+
+        $query_args = ['posts_per_page' => -1, 'no_found_rows' => true];
+
+        if ($lieu_id !== '' && $lieu_id !== 'all') {
+            $query_args['meta_query'] = [
+                ['key' => 'avis_lieu_id', 'value' => $lieu_id, 'compare' => '='],
+            ];
+            $matched_lieux = array_filter($all_lieux, fn($l) => ($l['id'] ?? '') === $lieu_id);
+        } else {
+            $matched_lieux = array_filter($all_lieux, fn($l) => !empty($l['active']));
+        }
+
+        $reviews = sj_get_reviews($query_args);
+        $agg     = sj_aggregate($reviews);
+        $avg     = $agg['avg'];
+        $count   = $agg['count'];
+
+        // Platform enrichment — same logic as InlineRatingShortcode
+        foreach ($matched_lieux as $l) {
+            $platform_count  = (int) ($l['reviews_count'] ?? 0);
+            $platform_rating = (float) ($l['rating'] ?? 0);
+            if ($platform_count <= 0 || $platform_rating <= 0) continue;
+
+            $lieu_cpt_count = 0;
+            if (!empty($l['id'])) {
+                global $wpdb;
+                $lieu_cpt_count = (int) $wpdb->get_var($wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$wpdb->posts} p
+                     INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID AND pm.meta_key = 'avis_lieu_id'
+                     WHERE p.post_type = 'sj_avis' AND p.post_status = 'publish'
+                     AND pm.meta_value = %s",
+                    $l['id']
+                ));
+            }
+
+            $extra = max(0, $platform_count - $lieu_cpt_count);
+            if ($extra > 0) {
+                $combined = $count + $extra;
+                $avg   = ($count > 0)
+                    ? round(($avg * $count + $platform_rating * $extra) / $combined, 1)
+                    : round($platform_rating, 1);
+                $count = $combined;
+            }
+        }
+
+        $sources = array_values(array_unique(array_filter(array_column(array_values($matched_lieux), 'source'))));
+
+        return new \WP_REST_Response([
+            'avg'     => round($avg, 1),
+            'count'   => $count,
+            'sources' => $sources,
+        ], 200);
+    }
 
     public function front_reviews(\WP_REST_Request $req): \WP_REST_Response {
         $page     = max(1, (int) $req->get_param('page'));

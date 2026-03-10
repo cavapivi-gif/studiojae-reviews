@@ -152,10 +152,10 @@ class InlineRatingShortcode {
                     . '</span>';
         }
         if ($show_score) {
-            $inner .= '<span class="sj-inline-rating__score">' . esc_html($score_str) . '</span>';
+            $inner .= '<span class="sj-inline-rating__score" data-sj-tpl="{{avg}}/5">' . esc_html($score_str) . '</span>';
         }
         if ($show_count) {
-            $inner .= '<span class="sj-inline-rating__count">sur ' . esc_html($count_str) . ' avis</span>';
+            $inner .= '<span class="sj-inline-rating__count" data-sj-tpl="sur {{count}} avis">sur ' . esc_html($count_str) . ' avis</span>';
         }
         if ($show_sources && $sources_html !== '') {
             $inner .= $sources_html;
@@ -164,7 +164,9 @@ class InlineRatingShortcode {
             $inner .= '<span class="sj-inline-rating__after">' . $text_after . '</span>';
         }
 
-        return '<span class="sj-inline-rating" aria-label="' . $aria_label . '">'
+        $badge_data = esc_attr(wp_json_encode(['lieu_id' => $lieu_id]));
+
+        return '<span class="sj-inline-rating" aria-label="' . $aria_label . '" data-sj-badge="' . $badge_data . '">'
              . $inner
              . '</span>';
     }
