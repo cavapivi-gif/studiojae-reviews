@@ -31,14 +31,19 @@ class RestApi {
     }
 
     public function register_routes(): void {
+        $valid_period = fn($v) => in_array($v, ['all', '7d', '30d', '90d', '12m'], true);
+        $valid_season = fn($v) => in_array($v, ['spring', 'summer', 'autumn', 'winter'], true);
+        $valid_year   = fn($v) => is_numeric($v) && (int) $v >= 2000 && (int) $v <= 2100;
+        $sanitize_key = fn($v) => sanitize_key($v);
+
         register_rest_route($this->ns, '/dashboard', [
             'methods'             => 'GET',
             'callback'            => [$this, 'dashboard'],
             'permission_callback' => [$this, 'is_manager'],
             'args'                => [
-                'period'  => ['default' => 'all', 'type' => 'string'],
-                'source'  => ['default' => '',    'type' => 'string'],
-                'lieu_id' => ['default' => '',    'type' => 'string'],
+                'period'  => ['default' => 'all', 'type' => 'string', 'validate_callback' => $valid_period, 'sanitize_callback' => $sanitize_key],
+                'source'  => ['default' => '',    'type' => 'string', 'sanitize_callback' => $sanitize_key],
+                'lieu_id' => ['default' => '',    'type' => 'string', 'sanitize_callback' => $sanitize_key],
             ],
         ]);
 
@@ -47,9 +52,9 @@ class RestApi {
             'callback'            => [$this, 'dashboard_trends'],
             'permission_callback' => [$this, 'is_manager'],
             'args'                => [
-                'period'  => ['default' => 'all', 'type' => 'string'],
-                'source'  => ['default' => '',    'type' => 'string'],
-                'lieu_id' => ['default' => '',    'type' => 'string'],
+                'period'  => ['default' => 'all', 'type' => 'string', 'validate_callback' => $valid_period, 'sanitize_callback' => $sanitize_key],
+                'source'  => ['default' => '',    'type' => 'string', 'sanitize_callback' => $sanitize_key],
+                'lieu_id' => ['default' => '',    'type' => 'string', 'sanitize_callback' => $sanitize_key],
             ],
         ]);
 
@@ -58,10 +63,10 @@ class RestApi {
             'callback'            => [$this, 'dashboard_compare'],
             'permission_callback' => [$this, 'is_manager'],
             'args'                => [
-                'season1' => ['required' => true, 'type' => 'string'],
-                'year1'   => ['required' => true, 'type' => 'integer'],
-                'season2' => ['required' => true, 'type' => 'string'],
-                'year2'   => ['required' => true, 'type' => 'integer'],
+                'season1' => ['required' => true, 'type' => 'string', 'validate_callback' => $valid_season, 'sanitize_callback' => $sanitize_key],
+                'year1'   => ['required' => true, 'type' => 'integer', 'validate_callback' => $valid_year],
+                'season2' => ['required' => true, 'type' => 'string', 'validate_callback' => $valid_season, 'sanitize_callback' => $sanitize_key],
+                'year2'   => ['required' => true, 'type' => 'integer', 'validate_callback' => $valid_year],
             ],
         ]);
 
@@ -792,6 +797,7 @@ class RestApi {
     // ── List reviews ──────────────────────────────────────────────────────────
 
     public function list_reviews(\WP_REST_Request $req): \WP_REST_Response {
+        global $wpdb;
         $page     = max(1, (int) $req->get_param('page'));
         $per_page = min(100, max(1, (int) $req->get_param('per_page')));
         $search   = sanitize_text_field($req->get_param('search'));
