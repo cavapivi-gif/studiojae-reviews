@@ -344,6 +344,9 @@ class RestApi {
             }
         }
 
+        // Base join: only count reviews that have a source set (harmonize with by_source / donut)
+        $base_join = " INNER JOIN {$wpdb->postmeta} pm_has_src ON pm_has_src.post_id = p.ID AND pm_has_src.meta_key = 'avis_source' AND pm_has_src.meta_value != ''";
+
         // Source filter: JOIN + WHERE on postmeta
         $source_join  = '';
         $source_where = '';
@@ -360,7 +363,7 @@ class RestApi {
             $lieu_where = $wpdb->prepare(" AND pm_flieu.meta_value = %s", $lieu_id);
         }
 
-        return compact('period', 'date_where', 'source_join', 'source_where', 'lieu_join', 'lieu_where');
+        return compact('period', 'date_where', 'base_join', 'source_join', 'source_where', 'lieu_join', 'lieu_where');
     }
 
     public function dashboard(\WP_REST_Request $req): \WP_REST_Response {
@@ -369,7 +372,7 @@ class RestApi {
         $f = $this->build_dashboard_filters($req);
         $period      = $f['period'];
         $date_where  = $f['date_where'];
-        $extra_joins = $f['source_join'] . $f['lieu_join'];
+        $extra_joins = $f['base_join'] . $f['source_join'] . $f['lieu_join'];
         $extra_where = $f['source_where'] . $f['lieu_where'];
         $has_filters = $f['source_where'] || $f['lieu_where'];
 
@@ -602,6 +605,9 @@ class RestApi {
             }
         }
 
+        // Harmonize total with by_source (donut) after enrichment
+        $total = array_sum(array_column($by_source, 'count'));
+
         // Google stat card: use platform totals when available
         $google_total = 0;
         $google_avg   = 0;
@@ -658,7 +664,7 @@ class RestApi {
 
         $f = $this->build_dashboard_filters($req);
         $date_where  = $f['date_where'];
-        $extra_joins = $f['source_join'] . $f['lieu_join'];
+        $extra_joins = $f['base_join'] . $f['source_join'] . $f['lieu_join'];
         $extra_where = $f['source_where'] . $f['lieu_where'];
 
         // Auto granularity: day for ≤30d, week for ≤90d, month otherwise
