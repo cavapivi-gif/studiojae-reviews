@@ -21,23 +21,11 @@ defined('ABSPATH') || exit;
  */
 class SummaryShortcode {
 
-    /** Libellés des types de voyage */
-    private const TRAVEL_LABELS = [
-        'couple'   => 'Couple',
-        'solo'     => 'Solo',
-        'famille'  => 'Famille',
-        'amis'     => 'Entre amis',
-        'affaires' => 'Affaires',
-    ];
+    /** @deprecated Use Labels::TRAVEL_TYPES */
+    private const TRAVEL_LABELS = [];
 
-    /** Libellés des langues */
-    private const LANG_LABELS = [
-        'fr' => 'Français',
-        'en' => 'Anglais',
-        'it' => 'Italien',
-        'de' => 'Allemand',
-        'es' => 'Espagnol',
-    ];
+    /** @deprecated Use Labels::LANGUAGES */
+    private const LANG_LABELS = [];
 
     /** Périodes saisonnières (label => mois) */
     private const PERIODS = [
@@ -254,7 +242,7 @@ class SummaryShortcode {
         // The lieux store the total review count from the platform (e.g. Google says 84 avis)
         // but only some are synced as CPT. We add the difference to the total and compute
         // a weighted average.
-        $all_lieux = (array) get_option('sj_lieux', []);
+        $all_lieux = \SJ_Reviews\Includes\Settings::lieux();
         $matched_lieux = [];
 
         if (!empty($a['lieu_ids'])) {
@@ -367,7 +355,7 @@ if (!empty($a['max_width_mobile'])) {
         <!-- Distribution par étoiles -->
         <div class="sj-summary__distribution">
             <?php
-            $dist_labels = [5=>'Excellent',4=>'Bien',3=>'Moyen',2=>'Médiocre',1=>'Horrible'];
+            $dist_labels = \SJ_Reviews\Includes\Labels::ratings_int();
             $max_dist    = max(1, max($stats['distribution']));
             foreach ($dist_labels as $stars => $dlabel):
                 $count = $stats['distribution'][$stars] ?? 0;
@@ -391,7 +379,7 @@ if (!empty($a['max_width_mobile'])) {
 
     <!-- ══ SECTION 2 : SOUS-CRITÈRES (indépendant, masquable) ════════════ -->
     <?php
-    $crit_labels  = ['qualite_prix'=>'Qualité/prix','ambiance'=>'Ambiance','experience'=>'Expérience','paysage'=>'Paysage'];
+    $crit_labels  = \SJ_Reviews\Includes\Labels::criteria();
     $has_criteria = $a['show_criteria'] !== '0' && array_filter($stats['criteria_avgs'], fn($v) => $v !== null);
     if ($has_criteria):
     ?>
@@ -531,7 +519,7 @@ if (!empty($a['max_width_mobile'])) {
             <div class="sj-filter-modal__group">
                 <p class="sj-filter-modal__group-label">Type de voyageur</p>
                 <div class="sj-filter-modal__pills">
-                    <?php foreach (self::TRAVEL_LABELS as $slug => $label):
+                    <?php foreach (\SJ_Reviews\Includes\Labels::TRAVEL_TYPES as $slug => $label):
                         if (!in_array($slug, $avail_travel_types, true)) continue;
                     ?>
                     <button type="button" class="sj-filter-modal__pill" data-filter="travel" data-value="<?php echo esc_attr($slug); ?>" aria-pressed="false">
@@ -565,7 +553,7 @@ if (!empty($a['max_width_mobile'])) {
                 <div class="sj-filter-modal__pills">
                     <?php foreach ($avail_langs as $lang): ?>
                     <button type="button" class="sj-filter-modal__pill" data-filter="language" data-value="<?php echo esc_attr($lang); ?>" aria-pressed="false">
-                        <?php echo esc_html(self::LANG_LABELS[$lang] ?? strtoupper($lang)); ?>
+                        <?php echo esc_html(\SJ_Reviews\Includes\Labels::LANGUAGES[$lang] ?? strtoupper($lang)); ?>
                     </button>
                     <?php endforeach; ?>
                 </div>
@@ -682,8 +670,8 @@ if (!empty($a['max_width_mobile'])) {
                 if (!empty($rv['visit_date'])) {
                     $meta_parts[] = esc_html(date_i18n('M Y', strtotime($rv['visit_date'])));
                 }
-                if (!empty($rv['travel_type']) && isset(self::TRAVEL_LABELS[$rv['travel_type']])) {
-                    $meta_parts[] = esc_html(self::TRAVEL_LABELS[$rv['travel_type']]);
+                if (!empty($rv['travel_type']) && isset(\SJ_Reviews\Includes\Labels::TRAVEL_TYPES[$rv['travel_type']])) {
+                    $meta_parts[] = esc_html(\SJ_Reviews\Includes\Labels::TRAVEL_TYPES[$rv['travel_type']]);
                 }
                 if (!empty($meta_parts)): ?>
                 <span class="sj-card__meta"><?php echo implode(' · ', $meta_parts); ?></span>
@@ -718,7 +706,7 @@ if (!empty($a['max_width_mobile'])) {
 
             <?php if ($a['show_card_criteria'] !== '0'): ?>
             <?php
-              $crit_labels_card = ['qualite_prix'=>'Qualité/prix','ambiance'=>'Ambiance','experience'=>'Expérience','paysage'=>'Paysage'];
+              $crit_labels_card = $crit_labels; // uses settings-based labels from above
               $has_crit = array_filter(['qualite_prix'=>$rv['qualite_prix'],'ambiance'=>$rv['ambiance'],'experience'=>$rv['experience'],'paysage'=>$rv['paysage']], fn($v)=>$v!==null);
               if (!empty($has_crit)):
             ?>
@@ -784,7 +772,7 @@ if (!empty($a['max_width_mobile'])) {
         ],
     ];
     // Enrich with lieu data if available
-    $schema_lieux = (array) get_option('sj_lieux', []);
+    $schema_lieux = \SJ_Reviews\Includes\Settings::lieux();
     $schema_lieu  = null;
     if ($lieu_id && $lieu_id !== 'all') {
         foreach ($schema_lieux as $_sl) {
@@ -851,12 +839,7 @@ if (!empty($a['max_width_mobile'])) {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private function rating_label(float $avg): string {
-        if ($avg >= 4.5) return 'Excellent';
-        if ($avg >= 4.0) return 'Très bien';
-        if ($avg >= 3.5) return 'Bien';
-        if ($avg >= 3.0) return 'Moyen';
-        if ($avg >= 2.0) return 'Médiocre';
-        return                   'Mauvais';
+        return \SJ_Reviews\Includes\Labels::rating_label($avg);
     }
 
     private function bubbles_html(float $rating, string $size = ''): string {

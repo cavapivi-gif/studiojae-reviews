@@ -40,7 +40,7 @@ class InlineRatingWidget extends SjWidgetBase {
     }
 
     protected function register_controls(): void {
-        $lieux = (array) get_option('sj_lieux', []);
+        $lieux = \SJ_Reviews\Includes\Settings::lieux();
         $opts  = ['' => 'Tous les lieux'];
         foreach ($lieux as $l) {
             $opts[$l['id']] = esc_html(($l['name'] ?? $l['id']) . ' (' . ($l['source'] ?? '') . ')');

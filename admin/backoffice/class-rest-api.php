@@ -269,6 +269,16 @@ class RestApi {
             ],
         ]);
 
+        // Public: aggregate rating data for front-end badge hydration
+        register_rest_route($this->ns, '/front/aggregate', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'front_aggregate'],
+            'permission_callback' => '__return_true',
+            'args'                => [
+                'lieu_id' => ['default' => '', 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field'],
+            ],
+        ]);
+
         // Import Regiondo CSV
         register_rest_route($this->ns, '/import/post-matches', [
             'methods'             => 'GET',
@@ -530,7 +540,7 @@ class RestApi {
         // ── Platform enrichment ──────────────────────────────────────────────
         // Include platform review counts from lieux (Google, Trustpilot, etc.)
         // so dashboard totals match the front-end widgets.
-        $all_lieux   = (array) get_option('sj_lieux', []);
+        $all_lieux   = \SJ_Reviews\Includes\Settings::lieux();
         $lieu_filter = sanitize_key($req->get_param('lieu_id'));
 
         // Determine which lieux to include
@@ -1037,6 +1047,63 @@ class RestApi {
         'winter' => [12,1,2],
     ];
 
+    public function front_aggregate(\WP_REST_Request $req): \WP_REST_Response {
+        $lieu_id   = sanitize_text_field($req->get_param('lieu_id') ?? '');
+        $all_lieux = \SJ_Reviews\Includes\Settings::lieux();
+
+        $query_args = ['posts_per_page' => -1, 'no_found_rows' => true];
+
+        if ($lieu_id !== '' && $lieu_id !== 'all') {
+            $query_args['meta_query'] = [
+                ['key' => 'avis_lieu_id', 'value' => $lieu_id, 'compare' => '='],
+            ];
+            $matched_lieux = array_filter($all_lieux, fn($l) => ($l['id'] ?? '') === $lieu_id);
+        } else {
+            $matched_lieux = array_filter($all_lieux, fn($l) => !empty($l['active']));
+        }
+
+        $reviews = sj_get_reviews($query_args);
+        $agg     = sj_aggregate($reviews);
+        $avg     = $agg['avg'];
+        $count   = $agg['count'];
+
+        // Platform enrichment — same logic as InlineRatingShortcode
+        foreach ($matched_lieux as $l) {
+            $platform_count  = (int) ($l['reviews_count'] ?? 0);
+            $platform_rating = (float) ($l['rating'] ?? 0);
+            if ($platform_count <= 0 || $platform_rating <= 0) continue;
+
+            $lieu_cpt_count = 0;
+            if (!empty($l['id'])) {
+                global $wpdb;
+                $lieu_cpt_count = (int) $wpdb->get_var($wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$wpdb->posts} p
+                     INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID AND pm.meta_key = 'avis_lieu_id'
+                     WHERE p.post_type = 'sj_avis' AND p.post_status = 'publish'
+                     AND pm.meta_value = %s",
+                    $l['id']
+                ));
+            }
+
+            $extra = max(0, $platform_count - $lieu_cpt_count);
+            if ($extra > 0) {
+                $combined = $count + $extra;
+                $avg   = ($count > 0)
+                    ? round(($avg * $count + $platform_rating * $extra) / $combined, 1)
+                    : round($platform_rating, 1);
+                $count = $combined;
+            }
+        }
+
+        $sources = array_values(array_unique(array_filter(array_column(array_values($matched_lieux), 'source'))));
+
+        return new \WP_REST_Response([
+            'avg'     => round($avg, 1),
+            'count'   => $count,
+            'sources' => $sources,
+        ], 200);
+    }
+
     public function front_reviews(\WP_REST_Request $req): \WP_REST_Response {
         $page     = max(1, (int) $req->get_param('page'));
         $per_page = min(50, max(1, (int) $req->get_param('per_page')));
@@ -1394,8 +1461,7 @@ class RestApi {
             return new \WP_Error('no_place_id', 'Ce lieu n\'a pas de Place ID Google.', ['status' => 400]);
         }
 
-        $settings = get_option('sj_reviews_settings', []);
-        $api_key  = $settings['google_api_key'] ?? '';
+        $api_key  = \SJ_Reviews\Includes\Settings::get('google_api_key', '');
         if (empty($api_key)) {
             return new \WP_Error('no_api_key', 'Clé API Google Maps non configurée dans Réglages.', ['status' => 400]);
         }
@@ -1492,8 +1558,7 @@ class RestApi {
             return new \WP_Error('no_domain', 'Ce lieu n\'a pas de domaine Trustpilot configuré.', ['status' => 400]);
         }
 
-        $settings = get_option('sj_reviews_settings', []);
-        $api_key  = $settings['trustpilot_api_key'] ?? '';
+        $api_key  = \SJ_Reviews\Includes\Settings::get('trustpilot_api_key', '');
         if (empty($api_key)) {
             return new \WP_Error('no_api_key', 'Clé API Trustpilot non configurée dans Réglages.', ['status' => 400]);
         }
@@ -1574,8 +1639,7 @@ class RestApi {
             return new \WP_Error('no_location_id', 'Ce lieu n\'a pas de Location ID TripAdvisor configuré.', ['status' => 400]);
         }
 
-        $settings = get_option('sj_reviews_settings', []);
-        $api_key  = $settings['tripadvisor_api_key'] ?? '';
+        $api_key  = \SJ_Reviews\Includes\Settings::get('tripadvisor_api_key', '');
         if (empty($api_key)) {
             return new \WP_Error('no_api_key', 'Clé API TripAdvisor non configurée dans Réglages.', ['status' => 400]);
         }
@@ -1717,23 +1781,22 @@ class RestApi {
             'tripadvisor_api_key' => '',
             'linked_post_types'   => [],
             'sync_frequency'      => 'off',
-            'criteria_labels'     => [
-                'qualite_prix' => 'Qualité/prix',
-                'ambiance'     => 'Ambiance',
-                'experience'   => 'Expérience',
-                'paysage'      => 'Paysage',
-            ],
+            'criteria_labels'     => \SJ_Reviews\Includes\Labels::CRITERIA_DEFAULTS,
+            'rating_labels'       => \SJ_Reviews\Includes\Labels::RATING_DEFAULTS,
             'bubble_color'        => '#34d399',
             'text_words'          => 40,
             'autoplay_delay'      => 4000,
             'last_sync'           => get_option('sj_reviews_last_sync', ''),
         ];
-        $saved = get_option('sj_reviews_settings', []);
+        $saved = \SJ_Reviews\Includes\Settings::all();
         if (isset($saved['linked_post_types']) && !is_array($saved['linked_post_types'])) {
             $saved['linked_post_types'] = [];
         }
         if (isset($saved['criteria_labels']) && !is_array($saved['criteria_labels'])) {
             $saved['criteria_labels'] = $defaults['criteria_labels'];
+        }
+        if (isset($saved['rating_labels']) && !is_array($saved['rating_labels'])) {
+            $saved['rating_labels'] = $defaults['rating_labels'];
         }
         $merged = array_merge($defaults, $saved);
         $merged['last_sync'] = get_option('sj_reviews_last_sync', '');
@@ -1755,8 +1818,7 @@ class RestApi {
     }
 
     public function list_linked_posts(\WP_REST_Request $req): \WP_REST_Response {
-        $settings      = get_option('sj_reviews_settings', []);
-        $allowed_types = array_map('sanitize_key', (array) ($settings['linked_post_types'] ?? []));
+        $allowed_types = array_map('sanitize_key', \SJ_Reviews\Includes\Settings::linked_post_types());
 
         if (empty($allowed_types)) {
             return rest_ensure_response([]);
@@ -1882,17 +1944,17 @@ class RestApi {
         $allowed = [
             'default_layout', 'default_preset', 'star_color', 'certified_label',
             'max_front', 'google_api_key', 'trustpilot_api_key', 'tripadvisor_api_key',
-            'linked_post_types', 'sync_frequency', 'criteria_labels',
+            'linked_post_types', 'sync_frequency', 'criteria_labels', 'rating_labels',
             'bubble_color', 'text_words', 'autoplay_delay',
         ];
         // Merge with existing to avoid losing keys not sent
-        $existing = get_option('sj_reviews_settings', []);
+        $existing = \SJ_Reviews\Includes\Settings::all();
         $clean    = $existing;
         foreach ($allowed as $key) {
             if (!isset($body[$key])) continue;
             if ($key === 'linked_post_types') {
                 $clean[$key] = array_values(array_map('sanitize_key', array_filter((array) $body[$key])));
-            } elseif ($key === 'criteria_labels') {
+            } elseif ($key === 'criteria_labels' || $key === 'rating_labels') {
                 $labels = (array) $body[$key];
                 $clean[$key] = array_map('sanitize_text_field', $labels);
             } elseif (in_array($key, ['text_words', 'autoplay_delay', 'max_front'], true)) {
@@ -1920,8 +1982,7 @@ class RestApi {
      * GET /import/post-matches — Liste de posts pour le mapping produits→excursions
      */
     public function import_post_matches(\WP_REST_Request $req): \WP_REST_Response {
-        $settings      = get_option('sj_reviews_settings', []);
-        $allowed_types = array_map('sanitize_key', (array) ($settings['linked_post_types'] ?? []));
+        $allowed_types = array_map('sanitize_key', \SJ_Reviews\Includes\Settings::linked_post_types());
         $search        = sanitize_text_field($req->get_param('search'));
         $req_type      = sanitize_key($req->get_param('post_type'));
 
@@ -2189,7 +2250,7 @@ class RestApi {
 
             // Auto-sync place_id depuis lieu
             if ($lieu_id) {
-                $lieux = (array) get_option('sj_lieux', []);
+                $lieux = \SJ_Reviews\Includes\Settings::lieux();
                 foreach ($lieux as $l) {
                     if ($l['id'] === $lieu_id && !empty($l['place_id'])) {
                         update_post_meta($post_id, 'avis_place_id', sanitize_text_field($l['place_id']));
@@ -2215,7 +2276,7 @@ class RestApi {
     // ── Private helpers ───────────────────────────────────────────────────────
 
     private function get_lieux(): array {
-        return (array) get_option('sj_lieux', []);
+        return \SJ_Reviews\Includes\Settings::lieux();
     }
 
     private function validate_lieu_body(\WP_REST_Request $req): array|\WP_Error {
@@ -2298,7 +2359,7 @@ class RestApi {
 
         // Auto-synchronise avis_place_id depuis le lieu si non défini
         if (!get_post_meta($post_id, 'avis_place_id', true) && !empty($data['lieu_id'])) {
-            $lieux = (array) get_option('sj_lieux', []);
+            $lieux = \SJ_Reviews\Includes\Settings::lieux();
             foreach ($lieux as $l) {
                 if ($l['id'] === $data['lieu_id'] && !empty($l['place_id'])) {
                     update_post_meta($post_id, 'avis_place_id', sanitize_text_field($l['place_id']));

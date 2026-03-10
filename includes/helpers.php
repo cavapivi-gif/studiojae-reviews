@@ -124,7 +124,7 @@ function sj_normalize_review(\WP_Post $post, bool $private = false): array {
     if (!$place_id && $lieu_id) {
         static $lieux_cache = null;
         if ($lieux_cache === null) {
-            $lieux_cache = (array) get_option('sj_lieux', []);
+            $lieux_cache = \SJ_Reviews\Includes\Settings::lieux();
         }
         foreach ($lieux_cache as $l) {
             if ($l['id'] === $lieu_id && !empty($l['place_id'])) {

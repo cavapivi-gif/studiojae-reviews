@@ -43,7 +43,7 @@ class RatingBadgeWidget extends SjWidgetBase {
     }
 
     protected function register_controls(): void {
-        $lieux  = (array) get_option('sj_lieux', []);
+        $lieux  = \SJ_Reviews\Includes\Settings::lieux();
         $opts   = ['all' => 'Tous les lieux actifs'];
         foreach ($lieux as $l) {
             $opts[$l['id']] = esc_html($l['name'] . ' (' . ($l['source'] ?? '') . ')');

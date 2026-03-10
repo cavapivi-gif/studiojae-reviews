@@ -77,8 +77,8 @@ class Cron {
      * et une source compatible (google, tripadvisor, trustpilot).
      */
     public function run_sync(): void {
-        $settings = get_option(self::OPTION_KEY, []);
-        $lieux    = (array) get_option('sj_lieux', []);
+        $settings = \SJ_Reviews\Includes\Settings::all();
+        $lieux    = \SJ_Reviews\Includes\Settings::lieux();
         $updated  = false;
 
         foreach ($lieux as &$lieu) {

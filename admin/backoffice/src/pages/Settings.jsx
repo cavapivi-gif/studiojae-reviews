@@ -16,6 +16,7 @@ const DEFAULTS = {
   linked_post_types:   [],
   sync_frequency:      'off',
   criteria_labels:     { qualite_prix: 'Qualité/prix', ambiance: 'Ambiance', experience: 'Expérience', paysage: 'Paysage' },
+  rating_labels:       { '5': 'Excellent', '4': 'Bien', '3': 'Moyen', '2': 'Médiocre', '1': 'Horrible' },
   bubble_color:        '#34d399',
   text_words:          '40',
   autoplay_delay:      '4000',
@@ -104,6 +105,7 @@ export default function Settings() {
           ...s,
           linked_post_types: Array.isArray(s.linked_post_types) ? s.linked_post_types : [],
           criteria_labels: { ...DEFAULTS.criteria_labels, ...(s.criteria_labels || {}) },
+          rating_labels: { ...DEFAULTS.rating_labels, ...(s.rating_labels || {}) },
         })
         setAvailablePostTypes(pts)
       })
@@ -120,6 +122,10 @@ export default function Settings() {
 
   const setCriteriaLabel = key => e => {
     setForm(f => ({ ...f, criteria_labels: { ...f.criteria_labels, [key]: e.target.value } }))
+  }
+
+  const setRatingLabel = key => e => {
+    setForm(f => ({ ...f, rating_labels: { ...f.rating_labels, [key]: e.target.value } }))
   }
 
   async function handleSave(e) {
@@ -378,6 +384,24 @@ export default function Settings() {
                     value={label}
                     onChange={setCriteriaLabel(key)}
                     placeholder={DEFAULTS.criteria_labels[key]}
+                  />
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <SectionHeader>Labels des niveaux de note</SectionHeader>
+              <p className="text-xs text-gray-400 mb-4">
+                Personnalisez les noms affichés dans la répartition par étoiles (ex. « Excellent », « Bien »…).
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                {['5', '4', '3', '2', '1'].map(star => (
+                  <Input
+                    key={star}
+                    label={<span className="text-gray-400">{'★'.repeat(Number(star))} ({star})</span>}
+                    value={form.rating_labels[star] || ''}
+                    onChange={setRatingLabel(star)}
+                    placeholder={DEFAULTS.rating_labels[star]}
                   />
                 ))}
               </div>

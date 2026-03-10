@@ -27,7 +27,7 @@ class RatingShortcode {
     }
 
     public function render(array $atts): string {
-        $opts = get_option('sj_reviews_settings', []);
+        $opts = \SJ_Reviews\Includes\Settings::all();
 
         $a = shortcode_atts([
             'lieu_id'     => 'all',
@@ -45,7 +45,7 @@ class RatingShortcode {
         $label       = esc_html($a['label']);
         $lieu_id_req = sanitize_text_field($a['lieu_id']);
 
-        $all_lieux = (array) get_option('sj_lieux', []);
+        $all_lieux = \SJ_Reviews\Includes\Settings::lieux();
 
         // Filtre : un lieu précis ou tous les actifs avec données
         if ($lieu_id_req === 'all') {
@@ -63,8 +63,10 @@ class RatingShortcode {
         // En mode "grid" ou plusieurs lieux → wrapper grille
         $multi = count($lieux) > 1;
 
+        $badge_data = esc_attr(wp_json_encode(['lieu_id' => $lieu_id_req]));
+
         ob_start();
-        echo '<div class="sj-rating' . ($multi ? ' sj-rating--grid' : '') . '">';
+        echo '<div class="sj-rating' . ($multi ? ' sj-rating--grid' : '') . '" data-sj-badge="' . $badge_data . '">';
         foreach ($lieux as $lieu) {
             $this->render_badge($lieu, $design, $star_color, $show_source, $show_link, $label);
         }
@@ -94,18 +96,18 @@ class RatingShortcode {
             case 'compact':
                 echo '<div class="sj-badge sj-badge--compact">';
                 echo $src_icon;
-                echo '<span class="sj-badge__rating">' . esc_html($rating_fmt) . '</span>';
+                echo '<span class="sj-badge__rating" data-sj-tpl="{{avg}}">' . esc_html($rating_fmt) . '</span>';
                 echo $stars_html;
-                echo '<span class="sj-badge__count">(' . esc_html($count_fmt) . ' ' . $label . ')</span>';
+                echo '<span class="sj-badge__count" data-sj-tpl="({{count}} ' . esc_attr($label) . ')">(' . esc_html($count_fmt) . ' ' . $label . ')</span>';
                 echo '</div>';
                 break;
 
             case 'pill':
                 echo $tag_open . ' class="sj-badge sj-badge--pill">';
                 echo $stars_html;
-                echo '<span class="sj-badge__rating">' . esc_html($rating_fmt) . '</span>';
+                echo '<span class="sj-badge__rating" data-sj-tpl="{{avg}}">' . esc_html($rating_fmt) . '</span>';
                 echo '<span class="sj-badge__sep">·</span>';
-                echo '<span class="sj-badge__count">' . esc_html($count_fmt) . ' ' . $label . '</span>';
+                echo '<span class="sj-badge__count" data-sj-tpl="{{count}} ' . esc_attr($label) . '">' . esc_html($count_fmt) . ' ' . $label . '</span>';
                 if ($src_label) echo '<span class="sj-badge__source">' . esc_html($src_label) . '</span>';
                 echo $tag_close;
                 break;
@@ -113,10 +115,10 @@ class RatingShortcode {
             case 'hero':
                 echo '<div class="sj-badge sj-badge--hero">';
                 if ($name) echo '<div class="sj-badge__name">' . $name . '</div>';
-                echo '<div class="sj-badge__big-rating">' . esc_html($rating_fmt) . '</div>';
+                echo '<div class="sj-badge__big-rating" data-sj-tpl="{{avg}}">' . esc_html($rating_fmt) . '</div>';
                 echo '<div class="sj-badge__stars">' . $stars_html . '</div>';
                 echo '<div class="sj-badge__meta">';
-                echo '<span class="sj-badge__count">Basé sur ' . esc_html($count_fmt) . ' ' . $label . '</span>';
+                echo '<span class="sj-badge__count" data-sj-tpl="Basé sur {{count}} ' . esc_attr($label) . '">Basé sur ' . esc_html($count_fmt) . ' ' . $label . '</span>';
                 if ($src_label && $link && $gmb_url) {
                     echo ' <a href="' . esc_url($gmb_url) . '" class="sj-badge__source-link" target="_blank" rel="noopener noreferrer">' . $src_icon . esc_html($src_label) . '</a>';
                 } elseif ($src_label) {
@@ -133,10 +135,10 @@ class RatingShortcode {
                 if ($name) echo '<span class="sj-badge__name">' . $name . '</span>';
                 echo '</div>';
                 echo '<div class="sj-badge__body">';
-                echo '<span class="sj-badge__rating">' . esc_html($rating_fmt) . '</span>';
+                echo '<span class="sj-badge__rating" data-sj-tpl="{{avg}}">' . esc_html($rating_fmt) . '</span>';
                 echo '<div class="sj-badge__stars-wrap">';
                 echo $stars_html;
-                echo '<span class="sj-badge__count">' . esc_html($count_fmt) . ' ' . $label . '</span>';
+                echo '<span class="sj-badge__count" data-sj-tpl="{{count}} ' . esc_attr($label) . '">' . esc_html($count_fmt) . ' ' . $label . '</span>';
                 echo '</div>';
                 echo '</div>';
                 echo $tag_close;
@@ -160,14 +162,7 @@ class RatingShortcode {
     }
 
     private function source_name(string $source): string {
-        return match($source) {
-            'google'      => 'Google',
-            'tripadvisor' => 'TripAdvisor',
-            'facebook'    => 'Facebook',
-            'trustpilot'  => 'Trustpilot',
-            'regiondo'    => 'Regiondo',
-            default       => ucfirst($source),
-        };
+        return \SJ_Reviews\Includes\Labels::source_name($source);
     }
 
     private function source_icon_html(string $source): string {

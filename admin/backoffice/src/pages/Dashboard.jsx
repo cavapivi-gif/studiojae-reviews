@@ -68,6 +68,8 @@ export default function Dashboard() {
     }
   }
 
+  const distTotal = [5, 4, 3, 2, 1].reduce((s, n) => s + (data?.distribution?.[n] ?? 0), 0)
+
   return (
     <div>
       <PageHeader
@@ -108,7 +110,12 @@ export default function Dashboard() {
               sub={<button onClick={() => navigate('/reviews')} className="text-xs underline">Voir tout</button>}
             />
             <StatCard
-              label="Note moyenne"
+              label={
+                <span className="flex items-center justify-between gap-2 w-full">
+                  <span>Note moyenne</span>
+                  {data?.total > 0 && <span className="font-normal normal-case tracking-normal">{data.total} avis</span>}
+                </span>
+              }
               value={data?.avg_rating ? `${data.avg_rating} / 5` : '—'}
               accent
               sub={<Stars rating={data?.avg_rating ?? 0} size={12} />}
@@ -131,7 +138,7 @@ export default function Dashboard() {
               value={
                 <div className="flex flex-col gap-1 mt-2">
                   {[5, 4, 3, 2, 1].map(n => (
-                    <RatingBar key={n} value={n} count={data?.distribution?.[n] ?? 0} max={totalForDisplay || 1} />
+                    <RatingBar key={n} value={n} count={data?.distribution?.[n] ?? 0} max={distTotal || 1} />
                   ))}
                 </div>
               }

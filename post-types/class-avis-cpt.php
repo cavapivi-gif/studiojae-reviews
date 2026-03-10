@@ -62,8 +62,7 @@ class AvisCpt {
     public function register_acf_fields(): void {
         if (!function_exists('acf_add_local_field_group')) return;
 
-        $settings      = get_option('sj_reviews_settings', []);
-        $linked_types  = array_filter((array) ($settings['linked_post_types'] ?? []));
+        $linked_types  = \SJ_Reviews\Includes\Settings::linked_post_types();
 
         $fields = [
             [
@@ -121,15 +120,7 @@ class AvisCpt {
                 'name'          => 'avis_source',
                 'label'         => 'Source',
                 'type'          => 'select',
-                'choices'       => [
-                    'google'      => 'Google',
-                    'tripadvisor' => 'TripAdvisor',
-                    'facebook'    => 'Facebook',
-                    'trustpilot'  => 'Trustpilot',
-                    'regiondo'    => 'Regiondo',
-                    'direct'      => 'Direct',
-                    'autre'       => 'Autre',
-                ],
+                'choices'       => \SJ_Reviews\Includes\Labels::SOURCES,
                 'default_value' => 'google',
                 'allow_null'    => 0,
                 'ui'            => 1,
@@ -146,7 +137,7 @@ class AvisCpt {
         ];
 
         // Lieu : dropdown dynamique depuis sj_lieux
-        $lieux_opt    = (array) get_option('sj_lieux', []);
+        $lieux_opt    = \SJ_Reviews\Includes\Settings::lieux();
         $lieu_choices = ['' => '— Aucun lieu —'];
         foreach ($lieux_opt as $l) {
             $lieu_choices[$l['id']] = esc_html($l['name'] . ($l['active'] ? '' : ' (inactif)'));
@@ -163,13 +154,8 @@ class AvisCpt {
             'instructions'  => 'Lieu auquel cet avis est rattaché.',
         ];
 
-        // Sous-critères de notation
-        $criteria = [
-            'avis_qualite_prix' => 'Qualité/prix',
-            'avis_ambiance'     => 'Ambiance',
-            'avis_experience'   => 'Expérience',
-            'avis_paysage'      => 'Paysage',
-        ];
+        // Sous-critères de notation (from settings)
+        $criteria = \SJ_Reviews\Includes\Labels::criteria_prefixed();
         foreach ($criteria as $crit_name => $crit_label) {
             $fields[] = [
                 'key'           => 'field_' . $crit_name,
@@ -217,7 +203,7 @@ class AvisCpt {
             'name'          => 'avis_language',
             'label'         => 'Langue de l\'avis',
             'type'          => 'select',
-            'choices'       => ['fr' => 'Français', 'en' => 'Anglais', 'it' => 'Italien', 'de' => 'Allemand', 'es' => 'Espagnol'],
+            'choices'       => \SJ_Reviews\Includes\Labels::LANGUAGES,
             'default_value' => 'fr',
             'allow_null'    => 0,
             'ui'            => 0,
@@ -227,14 +213,7 @@ class AvisCpt {
             'name'          => 'avis_travel_type',
             'label'         => 'Type de voyage',
             'type'          => 'select',
-            'choices'       => [
-                ''          => '— Non précisé —',
-                'couple'    => 'Couple',
-                'solo'      => 'Solo',
-                'famille'   => 'Famille',
-                'amis'      => 'Entre amis',
-                'affaires'  => 'Voyage d\'affaires',
-            ],
+            'choices'       => ['' => '— Non précisé —'] + \SJ_Reviews\Includes\Labels::TRAVEL_TYPES,
             'default_value' => '',
             'allow_null'    => 1,
             'ui'            => 0,
@@ -332,16 +311,10 @@ class AvisCpt {
         $customer_email = get_post_meta($post->ID, 'avis_customer_email', true);
         $customer_phone = get_post_meta($post->ID, 'avis_customer_phone', true);
 
-        $settings      = get_option('sj_reviews_settings', []);
-        $linked_types  = array_filter((array) ($settings['linked_post_types'] ?? []));
-        $lieux_opt     = (array) get_option('sj_lieux', []);
+        $linked_types  = \SJ_Reviews\Includes\Settings::linked_post_types();
+        $lieux_opt     = \SJ_Reviews\Includes\Settings::lieux();
 
-        $sources = [
-            'google' => 'Google', 'tripadvisor' => 'TripAdvisor',
-            'facebook' => 'Facebook', 'trustpilot' => 'Trustpilot',
-            'regiondo' => 'Regiondo',
-            'direct' => 'Direct', 'autre' => 'Autre',
-        ];
+        $sources = \SJ_Reviews\Includes\Labels::SOURCES;
         ?>
         <style>
             .sj-meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
@@ -431,7 +404,7 @@ class AvisCpt {
                 <label for="avis_travel_type"><?php esc_html_e('Type de voyage', 'sj-reviews'); ?></label>
                 <select id="avis_travel_type" name="avis_travel_type">
                     <option value="">— Non précisé —</option>
-                    <?php foreach (['couple' => 'Couple', 'solo' => 'Solo', 'famille' => 'Famille', 'amis' => 'Entre amis', 'affaires' => 'Voyage d\'affaires'] as $v => $l): ?>
+                    <?php foreach (\SJ_Reviews\Includes\Labels::TRAVEL_TYPES as $v => $l): ?>
                         <option value="<?php echo esc_attr($v); ?>" <?php selected($travel_type, $v); ?>><?php echo esc_html($l); ?></option>
                     <?php endforeach; ?>
                 </select>
@@ -439,7 +412,7 @@ class AvisCpt {
             <div class="sj-meta-field">
                 <label for="avis_language"><?php esc_html_e('Langue de l\'avis', 'sj-reviews'); ?></label>
                 <select id="avis_language" name="avis_language">
-                    <?php foreach (['fr' => 'Français', 'en' => 'Anglais', 'it' => 'Italien', 'de' => 'Allemand', 'es' => 'Espagnol'] as $v => $l): ?>
+                    <?php foreach (\SJ_Reviews\Includes\Labels::LANGUAGES as $v => $l): ?>
                         <option value="<?php echo esc_attr($v); ?>" <?php selected($language, $v); ?>><?php echo esc_html($l); ?></option>
                     <?php endforeach; ?>
                 </select>
@@ -470,12 +443,7 @@ class AvisCpt {
                 </label>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
                     <?php
-                    $crits = [
-                        'avis_qualite_prix' => 'Qualité/prix',
-                        'avis_ambiance'     => 'Ambiance',
-                        'avis_experience'   => 'Expérience',
-                        'avis_paysage'      => 'Paysage',
-                    ];
+                    $crits = \SJ_Reviews\Includes\Labels::criteria_prefixed();
                     foreach ($crits as $crit_key => $crit_lbl):
                         $crit_val = (int) get_post_meta($post->ID, $crit_key, true);
                     ?>

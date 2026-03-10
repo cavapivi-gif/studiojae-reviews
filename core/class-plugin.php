@@ -13,6 +13,8 @@ class Plugin {
         (new \SJ_Reviews\PostTypes\LieuMetabox())->init();
 
         // Helpers
+        require_once SJ_REVIEWS_DIR . 'includes/class-settings.php';
+        require_once SJ_REVIEWS_DIR . 'includes/class-labels.php';
         require_once SJ_REVIEWS_DIR . 'includes/helpers.php';
 
         // Cron — auto-sync
@@ -47,7 +49,7 @@ class Plugin {
         require_once SJ_REVIEWS_DIR . 'front/class-form-shortcode.php';
         require_once SJ_REVIEWS_DIR . 'front/class-coup-de-coeur-shortcode.php';
         (new \SJ_Reviews\Front\Shortcode())->init();
-        (new \SJ_Reviews\Front\RatingShortcode())->init();
+
         (new \SJ_Reviews\Front\SummaryShortcode())->init();
         new \SJ_Reviews\Front\InlineRatingShortcode();
         (new \SJ_Reviews\Front\FormShortcode())->init();
@@ -123,6 +125,18 @@ class Plugin {
             true
         );
         wp_localize_script('sj-summary', 'sjReviewsConfig', [
+            'restUrl' => esc_url_raw(rest_url('sj-reviews/v1/')),
+            'nonce'   => wp_create_nonce('wp_rest'),
+        ]);
+
+        wp_enqueue_script(
+            'sj-badge',
+            SJ_REVIEWS_URL . 'front/assets/sj-badge.js',
+            [],
+            SJ_REVIEWS_VERSION,
+            true
+        );
+        wp_localize_script('sj-badge', 'sjBadgeConfig', [
             'restUrl' => esc_url_raw(rest_url('sj-reviews/v1/')),
             'nonce'   => wp_create_nonce('wp_rest'),
         ]);
