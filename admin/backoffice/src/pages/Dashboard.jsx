@@ -144,7 +144,7 @@ export default function Dashboard() {
           {/* Time-series trends */}
           <div className="mx-6 mt-6">
             <ChartCard title="Tendances" loading={trendsLoading}>
-              <TimeSeriesChart data={trends} loading={trendsLoading} />
+              <TimeSeriesChart data={trends} loading={trendsLoading} totalVisible={data?.total} />
             </ChartCard>
           </div>
 

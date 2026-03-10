@@ -18,14 +18,43 @@ function formatDateKey(key, granularity) {
   return new Date(parseInt(y), parseInt(m) - 1).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })
 }
 
+function formatFullDate(rawDate, granularity) {
+  if (!rawDate) return ''
+  if (granularity === 'day') {
+    const d = new Date(rawDate)
+    return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })
+  }
+  if (granularity === 'week') {
+    // rawDate = '2024-W03' → show week range
+    const [y, w] = rawDate.split('-W')
+    const dt = new Date()
+    dt.setFullYear(parseInt(y))
+    // ISO week → Monday
+    const jan4 = new Date(parseInt(y), 0, 4)
+    const dayOfWeek = jan4.getDay() || 7
+    const monday = new Date(jan4)
+    monday.setDate(jan4.getDate() - dayOfWeek + 1 + (parseInt(w) - 1) * 7)
+    const sunday = new Date(monday)
+    sunday.setDate(monday.getDate() + 6)
+    const fmt = d => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+    return `${fmt(monday)} – ${fmt(sunday)} ${y}`
+  }
+  // month: '2024-03'
+  const [y, m] = rawDate.split('-')
+  return new Date(parseInt(y), parseInt(m) - 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+}
+
 function CustomTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
+  const rawDate = payload[0]?.payload?.rawDate
+  const granularity = payload[0]?.payload?.granularity
+  const fullDate = formatFullDate(rawDate, granularity)
   return (
-    <div className="bg-white border border-gray-200 px-3 py-2 text-xs shadow-sm">
-      <div className="font-medium text-gray-700 mb-1">{label}</div>
+    <div className="bg-white border border-gray-200 px-3 py-2 text-xs shadow-sm rounded">
+      <div className="font-medium text-gray-700 mb-1">{fullDate || label}</div>
       {payload.map((p, i) => (
         <div key={i} className="flex items-center gap-2">
-          <span className="w-2 h-2" style={{ backgroundColor: p.color }} />
+          <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: p.color }} />
           <span className="text-gray-500">{p.name}:</span>
           <span className="font-medium">{p.value}</span>
         </div>
@@ -34,7 +63,7 @@ function CustomTooltip({ active, payload, label }) {
   )
 }
 
-export default function TimeSeriesChart({ data, loading }) {
+export default function TimeSeriesChart({ data, loading, totalVisible }) {
   if (!data || loading) return null
 
   const { granularity, points } = data
@@ -52,6 +81,8 @@ export default function TimeSeriesChart({ data, loading }) {
   const chartData = useMemo(() =>
     points.map(p => ({
       date: formatDateKey(p.date, granularity),
+      rawDate: p.date,
+      granularity,
       Avis: p.count,
       Note: p.avg,
       ...Object.fromEntries(
@@ -61,13 +92,22 @@ export default function TimeSeriesChart({ data, loading }) {
     [points, granularity, sourceKeys]
   )
 
+  // Total visible reviews (from filtered data)
+  const totalFromChart = useMemo(() =>
+    points.reduce((sum, p) => sum + p.count, 0),
+    [points]
+  )
+
   if (!chartData.length) return <p className="text-xs text-gray-400 italic">Pas de données</p>
 
   return (
     <div className="space-y-6">
       {/* Review count area chart */}
       <div>
-        <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">Volume d'avis</div>
+        <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">
+          Volume d'avis{' '}
+          <span className="text-gray-500 font-medium">({totalVisible ?? totalFromChart})</span>
+        </div>
         <ResponsiveContainer width="100%" height={180}>
           <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
