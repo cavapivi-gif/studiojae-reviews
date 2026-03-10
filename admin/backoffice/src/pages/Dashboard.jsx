@@ -11,7 +11,6 @@ import MiniBarChart from '../components/charts/MiniBarChart'
 import DonutChart from '../components/charts/DonutChart'
 import TimeSeriesChart from '../components/charts/TimeSeriesChart'
 import SeasonCompare from '../components/charts/SeasonCompare'
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable'
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -23,8 +22,10 @@ export default function Dashboard() {
     lieux, activeLieux, monthlyTrend,
     trends, trendsLoading,
     comparison, comparisonLoading, compareSeason, compareRange,
-    reload,
   } = useDashboard()
+
+  const totalFromSources = data?.by_source?.reduce((sum, s) => sum + (s.count ?? 0), 0)
+  const totalForDisplay = totalFromSources != null && data?.by_source?.length ? totalFromSources : (data?.total ?? 0)
 
   const recentCols = [
     {
@@ -75,10 +76,6 @@ export default function Dashboard() {
         title="Tableau de bord"
         actions={
           <div className="flex items-center gap-2">
-            <Btn variant="secondary" size="sm" onClick={async () => { await reload(); toast.success('Dashboard rechargé.') }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
-              Recharger
-            </Btn>
             <Btn variant="secondary" size="sm" onClick={handleExport}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
               Export CSV
@@ -108,8 +105,8 @@ export default function Dashboard() {
           {/* Stats — responsive 2→4 columns */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-border mx-6 mt-4 border border-border rounded-lg overflow-hidden">
             <StatCard
-              label="Total des avis"
-              value={data?.total ?? 0}
+              label="Avis Globaux"
+              value={totalForDisplay}
               sub={<button onClick={() => navigate('/reviews')} className="text-xs underline">Voir tout</button>}
             />
             <StatCard
@@ -206,58 +203,50 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Season comparison + Per platform — resizable 50/50 */}
+          {/* Season comparison */}
           <div className="mx-6 mt-6">
-            <ResizablePanelGroup direction="horizontal" className="rounded-lg border">
-              <ResizablePanel defaultSize={50} minSize={30}>
-                <div className="h-full p-5">
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Comparateur de périodes</span>
-                  <div className="mt-3">
-                    <SeasonCompare
-                      comparison={comparison}
-                      loading={comparisonLoading}
-                      onCompare={compareSeason}
-                      onCompareRange={compareRange}
-                    />
-                  </div>
-                </div>
-              </ResizablePanel>
-              <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={50} minSize={25}>
-                <div className="h-full p-5">
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Par plateforme</span>
-                  {data?.by_source?.length > 0 ? (
-                    <div className="mt-3 divide-y rounded-md border">
-                      {data.by_source.map(({ source, count, avg_rating }) => (
-                        <button
-                          key={source}
-                          onClick={() => navigate(`/reviews?source=${source}`)}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors text-left group"
-                        >
-                          <div className={`w-2 h-2 shrink-0 rounded-full ${SOURCE_COLORS[source] ?? 'bg-muted-foreground'}`} />
-                          <span className="text-sm group-hover:text-foreground truncate min-w-0 flex-1">
-                            {SOURCE_LABELS[source] ?? source}
-                          </span>
-                          <span className="text-xs font-medium bg-secondary px-2 py-0.5 rounded-md min-w-7 text-center shrink-0">
-                            {count}
-                          </span>
-                          {avg_rating > 0 && (
-                            <div className="flex items-center gap-1 shrink-0">
-                              <Stars rating={avg_rating} size={10} />
-                              <span className="text-xs text-muted-foreground">{avg_rating.toFixed(1)}</span>
-                            </div>
-                          )}
-                          <span className="text-xs text-muted-foreground/50 group-hover:text-muted-foreground shrink-0">→</span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="mt-3 text-xs text-muted-foreground italic">Aucune source disponible.</p>
-                  )}
-                </div>
-              </ResizablePanel>
-            </ResizablePanelGroup>
+            <ChartCard title="Comparateur de périodes">
+              <SeasonCompare
+                comparison={comparison}
+                loading={comparisonLoading}
+                onCompare={compareSeason}
+                onCompareRange={compareRange}
+              />
+            </ChartCard>
           </div>
+
+          {/* Per platform */}
+          {data?.by_source?.length > 0 && (
+            <div className="mx-6 mt-6">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Par plateforme</span>
+              </div>
+              <div className="rounded-lg border divide-y">
+                {data.by_source.map(({ source, count, avg_rating }) => (
+                  <button
+                    key={source}
+                    onClick={() => navigate(`/reviews?source=${source}`)}
+                    className="w-full flex items-center gap-4 px-4 py-3 hover:bg-muted/50 transition-colors text-left group"
+                  >
+                    <div className={`w-2.5 h-2.5 shrink-0 rounded-full ${SOURCE_COLORS[source] ?? 'bg-muted-foreground'}`} />
+                    <span className="text-sm group-hover:text-foreground w-28">
+                      {SOURCE_LABELS[source] ?? source}
+                    </span>
+                    <span className="text-xs font-medium bg-secondary px-2 py-0.5 rounded-md min-w-8 text-center">
+                      {count}
+                    </span>
+                    {avg_rating > 0 && (
+                      <div className="flex items-center gap-1.5 ml-2">
+                        <Stars rating={avg_rating} size={11} />
+                        <span className="text-xs text-muted-foreground">{avg_rating.toFixed(1)}</span>
+                      </div>
+                    )}
+                    <span className="ml-auto text-xs text-muted-foreground/50 group-hover:text-muted-foreground">→</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Recent reviews */}
           <div className="mx-6 mt-6 mb-10">
