@@ -38,6 +38,7 @@
       lieu_ids: widget.dataset.lieuIds || '',
       source_filter: widget.dataset.sourceFilter || ''
     }
+    var showCertified = widget.dataset.showCertified === '1'
 
     // État des filtres (en cours d'édition dans modal)
     var pending = { rating: null, period: null, language: null, travel: null }
@@ -474,7 +475,7 @@
         avatar = '<div class="sj-card__avatar sj-card__avatar--initiale" aria-hidden="true" style="background:' + colors[colorIdx] + ';color:' + textColors[colorIdx] + '">' + escHtml(initiale) + '</div>'
       }
 
-      var certifiedHtml = r.certified ? '<span class="sj-card__certified">Certifié</span>' : ''
+      var certifiedHtml = (showCertified && r.certified) ? '<span class="sj-card__certified">Certifié</span>' : ''
 
       var bubblesHtml = buildBubblesHtml(r.rating || 0)
 
@@ -522,6 +523,7 @@
     }
 
     function buildBubblesHtml(rating) {
+      if (!rating || rating <= 0) return ''
       var html = '<div class="sj-summary__bubbles sj-summary__bubbles--sm" aria-label="' + rating + ' sur 5">'
       for (var i = 1; i <= 5; i++) {
         var fill = Math.min(1, Math.max(0, rating - (i - 1)))

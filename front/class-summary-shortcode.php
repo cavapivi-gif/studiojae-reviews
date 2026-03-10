@@ -73,6 +73,8 @@ class SummaryShortcode {
             'lieu_ids'             => '',
             'score_layout'         => 'default',
             'show_search'          => '0',
+            'show_verified_banner' => '0',
+            'verified_banner_text' => 'Tous les avis proviennent de client·es vérifié·es',
             'max_width'            => '',
             'max_width_tablet'     => '',
             'max_width_mobile'     => '',
@@ -335,7 +337,8 @@ if (!empty($a['max_width_mobile'])) {
      data-total-reviews="<?php echo esc_attr($stats['total']); ?>"
      data-lieu-id="<?php echo esc_attr($lieu_id); ?>"
      data-lieu-ids="<?php echo esc_attr($a['lieu_ids']); ?>"
-     data-source-filter="<?php echo esc_attr($a['source_filter']); ?>">
+     data-source-filter="<?php echo esc_attr($a['source_filter']); ?>"
+     data-show-certified="<?php echo esc_attr($a['show_certified']); ?>">
 
     <!-- ══ SECTION 1 : SCORE + DISTRIBUTION (bloc parent) ══════════════════ -->
     <?php $layout_cls = in_array($a['score_layout'], ['left','right'], true) ? ' sj-summary__top--side-' . $a['score_layout'] : ''; ?>
@@ -579,6 +582,16 @@ if (!empty($a['max_width_mobile'])) {
 </div>
 <?php endif; ?>
 
+
+    <?php if ($show_reviews && $a['show_verified_banner'] !== '0' && !empty($a['verified_banner_text'])): ?>
+    <div class="sj-summary__verified-banner">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2"/>
+        </svg>
+        <span><?php echo esc_html($a['verified_banner_text']); ?></span>
+    </div>
+    <?php endif; ?>
 
     <?php if ($show_reviews): ?>
     <!-- ══ SECTION 4 : CARDS D'AVIS ══════════════════════════════════════════ -->
@@ -847,6 +860,7 @@ if (!empty($a['max_width_mobile'])) {
     }
 
     private function bubbles_html(float $rating, string $size = ''): string {
+        if ($rating <= 0) return '';
         $label    = number_format($rating, 1, ',', '') . ' sur 5 bulles';
         $size_cls = $size ? ' sj-summary__bubbles--' . $size : '';
         $html     = '<div class="sj-summary__bubbles' . esc_attr($size_cls) . '" aria-label="' . esc_attr($label) . '">';

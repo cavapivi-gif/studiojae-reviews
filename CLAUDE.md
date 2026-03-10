@@ -24,13 +24,19 @@ studiojae-reviews/
 │   ├── class-widget-base.php         # SjWidgetBase — abstract base for ALL widgets
 │   ├── class-elementor-manager.php   # Registers widget category
 │   ├── traits/
-│   │   └── trait-shared-controls.php # SharedControls — reusable control sections
+│   │   ├── trait-shared-controls.php        # Aggregator: imports all sub-traits
+│   │   ├── trait-typography-controls.php    # Typography + separator controls
+│   │   ├── trait-box-controls.php           # Box, hover-box, layout controls
+│   │   ├── trait-interactive-controls.php   # Button + pill/tag controls
+│   │   ├── trait-media-controls.php         # Avatar, stars, progress bar controls
+│   │   ├── trait-reviews-style-controls.php # Style controls for ReviewsWidget
+│   │   └── trait-summary-style-controls.php # Style controls for SummaryWidget
 │   └── widgets/
-│       ├── class-coup-de-coeur-widget.php  # EXAMPLE: uses SjWidgetBase + SharedControls
-│       ├── class-reviews-widget.php        # Legacy (extends Widget_Base directly)
-│       ├── class-rating-badge-widget.php   # Legacy
-│       ├── class-summary-widget.php        # Legacy
-│       └── class-inline-rating-widget.php  # Legacy
+│       ├── class-coup-de-coeur-widget.php  # SjWidgetBase + SharedControls
+│       ├── class-reviews-widget.php        # SjWidgetBase + SharedControls + ReviewsStyleControls
+│       ├── class-rating-badge-widget.php   # SjWidgetBase + SharedControls
+│       ├── class-summary-widget.php        # SjWidgetBase + SharedControls + SummaryStyleControls
+│       └── class-inline-rating-widget.php  # SjWidgetBase + SharedControls
 ├── front/
 │   ├── class-*-shortcode.php         # Shortcode classes (render logic)
 │   └── assets/

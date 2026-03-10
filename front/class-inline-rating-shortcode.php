@@ -56,7 +56,7 @@ class InlineRatingShortcode {
         $text_before  = esc_html($a['text_before']);
         $text_after   = esc_html($a['text_after']);
 
-        // Récupération des avis
+        // Récupération des avis CPT
         $query_args = [
             'posts_per_page' => -1,
             'no_found_rows'  => true,
@@ -68,13 +68,48 @@ class InlineRatingShortcode {
         }
         $reviews = sj_get_reviews($query_args);
 
-        if (empty($reviews)) return '';
-
         $agg   = sj_aggregate($reviews);
         $avg   = $agg['avg'];
         $count = $agg['count'];
 
-        if ($avg <= 0) return '';
+        // Enrich with platform data (Google, TripAdvisor, etc.)
+        // Same logic as summary widget: add non-synced platform reviews
+        $all_lieux = (array) get_option('sj_lieux', []);
+        if ($lieu_id !== '') {
+            $matched_lieux = array_filter($all_lieux, fn($l) => ($l['id'] ?? '') === $lieu_id);
+        } else {
+            $matched_lieux = $all_lieux;
+        }
+
+        foreach ($matched_lieux as $l) {
+            $platform_count  = (int) ($l['reviews_count'] ?? 0);
+            $platform_rating = (float) ($l['rating'] ?? 0);
+            if ($platform_count <= 0 || $platform_rating <= 0) continue;
+
+            // Count CPT reviews for this lieu (already in $count)
+            $lieu_cpt_count = 0;
+            if (!empty($l['id'])) {
+                global $wpdb;
+                $lieu_cpt_count = (int) $wpdb->get_var($wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$wpdb->posts} p
+                     INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID AND pm.meta_key = 'avis_lieu_id'
+                     WHERE p.post_type = 'sj_avis' AND p.post_status = 'publish'
+                     AND pm.meta_value = %s",
+                    $l['id']
+                ));
+            }
+
+            $extra = max(0, $platform_count - $lieu_cpt_count);
+            if ($extra > 0) {
+                $combined = $count + $extra;
+                $avg   = ($count > 0)
+                    ? round(($avg * $count + $platform_rating * $extra) / $combined, 1)
+                    : round($platform_rating, 1);
+                $count = $combined;
+            }
+        }
+
+        if ($avg <= 0 && $count === 0) return '';
 
         // Format du score : "4.8/5" ou "5/5" si entier
         $score_str = (fmod($avg, 1.0) === 0.0)

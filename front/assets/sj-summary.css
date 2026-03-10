@@ -417,6 +417,25 @@
   color: #9ca3af;
 }
 
+/* ── 6b. Bandeau vérifié ─────────────────────────────────────── */
+.sj-summary__verified-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  margin-top: 16px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #166534;
+  line-height: 1.4;
+}
+.sj-summary__verified-banner svg {
+  flex-shrink: 0;
+  color: #16a34a;
+}
+
 /* ── 7. Voir plus (global) ───────────────────────────────────── */
 .sj-summary__loadmore {
   display: flex;
