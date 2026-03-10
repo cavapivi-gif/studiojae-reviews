@@ -56,6 +56,8 @@ class Plugin {
         // Elementor
         add_action('elementor/widgets/register', function ($manager) {
             require_once SJ_REVIEWS_DIR . 'elementor/class-elementor-manager.php';
+            require_once SJ_REVIEWS_DIR . 'elementor/class-widget-base.php';
+            require_once SJ_REVIEWS_DIR . 'elementor/traits/trait-shared-controls.php';
             require_once SJ_REVIEWS_DIR . 'elementor/widgets/class-reviews-widget.php';
             require_once SJ_REVIEWS_DIR . 'front/class-rating-shortcode.php';
             require_once SJ_REVIEWS_DIR . 'front/class-summary-shortcode.php';

@@ -1,13 +1,14 @@
 <?php
 namespace SJ_Reviews\Elementor\Widgets;
 
-use Elementor\Widget_Base;
 use Elementor\Controls_Manager;
 use Elementor\Group_Control_Typography;
 use Elementor\Group_Control_Background;
 use Elementor\Group_Control_Border;
 use Elementor\Group_Control_Box_Shadow;
 use Elementor\Group_Control_Text_Shadow;
+use SJ_Reviews\Elementor\SjWidgetBase;
+use SJ_Reviews\Elementor\Traits\SharedControls;
 
 defined('ABSPATH') || exit;
 
@@ -17,14 +18,50 @@ defined('ABSPATH') || exit;
  * Affiche la page avis complète : statistiques (note, distribution, sous-critères),
  * barre de filtres interactive (note, période, langue) et cards d'avis.
  * Peut être utilisé seul pour les stats uniquement.
+ *
+ * Migrated to SjWidgetBase + SharedControls. Existing controls preserved,
+ * SharedControls available for future enhancements.
  */
-class SummaryWidget extends Widget_Base {
+class SummaryWidget extends SjWidgetBase {
 
-    public function get_name(): string  { return 'sj_summary'; }
-    public function get_title(): string { return __('SJ — Page Avis', 'sj-reviews'); }
-    public function get_icon(): string  { return 'eicon-star-o'; }
+    use SharedControls;
 
-    public function get_categories(): array { return ['sj-reviews']; }
+    protected static function get_sj_config(): array {
+        return [
+            'id'       => 'sj_summary',
+            'title'    => 'SJ — Page Avis',
+            'icon'     => 'eicon-star-o',
+            'keywords' => ['summary', 'page', 'avis', 'statistiques', 'filtres', 'sj'],
+            'css'      => ['sj-summary'],
+            'js'       => ['sj-summary'],
+        ];
+    }
+
+    public function __construct($data = [], $args = null) {
+        parent::__construct($data, $args);
+
+        $this->selectors = array_merge($this->selectors, [
+            'container'    => '{{WRAPPER}} .sj-summary',
+            'score'        => '{{WRAPPER}} .sj-summary__score-num',
+            'score_label'  => '{{WRAPPER}} .sj-summary__score-label',
+            'count'        => '{{WRAPPER}} .sj-summary__count',
+            'dist_fill'    => '{{WRAPPER}} .sj-summary__dist-fill',
+            'dist_track'   => '{{WRAPPER}} .sj-summary__dist-track',
+            'crit_fill'    => '{{WRAPPER}} .sj-summary__crit-fill',
+            'crit_track'   => '{{WRAPPER}} .sj-summary__crit-track',
+            'card'         => '{{WRAPPER}} .sj-card',
+            'card_hover'   => '{{WRAPPER}} .sj-card:hover',
+            'card_title'   => '{{WRAPPER}} .sj-card__title',
+            'card_text'    => '{{WRAPPER}} .sj-card__text',
+            'card_author'  => '{{WRAPPER}} .sj-card__author-name',
+            'card_avatar'  => '{{WRAPPER}} .sj-card__avatar img',
+            'filter_pill'  => '{{WRAPPER}} .sj-filters__pill',
+            'filter_active'=> '{{WRAPPER}} .sj-filters__pill--active',
+            'load_btn'     => '{{WRAPPER}} .sj-summary__load-btn',
+            'search_input' => '{{WRAPPER}} .sj-search__input',
+            'certified'    => '{{WRAPPER}} .sj-card__certified',
+        ]);
+    }
 
     protected function register_controls(): void {
 
