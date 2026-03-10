@@ -1,0 +1,689 @@
+<wpml-config>
+    <custom-types>
+        <custom-type translate="1">rey-global-sections</custom-type>
+    </custom-types>
+    <admin-texts>
+		<key name="theme_mods_*">
+			<key name="footer_copyright"/>
+			<key name="search_suggestions"/>
+			<key name="product_info_content"/>
+			<key name="header_account_text"/>
+			<key name="header_account_text_logged_in"/>
+			<key name="header_cart_text"/>
+			<key name="header_cart_text_v2"/>
+			<key name="single_product_page_related_title"/>
+			<key name="single_product_price_text_custom"/>
+			<key name="estimated_delivery__prefix"/>
+			<key name="custom_price_range"/>
+			<key name="loop_featured_badge__text"/>
+			<key name="scroll_to_top__text"/>
+			<key name="header_cart__title"/>
+			<key name="header_search__input_placeholder"/>
+			<key name="product_page_gallery__btn__text"/>
+			<key name="cart_checkout_bar_text1_t"/>
+			<key name="cart_checkout_bar_text1_s"/>
+			<key name="cart_checkout_bar_text2_t"/>
+			<key name="cart_checkout_bar_text2_s"/>
+			<key name="cart_checkout_bar_text3_t"/>
+			<key name="cart_checkout_bar_text3_s"/>
+			<key name="wishlist__text"/>
+			<key name="wishlist__texts_add"/>
+			<key name="wishlist__texts_rm"/>
+			<key name="wishlist__texts_added"/>
+			<key name="wishlist__texts_btn"/>
+			<key name="cookie_notice__text"/>
+			<key name="cookie_notice__btn_text"/>
+			<key name="refunds__menu_text"/>
+			<key name="refunds__page_title"/>
+			<key name="refunds__content"/>
+			<key name="product_content_blocks_title"/>
+			<key name="single__product_info_title"/>
+			<key name="single_specifications_title"/>
+			<key name="header_cart__close_text"/>
+			<key name="single_atc__text"/>
+			<key name="single_atc__text_backorders"/>
+			<key name="loop_atc__text"/>
+			<key name="header_cart__cross_sells_btn_text"/>
+			<key name="social__text"/>
+			<key name="text_before_add_to_cart"/>
+			<key name="text_after_add_to_cart"/>
+			<key name="request_quote__cf7"/>
+			<key name="request_quote__wpforms"/>
+			<key name="single__custom_tabs">
+				<key name="*">
+					<key name="text"/>
+					<key name="content"/>
+				</key>
+			</key>
+		</key>
+    </admin-texts>
+    <custom-fields>
+		<custom-field action="copy">title_display</custom-field>
+		<custom-field action="copy">page_cover</custom-field>
+		<custom-field action="copy">rey_body_class</custom-field>
+		<custom-field action="copy">header_layout_type</custom-field>
+		<custom-field action="copy">header_text_color</custom-field>
+		<custom-field action="copy">header_position</custom-field>
+		<custom-field action="copy">header_fixed_overlap</custom-field>
+		<custom-field action="copy">header_fixed_overlap_tablet</custom-field>
+		<custom-field action="copy">header_fixed_overlap_mobile</custom-field>
+        <custom-field action="copy">custom_logo</custom-field>
+        <custom-field action="copy">logo_mobile</custom-field>
+        <custom-field action="copy">footer_layout_type</custom-field>
+        <custom-field action="copy">custom_container_width</custom-field>
+        <custom-field action="copy">container_width_px</custom-field>
+        <custom-field action="copy">container_width_vw</custom-field>
+        <custom-field action="copy">apply_only_to_main_content</custom-field>
+        <custom-field action="copy">content_padding</custom-field>
+        <custom-field action="copy">global_sections</custom-field>
+        <custom-field action="copy">remove_global_sections</custom-field>
+        <custom-field action="copy">general_redirect</custom-field>
+        <custom-field action="copy">redirect_url</custom-field>
+        <custom-field action="copy">top_sticky_gs</custom-field>
+        <custom-field action="copy">bottom_sticky_gs</custom-field>
+
+        <custom-field action="copy">template_type</custom-field>
+        <custom-field action="copy">general_conditions</custom-field>
+        <custom-field action="copy">archive_conditions</custom-field>
+        <custom-field action="copy">product_conditions</custom-field>
+        <custom-field action="copy">product_archive_conditions</custom-field>
+        <custom-field action="copy">page_types</custom-field>
+        <custom-field action="copy">pages_operator</custom-field>
+        <custom-field action="copy">pages</custom-field>
+        <custom-field action="copy">template_priority</custom-field>
+        <custom-field action="copy">template_override_individual</custom-field>
+
+        <custom-field action="copy">product_subtitle_text</custom-field>
+
+	</custom-fields>
+    <elementor-widgets>
+
+        <widget name="reycore-woo-loop-products">
+			<fields-in-item items_of="extra_data">
+				<field type="Placeholder Hook" editor_type="LINE">placeholder_hook</field>
+				<field type="Stock Text" editor_type="LINE">stock_text</field>
+				<field type="Title" editor_type="LINE">title</field>
+			</fields-in-item>
+		</widget>
+		<widget name="reycore-woo-pdp-add-to-cart">
+			<fields>
+				<field type="Button Text" editor_type="LINE">button_text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-woo-pdp-cats">
+			<fields>
+				<field type="Title" editor_type="LINE">title</field>
+			</fields>
+		</widget>
+		<widget name="reycore-woo-pdp-share">
+			<fields>
+				<field type="Title" editor_type="LINE">title</field>
+			</fields>
+		</widget>
+		<widget name="reycore-woo-pdp-sku">
+			<fields>
+				<field type="Title" editor_type="LINE">title</field>
+			</fields>
+		</widget>
+		<widget name="reycore-woo-pdp-tabs-blocks">
+			<fields-in-item items_of="overrides">
+				<field type="Title" editor_type="LINE">title</field>
+			</fields-in-item>
+		</widget>
+		<widget name="reycore-woo-pdp-tags">
+			<fields>
+				<field type="Title" editor_type="LINE">title</field>
+			</fields>
+		</widget>
+		<widget name="reycore-woo-pdp-buy-now">
+			<fields>
+				<field type="Button Text" editor_type="LINE">button_text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-woo-pdp-discount-label">
+			<fields>
+				<field type="Sale text" editor_type="LINE">sale_text</field>
+				<field type="Save text" editor_type="LINE">save_text</field>
+				<field type="Percentage text" editor_type="LINE">perc_text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-woo-pdp-video-link">
+			<fields>
+				<field type="Button Text" editor_type="LINE">button_text</field>
+				<field type="Video Ratio (%)" editor_type="LINE">modal_video_ratio</field>
+			</fields>
+		</widget>
+		<widget name="reycore-woo-pdp-summary-tabs-acc">
+			<fields-in-item items_of="overrides">
+				<field type="Title" editor_type="LINE">title</field>
+			</fields-in-item>
+		</widget>
+		<widget name="reycore-woo-pdp-request-quote">
+			<fields>
+				<field type="Button Text" editor_type="LINE">button_text</field>
+				<field type="Popup title" editor_type="LINE">modal_title</field>
+			</fields>
+		</widget>
+		<widget name="reycore-woo-pdp-scheduled-sale">
+			<fields>
+				<field type="Text" editor_type="LINE">text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-acf-text">
+			<fields>
+				<field type="Fallback text" editor_type="VISUAL">fallback_text</field>
+				<field type="More text" editor_type="LINE">rey_toggle_text_more</field>
+				<field type="Less text" editor_type="LINE">rey_toggle_text_less</field>
+			</fields>
+		</widget>
+		<widget name="reycore-acf-heading">
+			<fields>
+				<field type="Fallback text" editor_type="LINE">fallback_text</field>
+				<field type="Link" editor_type="LINK" key_of="link">url</field>
+			</fields>
+		</widget>
+		<widget name="reycore-acf-button">
+			<fields>
+				<field type="Fallback text" editor_type="LINE">fallback_text</field>
+				<field type="Link" editor_type="LINK" key_of="link">url</field>
+				<field type="Text Replace in modal" editor_type="AREA">rey_modal_replace</field>
+				<field type="Custom 'Added to cart' text" editor_type="LINE">rey_atc_text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-acf-image">
+			<fields>
+				<field type="Link" editor_type="LINK" key_of="link">url</field>
+			</fields>
+		</widget>
+		<widget name="reycore-basic-post-grid">
+			<fields>
+				<field type="Posts" editor_type="LINE">include</field>
+				<field type="Exclude Posts" editor_type="LINE">exclude</field>
+				<field type="Custom Query ID" editor_type="LINE">query_id</field>
+				<field type="Button text" editor_type="LINE">read_more_text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-basic-slider">
+			<fields-in-item items_of="slides">
+				<field type="Cover Position" editor_type="LINE">cover_position</field>
+				<field type="Title" editor_type="LINE">title</field>
+				<field type="Subtitle" editor_type="AREA">subtitle</field>
+				<field type="Button Text" editor_type="LINE">button_text</field>
+				<field type="Link" editor_type="LINK" key_of="link">url</field>
+			</fields-in-item>
+		</widget>
+		<widget name="reycore-button-skew">
+			<fields>
+				<field type="Text" editor_type="LINE">text</field>
+				<field type="Link" editor_type="LINK" key_of="link">url</field>
+			</fields>
+		</widget>
+		<widget name="reycore-carousel">
+			<fields-in-item items_of="carousel_items">
+				<field type="Title" editor_type="LINE">title</field>
+				<field type="Subtitle Text" editor_type="AREA">subtitle</field>
+				<field type="Label Text" editor_type="LINE">label</field>
+				<field type="Button Text" editor_type="LINE">button_text</field>
+				<field type="Link" editor_type="LINK" key_of="button_url">url</field>
+			</fields-in-item>
+			<fields>
+				<field type="Link" editor_type="LINK" key_of="images_link_all">url</field>
+				<field type="Custom Query ID" editor_type="LINE">query_id</field>
+				<field type="Thumbnail Meta Key" editor_type="LINE">attributes_thumb_key</field>
+				<field type="Button Text" editor_type="LINE">button_text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-carousel-uno">
+			<fields-in-item items_of="items">
+				<field type="Title" editor_type="LINE">title</field>
+				<field type="Subtitle Text" editor_type="AREA">subtitle</field>
+				<field type="Label Text" editor_type="LINE">label</field>
+				<field type="Button Text" editor_type="LINE">button_text</field>
+				<field type="Link" editor_type="LINK" key_of="button_url">url</field>
+			</fields-in-item>
+			<fields>
+				<field type="Sync another carousel (as controller)" editor_type="LINE">sync_id</field>
+			</fields>
+		</widget>
+		<widget name="reycore-countdown">
+			<fields>
+				<field type="Wrap in link" editor_type="LINK" key_of="link">url</field>
+				<field type="Singular" editor_type="LINE">d_singular</field>
+				<field type="Plural" editor_type="LINE">d_plural</field>
+				<field type="Abbreviated" editor_type="LINE">d_abbr</field>
+				<field type="Singular" editor_type="LINE">h_singular</field>
+				<field type="Plural" editor_type="LINE">h_plural</field>
+				<field type="Abbreviated" editor_type="LINE">h_abbr</field>
+				<field type="Singular" editor_type="LINE">i_singular</field>
+				<field type="Plural" editor_type="LINE">i_plural</field>
+				<field type="Abbreviated" editor_type="LINE">i_abbr</field>
+				<field type="Singular" editor_type="LINE">s_singular</field>
+				<field type="Plural" editor_type="LINE">s_plural</field>
+				<field type="Abbreviated" editor_type="LINE">s_abbr</field>
+			</fields>
+		</widget>
+		<widget name="reycore-cover-blurry">
+			<fields-in-item items_of="items">
+				<field type="Label Text" editor_type="LINE">label</field>
+				<field type="Title" editor_type="LINE">title</field>
+				<field type="Subtitle Text" editor_type="AREA">subtitle</field>
+				<field type="Button Text" editor_type="LINE">button_text</field>
+				<field type="Link" editor_type="LINK" key_of="button_url">url</field>
+			</fields-in-item>
+			<fields-in-item items_of="social_icon_list">
+				<field type="Link" editor_type="LINK" key_of="link">url</field>
+			</fields-in-item>
+			<fields>
+				<field type="'Follow' Text" editor_type="LINE">social_text</field>
+				<field type="'Scroll' Text" editor_type="LINE">scroll_text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-cover-double-slider">
+			<fields-in-item items_of="items">
+				<field type="Title line #1" editor_type="LINE">title_1</field>
+				<field type="Title line #2" editor_type="LINE">title_2</field>
+				<field type="Text" editor_type="LINE">button_text</field>
+				<field type="Link" editor_type="LINK" key_of="button_url">url</field>
+			</fields-in-item>
+		</widget>
+		<widget name="reycore-cover-nest">
+			<fields-in-item items_of="items">
+				<field type="Label Text" editor_type="LINE">label</field>
+				<field type="Title" editor_type="LINE">title</field>
+				<field type="Subtitle Text" editor_type="AREA">subtitle</field>
+				<field type="Button Text" editor_type="LINE">button_text</field>
+				<field type="Link" editor_type="LINK" key_of="button_url">url</field>
+			</fields-in-item>
+			<fields-in-item items_of="social_icon_list">
+				<field type="Link" editor_type="LINK" key_of="link">url</field>
+			</fields-in-item>
+			<fields>
+				<field type="'Follow' Text" editor_type="LINE">social_text</field>
+				<field type="Content" editor_type="VISUAL">bottom_text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-cover-panels">
+			<fields-in-item items_of="items">
+				<field type="Title" editor_type="LINE">title</field>
+				<field type="Description" editor_type="AREA">desc</field>
+				<field type="Button Text" editor_type="LINE">button_text</field>
+				<field type="Button Link" editor_type="LINK" key_of="button_url">url</field>
+			</fields-in-item>
+		</widget>
+		<widget name="reycore-cover-sideslide">
+			<fields-in-item items_of="items">
+				<field type="Label Text" editor_type="LINE">label</field>
+				<field type="Title" editor_type="LINE">title</field>
+				<field type="Subtitle Text" editor_type="AREA">subtitle</field>
+				<field type="Button Text" editor_type="LINE">button_text</field>
+				<field type="Link" editor_type="LINK" key_of="button_url">url</field>
+			</fields-in-item>
+			<fields-in-item items_of="social_icon_list">
+				<field type="Link" editor_type="LINK" key_of="link">url</field>
+			</fields-in-item>
+			<fields>
+				<field type="'Follow' Text" editor_type="LINE">social_text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-cover-skew">
+			<fields-in-item items_of="items">
+				<field type="Title" editor_type="LINE">title</field>
+				<field type="Text" editor_type="LINE">button_text</field>
+				<field type="Link" editor_type="LINK" key_of="button_url">url</field>
+			</fields-in-item>
+		</widget>
+		<widget name="reycore-cover-split">
+			<fields-in-item items_of="items">
+				<field type="Label Text" editor_type="LINE">label</field>
+				<field type="Title" editor_type="LINE">title</field>
+				<field type="Subtitle Text" editor_type="AREA">subtitle</field>
+				<field type="Button Text" editor_type="LINE">button_text</field>
+				<field type="Link" editor_type="LINK" key_of="button_url">url</field>
+				<field type="Image Position (x &amp; y)" editor_type="LINE">img_position</field>
+			</fields-in-item>
+			<fields-in-item items_of="social_icon_list">
+				<field type="Link" editor_type="LINK" key_of="link">url</field>
+			</fields-in-item>
+			<fields-in-item items_of="bottom_links">
+				<field type="Button Text" editor_type="LINE">button_text</field>
+				<field type="Link" editor_type="LINK" key_of="button_url">url</field>
+			</fields-in-item>
+			<fields>
+				<field type="Label Text" editor_type="LINE">main_label</field>
+				<field type="Title" editor_type="LINE">main_title</field>
+				<field type="Sub-Title" editor_type="AREA">main_subtitle</field>
+				<field type="Button Text" editor_type="LINE">main_button_text</field>
+				<field type="Button Link" editor_type="LINK" key_of="main_button_url">url</field>
+				<field type="'Follow' Text" editor_type="LINE">social_text</field>
+				<field type="'Scroll' Text" editor_type="LINE">scroll_text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-grid">
+			<fields-in-item items_of="carousel_items">
+				<field type="Title" editor_type="LINE">title</field>
+				<field type="Subtitle Text" editor_type="AREA">subtitle</field>
+				<field type="Label Text" editor_type="LINE">label</field>
+				<field type="Button Text" editor_type="LINE">button_text</field>
+				<field type="Link" editor_type="LINK" key_of="button_url">url</field>
+			</fields-in-item>
+			<fields>
+				<field type="Link" editor_type="LINK" key_of="images_link_all">url</field>
+				<field type="Custom Query ID" editor_type="LINE">query_id</field>
+				<field type="Thumbnail Meta Key" editor_type="LINE">attributes_thumb_key</field>
+				<field type="Text" editor_type="LINE">load_more_text</field>
+				<field type="Button Text" editor_type="LINE">button_text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-header-caller">
+			<fields>
+				<field type="Text / Phone number" editor_type="LINE">text</field>
+				<field type="Link" editor_type="LINE">text_link</field>
+				<field type="Button Text" editor_type="LINE">button_text</field>
+				<field type="Link" editor_type="LINE">button_link</field>
+			</fields>
+		</widget>
+		<widget name="reycore-header-logo">
+			<fields>
+				<field type="Site Name" editor_type="LINE">blog_name</field>
+				<field type="Site Description" editor_type="LINE">blog_description</field>
+			</fields>
+		</widget>
+		<widget name="reycore-header-navigation">
+			<fields-in-item items_of="social_icon_list">
+				<field type="Link" editor_type="LINK" key_of="link">url</field>
+			</fields-in-item>
+			<fields>
+				<field type="'Follow' Text" editor_type="LINE">social_text</field>
+				<field type="Custom Text" editor_type="LINE">hamburger_text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-header-search">
+			<fields>
+				<field type="Keywords" editor_type="AREA">keywords</field>
+				<field type="Custom Text" editor_type="LINE">search_icon_text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-hotspots">
+			<fields>
+				<field type="Link" editor_type="LINK" key_of="link">url</field>
+				<field type="Text Content" editor_type="VISUAL">text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-hoverbox-distortion">
+			<fields>
+				<field type="Top Caption" editor_type="AREA">top_text</field>
+				<field type="Caption Title" editor_type="LINE">text_1</field>
+				<field type="Caption Subtitle" editor_type="LINE">text_2</field>
+				<field type="Button Text" editor_type="LINE">button_text</field>
+				<field type="Button URL" editor_type="LINK" key_of="button_url">url</field>
+			</fields>
+		</widget>
+		<widget name="reycore-instagram">
+			<fields>
+				<field type="Text" editor_type="LINE">box_text</field>
+				<field type="URL" editor_type="LINE">box_url</field>
+			</fields>
+		</widget>
+		<widget name="reycore-marquee">
+			<fields>
+				<field type="Text" editor_type="AREA">text</field>
+				<field type="Link" editor_type="LINK" key_of="link">url</field>
+			</fields>
+		</widget>
+		<widget name="reycore-menu">
+			<fields-in-item items_of="custom_items">
+				<field type="Title" editor_type="LINE">title</field>
+				<field type="Link" editor_type="LINK" key_of="link">url</field>
+			</fields-in-item>
+			<fields>
+				<field type="'All' button text" editor_type="LINE">all_button_text</field>
+				<field type="Login Text" editor_type="LINE">singin_text</field>
+				<field type="Custom 'Login' page URL" editor_type="LINK" key_of="singin_custom_url">url</field>
+				<field type="Register Text" editor_type="LINE">singup_text</field>
+				<field type="Custom 'Register' page URL" editor_type="LINK" key_of="singup_custom_url">url</field>
+				<field type="Title" editor_type="LINE">title</field>
+				<field type="Title Link" editor_type="LINK" key_of="title_link">url</field>
+			</fields>
+		</widget>
+		<widget name="reycore-sale-badge">
+			<fields>
+				<field type="Sale Text" editor_type="LINE">sale_text</field>
+				<field type="Title" editor_type="AREA">title</field>
+				<field type="Sub-title" editor_type="AREA">sub_title</field>
+				<field type="Link" editor_type="LINK" key_of="link">url</field>
+			</fields>
+		</widget>
+		<widget name="reycore-scroll-decorations">
+			<fields>
+				<field type="Text" editor_type="LINE">text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-searchform">
+			<fields>
+				<field type="Placeholder" editor_type="LINE">placeholder</field>
+				<field type="Button Text" editor_type="LINE">btn_text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-section-skew">
+			<fields>
+				<field type="Outlined Text" editor_type="LINE">outline_text</field>
+				<field type="Title" editor_type="LINE">main_title</field>
+				<field type="Button Text" editor_type="LINE">btn_text</field>
+				<field type="Button Link" editor_type="LINK" key_of="btn_link">url</field>
+				<field type="Link" editor_type="LINE">youtube_url</field>
+				<field type="Link" editor_type="LINE">vimeo_url</field>
+				<field type="URL" editor_type="LINK" key_of="external_url">url</field>
+			</fields>
+		</widget>
+		<widget name="reycore-stamp">
+			<fields>
+				<field type="Circle text" editor_type="AREA">text</field>
+				<field type="Link" editor_type="LINK" key_of="link">url</field>
+			</fields>
+		</widget>
+		<widget name="reycore-text-scroller">
+			<fields-in-item items_of="items">
+				<field type="Content" editor_type="VISUAL">content</field>
+			</fields-in-item>
+		</widget>
+		<widget name="reycore-toggle-boxes">
+			<fields-in-item items_of="items">
+				<field type="Text" editor_type="LINE">text</field>
+				<field type="Link (For Hover triggers)" editor_type="LINK" key_of="link">url</field>
+				<field type="Activate item when current URL contains:" editor_type="LINE">activate_on</field>
+			</fields-in-item>
+			<fields-in-item items_of="stacks_items">
+				<field type="Title" editor_type="LINE">main_text</field>
+				<field type="Sub-Title" editor_type="LINE">sec_text</field>
+				<field type="Active Text" editor_type="LINE">active_text</field>
+				<field type="Link" editor_type="LINK" key_of="active_url">url</field>
+			</fields-in-item>
+		</widget>
+		<widget name="reycore-trigger">
+			<fields>
+				<field type="Custom Text" editor_type="LINE">hamburger_text</field>
+				<field type="Button text" editor_type="LINE">btn_text</field>
+				<field type="Close text" editor_type="LINE">offcanvas_close_text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-trigger-v2">
+			<fields>
+				<field type="Title Attribute" editor_type="LINE">trigger_title_attr</field>
+				<field type="CSS Selector" editor_type="LINE">toggle_css_selector</field>
+				<field type="Custom Content" editor_type="VISUAL">popover_text</field>
+				<field type="Custom Text" editor_type="LINE">hamburger_text</field>
+				<field type="Button text" editor_type="LINE">btn_text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-breadcrumbs">
+			<fields>
+				<field type="Custom Delimiter" editor_type="LINE">delimiter</field>
+				<field type="Home URL" editor_type="LINE">home_url</field>
+				<field type="Home Text" editor_type="LINE">home</field>
+			</fields>
+		</widget>
+		<widget name="reycore-header-account">
+			<fields>
+				<field type="Button text" editor_type="LINE">button_text</field>
+				<field type="Button text (Logged in)" editor_type="LINE">button_text_logged_in</field>
+				<field type="Redirect URL" editor_type="LINE">redirect_url</field>
+			</fields>
+		</widget>
+		<widget name="reycore-header-cart">
+			<fields>
+				<field type="Custom Text" editor_type="LINE">cart_text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-header-wishlist">
+			<fields>
+				<field type="Text" editor_type="LINE">text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-product-grid">
+			<fields-in-item items_of="extra_data">
+				<field type="Placeholder Hook" editor_type="LINE">placeholder_hook</field>
+				<field type="Stock Text" editor_type="LINE">stock_text</field>
+				<field type="Title" editor_type="LINE">title</field>
+			</fields-in-item>
+			<fields>
+				<field type="Button Text" editor_type="LINE">ajax_load_more_text</field>
+			</fields>
+		</widget>
+		<widget name="reycore-wc-attributes">
+			<fields>
+				<field type="Custom URL for non-archive terms" editor_type="LINK" key_of="url">url</field>
+				<field type="'View All' Button Text" editor_type="LINE">see_all_button</field>
+				<field type="'View All' Button Link" editor_type="LINK" key_of="see_all_button_url">url</field>
+			</fields>
+		</widget>
+		<widget name="reycore-wc-cart">
+			<fields>
+				<field type="Custom Content after cart" editor_type="VISUAL">custom_text</field>
+				<field type="Text under table" editor_type="LINE">totals_shipping_off_text</field>
+				<field type="Custom Content before Proceed button" editor_type="VISUAL">custom_text_before_proceed</field>
+			</fields>
+		</widget>
+		<widget name="reycore-wc-checkout">
+			<fields-in-item items_of="custom_shipping_fields">
+				<field type="Label" editor_type="LINE">label</field>
+				<field type="Tooltip" editor_type="LINE">description</field>
+			</fields-in-item>
+			<fields-in-item items_of="custom_billing_fields">
+				<field type="Label" editor_type="LINE">label</field>
+				<field type="Tooltip" editor_type="LINE">description</field>
+			</fields-in-item>
+			<fields>
+				<field type="Estimated Delivery Custom Text" editor_type="LINE">estimated_delivery_text</field>
+				<field type="Custom Text" editor_type="VISUAL">custom_text</field>
+				<field type="Custom Text" editor_type="VISUAL">thankyou_text</field>
+				<field type="Billing fields for 'Bill To'" editor_type="LINE">custom_billing_fields_bill_to</field>
+				<field type="Shipping fields for 'Ship To'" editor_type="LINE">custom_shipping_fields_ship_to</field>
+			</fields>
+		</widget>
+		<widget name="reycore-newsletter">
+			<fields>
+				<field type="Email field placeholder" editor_type="LINE">email_placeholder</field>
+				<field type="Button text" editor_type="LINE">btn_text</field>
+			</fields>
+		</widget>
+		<widget name="column">
+			<fields>
+				<field type="Column Link" editor_type="LINK" key_of="rey_link">url</field>
+			</fields>
+		</widget>
+		<widget name="reycore-cf7">
+			<fields>
+				<field type="Select form" editor_type="LINE">form_id</field>
+			</fields>
+		</widget>
+    </elementor-widgets>
+	<widgets>
+
+        <widget name="REYAJAXFILTERS_Search_Filter_Widget">
+            <fields>
+				<field type="Title" editor_type="LINE">title</field>
+				<field type="Placeholder" editor_type="LINE">placeholder</field>
+            </fields>
+        </widget>
+
+        <widget name="REYAJAXFILTERS_Category_Filter_Widget">
+            <fields>
+                <field type="LINE" name="title" />
+                <field type="LINE" name="placeholder" />
+            </fields>
+        </widget>
+
+        <widget name="REYAJAXFILTERS_Active_Filters_Widget">
+            <fields>
+                <field type="LINE" name="title" />
+                <field type="LINE" name="button_text" />
+            </fields>
+        </widget>
+
+        <widget name="REYAJAXFILTERS_Attribute_Filter_Widget">
+            <fields>
+                <field type="LINE" name="title" />
+                <field type="LINE" name="placeholder" />
+            </fields>
+        </widget>
+
+        <widget name="REYAJAXFILTERS_CustomFieldsACF_Filter_Widget">
+            <fields>
+                <field type="LINE" name="title" />
+                <field type="LINE" name="placeholder" />
+            </fields>
+        </widget>
+
+        <widget name="REYAJAXFILTERS_Featured_Filter_Widget">
+            <fields>
+                <field type="LINE" name="title" />
+                <field type="LINE" name="label_title" />
+            </fields>
+        </widget>
+
+        <widget name="REYAJAXFILTERS_CustomFields_Filter_Widget">
+            <fields>
+                <field type="LINE" name="title" />
+                <field type="LINE" name="placeholder" />
+            </fields>
+        </widget>
+
+        <widget name="REYAJAXFILTERS_Price_Filter_Widget">
+            <fields>
+                <field type="LINE" name="title" />
+                <field type="LINE" name="placeholder" />
+            </fields>
+        </widget>
+
+        <widget name="REYAJAXFILTERS_Sale_Filter_Widget">
+            <fields>
+                <field type="LINE" name="title" />
+                <field type="LINE" name="label_title" />
+            </fields>
+        </widget>
+
+        <widget name="REYAJAXFILTERS_Stock_Filter_Widget">
+            <fields>
+                <field type="LINE" name="title" />
+                <field type="LINE" name="label_title" />
+                <field type="LINE" name="label_buttons_all" />
+                <field type="LINE" name="label_buttons_in" />
+                <field type="LINE" name="label_buttons_out" />
+            </fields>
+        </widget>
+
+        <widget name="REYAJAXFILTERS_Tag_Filter_Widget">
+            <fields>
+                <field type="LINE" name="title" />
+                <field type="LINE" name="placeholder" />
+            </fields>
+        </widget>
+
+        <widget name="REYAJAXFILTERS_Taxonomy_Filter_Widget">
+            <fields>
+                <field type="LINE" name="title" />
+                <field type="LINE" name="placeholder" />
+            </fields>
+        </widget>
+    </widgets>
+</wpml-config>

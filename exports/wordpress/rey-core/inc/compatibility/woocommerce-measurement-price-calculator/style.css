@@ -1,0 +1,12 @@
+div.product.sale p.price .wc-measurement-price-calculator-price {
+	display: flex;
+}
+div.product.sale p.price .wc-measurement-price-calculator-price .rey-discount {
+	order: 1;
+}
+div.product p.price .wc-measurement-price-calculator-price + .rey-discount{
+    display: none;
+}
+div.product p.price .wc-measurement-price-calculator-price ins {
+    margin-right: .3em;
+}

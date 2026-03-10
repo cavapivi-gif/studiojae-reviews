@@ -1,0 +1,1 @@
+.widget{position:relative;margin-top:var(--widget-mt,3.125rem);font-size:1rem}.widget:first-child{--widget-mt:0}.widget-title{margin-bottom:var(--widget-title-mb,1.5625rem);color:var(--body-color);font-size:var(--widget-title-size,1rem);text-transform:none}@media (min-width:1025px){.widget-title{font-size:22px}}

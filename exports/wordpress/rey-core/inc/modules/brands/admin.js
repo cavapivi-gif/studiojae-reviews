@@ -1,0 +1,1 @@
+!function(t){"use strict";if(reyCoreBrandsAdmin){var e=t('.attributes-table td:not(.attribute-terms) a[href^="edit-tags.php?taxonomy='+reyCoreBrandsAdmin.tax+'"]');e.length&&t('<span class="rey-brandLabel">'+reyCoreBrandsAdmin.label_text+"</span>").insertAfter(e)}}(jQuery);

@@ -1,0 +1,1 @@
+!function(e){"use strict";var o=function(o){var t=!1;o.closest('[data-elementor-type="product-post"]').length&&(t=!0),t&&e(".woocommerce-product-gallery",o).removeClass("--is-loading")};rey.hooks.addAction("elementor/init",(function(e){e.registerElement({name:"woocommerce-product-images.default",cb:o}),e.registerElement({name:"reycore-woo-pdp-gallery.default",cb:o})}))}(jQuery);

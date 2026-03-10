@@ -1,0 +1,1 @@
+.__hamburger{gap:var(--text-distance, 0.8em)}.__hamburger:after{font-size:1em;line-height:1;white-space:nowrap;display:var(--hbg-a-d, block);-webkit-box-ordinal-group:var(--hbg-a-o, initial);-ms-flex-order:var(--hbg-a-o, initial);order:var(--hbg-a-o, initial)}@media(max-width: 1024px){.--text-mobile-yes{--hbg-a-d: none}}

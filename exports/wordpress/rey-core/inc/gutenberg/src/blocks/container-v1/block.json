@@ -1,0 +1,27 @@
+{
+	"name": "reycore/container-v1",
+	"category": "rey-blocks",
+	"attributes": {
+		"align": {
+			"type": "string"
+		},
+		"offsetAlign": {
+			"type": "string"
+		},
+		"maxWidth": {
+			"type": "number"
+		},
+		"backgroundColor": {
+			"type": "string"
+		},
+		"textColor": {
+			"type": "string"
+		},
+		"customBackgroundColor": {
+			"type": "string"
+		},
+		"customTextColor": {
+			"type": "string"
+		}
+	}
+}

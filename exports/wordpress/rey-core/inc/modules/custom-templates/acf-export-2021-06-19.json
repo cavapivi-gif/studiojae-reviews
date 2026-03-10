@@ -1,0 +1,1061 @@
+[
+    {
+        "key": "group_5eca340657edd",
+        "title": "Template Location",
+        "fields": [
+            {
+                "key": "field_5ece7a2687e16",
+                "label": "TYPE & LOCATION",
+                "name": "",
+                "type": "tab",
+                "instructions": "",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "placement": "top",
+                "endpoint": 0
+            },
+            {
+                "key": "field_5eca340a16793",
+                "label": "Type",
+                "name": "template_type",
+                "type": "button_group",
+                "instructions": "Select target locations.",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "choices": {
+                    "page": "Page",
+                    "single": "Single",
+                    "archive": "Archive",
+                    "product": "Product page",
+                    "product-archive": "Product Archive"
+                },
+                "allow_null": 1,
+                "default_value": "",
+                "layout": "horizontal",
+                "return_format": "value"
+            },
+            {
+                "key": "field_5eca76648cf2d",
+                "label": "Single Conditions",
+                "name": "general_conditions",
+                "type": "repeater",
+                "instructions": "Create as many conditions as you want to target the specific site areas want.",
+                "required": 0,
+                "conditional_logic": [
+                    [
+                        {
+                            "field": "field_5eca340a16793",
+                            "operator": "==",
+                            "value": "single"
+                        }
+                    ]
+                ],
+                "wrapper": {
+                    "width": "",
+                    "class": "rey-acf-conditions",
+                    "id": ""
+                },
+                "collapsed": "",
+                "min": 0,
+                "max": 0,
+                "layout": "row",
+                "button_label": "Add condition",
+                "sub_fields": [
+                    {
+                        "key": "field_5ecd817164c3d",
+                        "label": "Post Type",
+                        "name": "post_type",
+                        "type": "select",
+                        "instructions": "Choose the post type",
+                        "required": 0,
+                        "conditional_logic": 0,
+                        "wrapper": {
+                            "width": "",
+                            "class": "--size-3",
+                            "id": ""
+                        },
+                        "choices": {
+                            "post": "Posts (Blog)"
+                        },
+                        "default_value": "post",
+                        "allow_null": 0,
+                        "multiple": 0,
+                        "ui": 0,
+                        "return_format": "value",
+                        "ajax": 0,
+                        "placeholder": ""
+                    },
+                    {
+                        "key": "field_5eca76648cf2e",
+                        "label": "Operator",
+                        "name": "operator",
+                        "type": "button_group",
+                        "instructions": "",
+                        "required": 0,
+                        "conditional_logic": 0,
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "choices": {
+                            "include": "Include",
+                            "exclude": "Exclude"
+                        },
+                        "allow_null": 0,
+                        "default_value": "",
+                        "layout": "horizontal",
+                        "return_format": "value"
+                    },
+                    {
+                        "key": "field_5eca76648cf2f",
+                        "label": "Location",
+                        "name": "location",
+                        "type": "select",
+                        "instructions": "",
+                        "required": 0,
+                        "conditional_logic": [
+                            [
+                                {
+                                    "field": "field_5ecd817164c3d",
+                                    "operator": "==",
+                                    "value": "post"
+                                }
+                            ]
+                        ],
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "choices": {
+                            "categories": "Categories (post)",
+                            "tags": "Tags (post)",
+                            "posts": "Post"
+                        },
+                        "default_value": false,
+                        "allow_null": 1,
+                        "multiple": 0,
+                        "ui": 0,
+                        "return_format": "value",
+                        "ajax": 0,
+                        "placeholder": ""
+                    },
+                    {
+                        "key": "field_5eca76648cf30",
+                        "label": "Categories",
+                        "name": "categories",
+                        "type": "taxonomy",
+                        "instructions": "Select categories",
+                        "required": 0,
+                        "conditional_logic": [
+                            [
+                                {
+                                    "field": "field_5eca76648cf2f",
+                                    "operator": "==",
+                                    "value": "categories"
+                                },
+                                {
+                                    "field": "field_5ecd817164c3d",
+                                    "operator": "==",
+                                    "value": "post"
+                                }
+                            ]
+                        ],
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "taxonomy": "category",
+                        "field_type": "checkbox",
+                        "add_term": 0,
+                        "save_terms": 0,
+                        "load_terms": 0,
+                        "return_format": "id",
+                        "multiple": 0,
+                        "allow_null": 0
+                    },
+                    {
+                        "key": "field_5eca76648cf31",
+                        "label": "Include sub-categories",
+                        "name": "include_sub",
+                        "type": "true_false",
+                        "instructions": "",
+                        "required": 0,
+                        "conditional_logic": [
+                            [
+                                {
+                                    "field": "field_5eca76648cf2f",
+                                    "operator": "==",
+                                    "value": "categories"
+                                }
+                            ]
+                        ],
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "message": "",
+                        "default_value": 1,
+                        "ui": 1,
+                        "ui_on_text": "",
+                        "ui_off_text": ""
+                    },
+                    {
+                        "key": "field_5eca76648cf32",
+                        "label": "Tags",
+                        "name": "tags",
+                        "type": "taxonomy",
+                        "instructions": "Select tags",
+                        "required": 0,
+                        "conditional_logic": [
+                            [
+                                {
+                                    "field": "field_5eca76648cf2f",
+                                    "operator": "==",
+                                    "value": "tags"
+                                },
+                                {
+                                    "field": "field_5ecd817164c3d",
+                                    "operator": "==",
+                                    "value": "post"
+                                }
+                            ]
+                        ],
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "taxonomy": "post_tag",
+                        "field_type": "checkbox",
+                        "add_term": 0,
+                        "save_terms": 0,
+                        "load_terms": 0,
+                        "return_format": "id",
+                        "multiple": 0,
+                        "allow_null": 0
+                    },
+                    {
+                        "key": "field_5eca778df3957",
+                        "label": "Posts",
+                        "name": "posts",
+                        "type": "relationship",
+                        "instructions": "",
+                        "required": 0,
+                        "conditional_logic": [
+                            [
+                                {
+                                    "field": "field_5eca76648cf2f",
+                                    "operator": "==",
+                                    "value": "posts"
+                                },
+                                {
+                                    "field": "field_5eca340a16793",
+                                    "operator": "==",
+                                    "value": "single"
+                                }
+                            ]
+                        ],
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "post_type": "",
+                        "taxonomy": "",
+                        "filters": [
+                            "search",
+                            "post_type",
+                            "taxonomy"
+                        ],
+                        "elements": "",
+                        "min": "",
+                        "max": "",
+                        "return_format": "id"
+                    }
+                ]
+            },
+            {
+                "key": "field_5f2c3195e038a",
+                "label": "Archive Conditions",
+                "name": "archive_conditions",
+                "type": "repeater",
+                "instructions": "Create as many conditions as you want to target the specific site areas want.",
+                "required": 0,
+                "conditional_logic": [
+                    [
+                        {
+                            "field": "field_5eca340a16793",
+                            "operator": "==",
+                            "value": "archive"
+                        }
+                    ]
+                ],
+                "wrapper": {
+                    "width": "",
+                    "class": "rey-acf-conditions",
+                    "id": ""
+                },
+                "collapsed": "",
+                "min": 0,
+                "max": 0,
+                "layout": "row",
+                "button_label": "Add condition",
+                "sub_fields": [
+                    {
+                        "key": "field_5f2c3195e038c",
+                        "label": "Operator",
+                        "name": "operator",
+                        "type": "button_group",
+                        "instructions": "",
+                        "required": 0,
+                        "conditional_logic": 0,
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "choices": {
+                            "include": "Include",
+                            "exclude": "Exclude"
+                        },
+                        "allow_null": 0,
+                        "default_value": "",
+                        "layout": "horizontal",
+                        "return_format": "value"
+                    },
+                    {
+                        "key": "field_5f2c3195e038d",
+                        "label": "Location",
+                        "name": "location",
+                        "type": "select",
+                        "instructions": "",
+                        "required": 0,
+                        "conditional_logic": 0,
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "choices": {
+                            "categories": "Categories (post)",
+                            "tags": "Tags (post)"
+                        },
+                        "default_value": false,
+                        "allow_null": 1,
+                        "multiple": 0,
+                        "ui": 0,
+                        "return_format": "value",
+                        "ajax": 0,
+                        "placeholder": ""
+                    },
+                    {
+                        "key": "field_5f2c3195e038e",
+                        "label": "Categories",
+                        "name": "categories",
+                        "type": "taxonomy",
+                        "instructions": "Select categories",
+                        "required": 0,
+                        "conditional_logic": [
+                            [
+                                {
+                                    "field": "field_5f2c3195e038d",
+                                    "operator": "==",
+                                    "value": "categories"
+                                }
+                            ]
+                        ],
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "taxonomy": "category",
+                        "field_type": "checkbox",
+                        "add_term": 0,
+                        "save_terms": 0,
+                        "load_terms": 0,
+                        "return_format": "id",
+                        "multiple": 0,
+                        "allow_null": 0
+                    },
+                    {
+                        "key": "field_5f2c3195e038f",
+                        "label": "Include sub-categories",
+                        "name": "include_sub",
+                        "type": "true_false",
+                        "instructions": "",
+                        "required": 0,
+                        "conditional_logic": [
+                            [
+                                {
+                                    "field": "field_5f2c3195e038d",
+                                    "operator": "==",
+                                    "value": "categories"
+                                }
+                            ]
+                        ],
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "message": "",
+                        "default_value": 1,
+                        "ui": 1,
+                        "ui_on_text": "",
+                        "ui_off_text": ""
+                    },
+                    {
+                        "key": "field_5f2c3195e0390",
+                        "label": "Tags",
+                        "name": "tags",
+                        "type": "taxonomy",
+                        "instructions": "Select tags",
+                        "required": 0,
+                        "conditional_logic": [
+                            [
+                                {
+                                    "field": "field_5f2c3195e038d",
+                                    "operator": "==",
+                                    "value": "tags"
+                                }
+                            ]
+                        ],
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "taxonomy": "post_tag",
+                        "field_type": "checkbox",
+                        "add_term": 0,
+                        "save_terms": 0,
+                        "load_terms": 0,
+                        "return_format": "id",
+                        "multiple": 0,
+                        "allow_null": 0
+                    }
+                ]
+            },
+            {
+                "key": "field_5eca355016794",
+                "label": "Product Conditions",
+                "name": "product_conditions",
+                "type": "repeater",
+                "instructions": "Create as many conditions as you want to target the specific site areas want.",
+                "required": 0,
+                "conditional_logic": [
+                    [
+                        {
+                            "field": "field_5eca340a16793",
+                            "operator": "==",
+                            "value": "product"
+                        }
+                    ]
+                ],
+                "wrapper": {
+                    "width": "",
+                    "class": "rey-acf-conditions",
+                    "id": ""
+                },
+                "collapsed": "",
+                "min": 0,
+                "max": 0,
+                "layout": "row",
+                "button_label": "Add condition",
+                "sub_fields": [
+                    {
+                        "key": "field_5eca357e16795",
+                        "label": "Operator",
+                        "name": "operator",
+                        "type": "button_group",
+                        "instructions": "",
+                        "required": 0,
+                        "conditional_logic": 0,
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "choices": {
+                            "include": "Include",
+                            "exclude": "Exclude"
+                        },
+                        "allow_null": 0,
+                        "default_value": "",
+                        "layout": "horizontal",
+                        "return_format": "value"
+                    },
+                    {
+                        "key": "field_5eca3b1116797",
+                        "label": "Location",
+                        "name": "location",
+                        "type": "select",
+                        "instructions": "",
+                        "required": 0,
+                        "conditional_logic": 0,
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "choices": {
+                            "categories": "Categories",
+                            "tags": "Tags",
+                            "attributes": "Attributes",
+                            "products": "Products"
+                        },
+                        "default_value": false,
+                        "allow_null": 1,
+                        "multiple": 0,
+                        "ui": 0,
+                        "return_format": "value",
+                        "ajax": 0,
+                        "placeholder": ""
+                    },
+                    {
+                        "key": "field_5eca35c516796",
+                        "label": "Categories",
+                        "name": "categories",
+                        "type": "taxonomy",
+                        "instructions": "Select categories",
+                        "required": 0,
+                        "conditional_logic": [
+                            [
+                                {
+                                    "field": "field_5eca3b1116797",
+                                    "operator": "==",
+                                    "value": "categories"
+                                }
+                            ]
+                        ],
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "taxonomy": "product_cat",
+                        "field_type": "checkbox",
+                        "add_term": 0,
+                        "save_terms": 0,
+                        "load_terms": 0,
+                        "return_format": "id",
+                        "multiple": 0,
+                        "allow_null": 0
+                    },
+                    {
+                        "key": "field_5eca3d6a4daae",
+                        "label": "Include sub-categories",
+                        "name": "include_sub",
+                        "type": "true_false",
+                        "instructions": "",
+                        "required": 0,
+                        "conditional_logic": [
+                            [
+                                {
+                                    "field": "field_5eca3b1116797",
+                                    "operator": "==",
+                                    "value": "categories"
+                                }
+                            ]
+                        ],
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "message": "",
+                        "default_value": 1,
+                        "ui": 1,
+                        "ui_on_text": "",
+                        "ui_off_text": ""
+                    },
+                    {
+                        "key": "field_5eca3c9e4daaa",
+                        "label": "Tags",
+                        "name": "tags",
+                        "type": "taxonomy",
+                        "instructions": "Select tags",
+                        "required": 0,
+                        "conditional_logic": [
+                            [
+                                {
+                                    "field": "field_5eca3b1116797",
+                                    "operator": "==",
+                                    "value": "tags"
+                                }
+                            ]
+                        ],
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "taxonomy": "product_tag",
+                        "field_type": "checkbox",
+                        "add_term": 0,
+                        "save_terms": 0,
+                        "load_terms": 0,
+                        "return_format": "id",
+                        "multiple": 0,
+                        "allow_null": 0
+                    },
+                    {
+                        "key": "field_5eca52213daa7",
+                        "label": "Attributes",
+                        "name": "attributes",
+                        "type": "select",
+                        "instructions": "",
+                        "required": 0,
+                        "conditional_logic": [
+                            [
+                                {
+                                    "field": "field_5eca3b1116797",
+                                    "operator": "==",
+                                    "value": "attributes"
+                                }
+                            ]
+                        ],
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "choices": [],
+                        "default_value": [],
+                        "allow_null": 0,
+                        "multiple": 1,
+                        "ui": 1,
+                        "ajax": 0,
+                        "return_format": "value",
+                        "placeholder": ""
+                    },
+                    {
+                        "key": "field_5eca8337d382f",
+                        "label": "Products",
+                        "name": "products",
+                        "type": "relationship",
+                        "instructions": "",
+                        "required": 0,
+                        "conditional_logic": [
+                            [
+                                {
+                                    "field": "field_5eca3b1116797",
+                                    "operator": "==",
+                                    "value": "products"
+                                },
+                                {
+                                    "field": "field_5eca340a16793",
+                                    "operator": "==",
+                                    "value": "product"
+                                }
+                            ]
+                        ],
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "post_type": [
+                            "product"
+                        ],
+                        "taxonomy": "",
+                        "filters": [
+                            "search"
+                        ],
+                        "elements": "",
+                        "min": "",
+                        "max": "",
+                        "return_format": "id"
+                    }
+                ]
+            },
+            {
+                "key": "field_5eca925bbfd0d",
+                "label": "Product Archive Conditions",
+                "name": "product_archive_conditions",
+                "type": "repeater",
+                "instructions": "Create as many conditions as you want to target the specific archive areas want.",
+                "required": 0,
+                "conditional_logic": [
+                    [
+                        {
+                            "field": "field_5eca340a16793",
+                            "operator": "==",
+                            "value": "product-archive"
+                        }
+                    ]
+                ],
+                "wrapper": {
+                    "width": "",
+                    "class": "rey-acf-conditions",
+                    "id": ""
+                },
+                "collapsed": "",
+                "min": 0,
+                "max": 0,
+                "layout": "row",
+                "button_label": "Add condition",
+                "sub_fields": [
+                    {
+                        "key": "field_5eca925bbfd0e",
+                        "label": "Operator",
+                        "name": "operator",
+                        "type": "button_group",
+                        "instructions": "",
+                        "required": 0,
+                        "conditional_logic": 0,
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "choices": {
+                            "include": "Include",
+                            "exclude": "Exclude"
+                        },
+                        "allow_null": 0,
+                        "default_value": "",
+                        "layout": "horizontal",
+                        "return_format": "value"
+                    },
+                    {
+                        "key": "field_5eca925bbfd0f",
+                        "label": "Location",
+                        "name": "location",
+                        "type": "select",
+                        "instructions": "",
+                        "required": 0,
+                        "conditional_logic": 0,
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "choices": {
+                            "categories": "Product Categories",
+                            "tags": "Product Tags",
+                            "attributes": "Public Attributes (enabled Archive)",
+                            "shop_page": "Shop Page",
+                            "search": "Search page"
+                        },
+                        "default_value": false,
+                        "allow_null": 1,
+                        "multiple": 0,
+                        "ui": 0,
+                        "return_format": "value",
+                        "ajax": 0,
+                        "placeholder": ""
+                    },
+                    {
+                        "key": "field_5eca925bbfd10",
+                        "label": "Categories",
+                        "name": "categories",
+                        "type": "taxonomy",
+                        "instructions": "Select categories",
+                        "required": 0,
+                        "conditional_logic": [
+                            [
+                                {
+                                    "field": "field_5eca925bbfd0f",
+                                    "operator": "==",
+                                    "value": "categories"
+                                }
+                            ]
+                        ],
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "taxonomy": "product_cat",
+                        "field_type": "checkbox",
+                        "add_term": 0,
+                        "save_terms": 0,
+                        "load_terms": 0,
+                        "return_format": "id",
+                        "multiple": 0,
+                        "allow_null": 0
+                    },
+                    {
+                        "key": "field_5eca925bbfd11",
+                        "label": "Include sub-categories",
+                        "name": "include_sub",
+                        "type": "true_false",
+                        "instructions": "",
+                        "required": 0,
+                        "conditional_logic": [
+                            [
+                                {
+                                    "field": "field_5eca925bbfd0f",
+                                    "operator": "==",
+                                    "value": "categories"
+                                }
+                            ]
+                        ],
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "message": "",
+                        "default_value": 1,
+                        "ui": 1,
+                        "ui_on_text": "",
+                        "ui_off_text": ""
+                    },
+                    {
+                        "key": "field_5eca925bbfd12",
+                        "label": "Tags",
+                        "name": "tags",
+                        "type": "taxonomy",
+                        "instructions": "Select tags",
+                        "required": 0,
+                        "conditional_logic": [
+                            [
+                                {
+                                    "field": "field_5eca925bbfd0f",
+                                    "operator": "==",
+                                    "value": "tags"
+                                }
+                            ]
+                        ],
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "taxonomy": "product_tag",
+                        "field_type": "checkbox",
+                        "add_term": 0,
+                        "save_terms": 0,
+                        "load_terms": 0,
+                        "return_format": "id",
+                        "multiple": 0,
+                        "allow_null": 0
+                    },
+                    {
+                        "key": "field_5eca925bbfd13",
+                        "label": "Attributes",
+                        "name": "attributes",
+                        "type": "select",
+                        "instructions": "",
+                        "required": 0,
+                        "conditional_logic": [
+                            [
+                                {
+                                    "field": "field_5eca925bbfd0f",
+                                    "operator": "==",
+                                    "value": "attributes"
+                                }
+                            ]
+                        ],
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "choices": [],
+                        "default_value": [],
+                        "allow_null": 0,
+                        "multiple": 1,
+                        "ui": 1,
+                        "ajax": 0,
+                        "return_format": "value",
+                        "placeholder": ""
+                    }
+                ]
+            },
+            {
+                "key": "field_611102cca0482",
+                "label": "Page types",
+                "name": "page_types",
+                "type": "button_group",
+                "instructions": "",
+                "required": 0,
+                "conditional_logic": [
+                    [
+                        {
+                            "field": "field_5eca340a16793",
+                            "operator": "==",
+                            "value": "page"
+                        }
+                    ]
+                ],
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "choices": {
+                    "generic": "Generic",
+                    "p404": "404 Page"
+                },
+                "allow_null": 0,
+                "default_value": "generic",
+                "layout": "horizontal",
+                "return_format": "value"
+            },
+            {
+                "key": "field_5ecbe48e4e7d6",
+                "label": "Operator",
+                "name": "pages_operator",
+                "type": "button_group",
+                "instructions": "",
+                "required": 0,
+                "conditional_logic": [
+                    [
+                        {
+                            "field": "field_5eca340a16793",
+                            "operator": "==",
+                            "value": "page"
+                        },
+                        {
+                            "field": "field_611102cca0482",
+                            "operator": "==",
+                            "value": "generic"
+                        }
+                    ]
+                ],
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "choices": {
+                    "include": "Include",
+                    "exclude": "Exclude"
+                },
+                "allow_null": 0,
+                "default_value": "",
+                "layout": "horizontal",
+                "return_format": "value"
+            },
+            {
+                "key": "field_5ecaa8b5e3f42",
+                "label": "Pages",
+                "name": "pages",
+                "type": "relationship",
+                "instructions": "",
+                "required": 0,
+                "conditional_logic": [
+                    [
+                        {
+                            "field": "field_5eca340a16793",
+                            "operator": "==",
+                            "value": "page"
+                        },
+                        {
+                            "field": "field_611102cca0482",
+                            "operator": "==",
+                            "value": "generic"
+                        }
+                    ]
+                ],
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "post_type": [
+                    "page"
+                ],
+                "taxonomy": "",
+                "filters": [
+                    "search"
+                ],
+                "elements": "",
+                "min": "",
+                "max": "",
+                "return_format": "id"
+            },
+            {
+                "key": "field_5ece7a7587e17",
+                "label": "ADVANCED",
+                "name": "",
+                "type": "tab",
+                "instructions": "",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "placement": "top",
+                "endpoint": 0
+            },
+            {
+                "key": "field_5ecbf81eebf4c",
+                "label": "Priority",
+                "name": "template_priority",
+                "type": "number",
+                "instructions": "Add a priority. Useful when multiple templates apply on the same location. The biggest number will have priority.",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "--size-1",
+                    "id": ""
+                },
+                "default_value": "",
+                "placeholder": "",
+                "prepend": "",
+                "append": "",
+                "min": "",
+                "max": "",
+                "step": ""
+            },
+            {
+                "key": "field_5ecd0914db04a",
+                "label": "Override individual settings",
+                "name": "template_override_individual",
+                "type": "true_false",
+                "instructions": "If a page or a found location has options set individually, you can force this template to override those settings.",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "message": "",
+                "default_value": 0,
+                "ui": 1,
+                "ui_on_text": "",
+                "ui_off_text": ""
+            }
+        ],
+        "location": [
+            [
+                {
+                    "param": "post_type",
+                    "operator": "==",
+                    "value": "rey-templates"
+                }
+            ]
+        ],
+        "menu_order": 0,
+        "position": "normal",
+        "style": "default",
+        "label_placement": "top",
+        "instruction_placement": "label",
+        "hide_on_screen": "",
+        "active": true,
+        "description": ""
+    }
+]
