@@ -175,44 +175,6 @@ class SummaryShortcode {
         return array_map('sj_normalize_review', get_posts($args));
     }
 
-    // ── Calcul des statistiques ───────────────────────────────────────────────
-
-    private function compute_stats(array $reviews): array {
-        if (empty($reviews)) return [];
-
-        $total        = count($reviews);
-        $total_rated  = 0;
-        $rating_sum   = 0;
-        $distribution = [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0];
-        $crit_sums    = ['qualite_prix' => 0, 'ambiance' => 0, 'experience' => 0, 'paysage' => 0];
-        $crit_counts  = array_fill_keys(array_keys($crit_sums), 0);
-
-        foreach ($reviews as $r) {
-            $rating = (int) $r['rating'];
-            if ($rating < 1 || $rating > 5) continue; // skip avis sans note valide
-            $total_rated++;
-            $rating_sum += $rating;
-            $distribution[$rating]++;
-            foreach (array_keys($crit_sums) as $c) {
-                $v = $r[$c];
-                if ($v !== null && $v >= 1 && $v <= 5) {
-                    $crit_sums[$c]  += $v;
-                    $crit_counts[$c]++;
-                }
-            }
-        }
-
-        $avg           = $total_rated > 0 ? round($rating_sum / $total_rated, 1) : 0;
-        $criteria_avgs = [];
-        foreach (array_keys($crit_sums) as $c) {
-            $criteria_avgs[$c] = $crit_counts[$c] > 0
-                ? round($crit_sums[$c] / $crit_counts[$c], 1)
-                : null;
-        }
-
-        return compact('total', 'avg', 'distribution', 'criteria_avgs');
-    }
-
     /**
      * Compute stats from ALL reviews via SQL — not limited by posts_per_page.
      * This ensures the header score, count, and distribution are always accurate.
@@ -257,9 +219,7 @@ class SummaryShortcode {
         $total = (int) ($row->total ?? 0);
         $avg   = round((float) ($row->avg_rating ?? 0), 1);
 
-        if ($total === 0) return [];
-
-        // Distribution
+        // Distribution (even if 0 CPT, we still need the structure for lieu enrichment)
         $distribution = [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0];
         $dist_rows = $wpdb->get_results(
             "SELECT CAST(pm_r.meta_value AS UNSIGNED) AS rating, COUNT(*) AS cnt
@@ -287,6 +247,64 @@ class SummaryShortcode {
             );
             $criteria_avgs[$crit] = ($crit_row && $crit_row->cnt > 0) ? round((float) $crit_row->cavg, 1) : null;
         }
+
+        // Include platform reviews_count from lieu data (Google, TripAdvisor, etc.)
+        // The lieux store the total review count from the platform (e.g. Google says 84 avis)
+        // but only some are synced as CPT. We add the difference to the total and compute
+        // a weighted average.
+        $all_lieux = (array) get_option('sj_lieux', []);
+        $matched_lieux = [];
+
+        if (!empty($a['lieu_ids'])) {
+            $target_ids = array_filter(array_map('trim', explode(',', $a['lieu_ids'])));
+            foreach ($all_lieux as $l) {
+                if (in_array($l['id'] ?? '', $target_ids, true)) {
+                    $matched_lieux[] = $l;
+                }
+            }
+        } elseif ($lieu_id && $lieu_id !== 'all') {
+            foreach ($all_lieux as $l) {
+                if (($l['id'] ?? '') === $lieu_id) {
+                    $matched_lieux[] = $l;
+                }
+            }
+        } else {
+            // "all" — include all lieux
+            $matched_lieux = $all_lieux;
+        }
+
+        // Add platform review counts (the non-synced portion)
+        $cpt_total = $total;
+        $cpt_avg   = $avg;
+        foreach ($matched_lieux as $l) {
+            $platform_count  = (int) ($l['reviews_count'] ?? 0);
+            $platform_rating = (float) ($l['rating'] ?? 0);
+            if ($platform_count <= 0 || $platform_rating <= 0) continue;
+
+            // Count how many CPT reviews we have for this lieu (already included in $total)
+            $lieu_cpt_count = 0;
+            if (!empty($l['id'])) {
+                $lieu_cpt_count = (int) $wpdb->get_var($wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$wpdb->posts} p
+                     INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID AND pm.meta_key = 'avis_lieu_id'
+                     INNER JOIN {$wpdb->postmeta} pr ON pr.post_id = p.ID AND pr.meta_key = 'avis_rating'
+                     WHERE p.post_type = 'sj_avis' AND p.post_status = 'publish'
+                     AND pm.meta_value = %s",
+                    $l['id']
+                ));
+            }
+
+            // Extra reviews = platform total minus what we already have as CPT
+            $extra = max(0, $platform_count - $lieu_cpt_count);
+            if ($extra > 0) {
+                // Weighted average: combine CPT avg with platform avg for the extra reviews
+                $combined_total = $total + $extra;
+                $avg = round(($avg * $total + $platform_rating * $extra) / $combined_total, 1);
+                $total = $combined_total;
+            }
+        }
+
+        if ($total === 0) return [];
 
         return compact('total', 'avg', 'distribution', 'criteria_avgs');
     }
@@ -319,9 +337,9 @@ if (!empty($a['max_width_mobile'])) {
      data-lieu-ids="<?php echo esc_attr($a['lieu_ids']); ?>"
      data-source-filter="<?php echo esc_attr($a['source_filter']); ?>">
 
-    <!-- ══ SECTION 1 : EN-TÊTE ══════════════════════════════════════════════ -->
-    <?php $layout_cls = in_array($a['score_layout'], ['left','right'], true) ? ' sj-summary__header--side-' . $a['score_layout'] : ''; ?>
-    <div class="sj-summary__header<?php echo esc_attr($layout_cls); ?>">
+    <!-- ══ SECTION 1 : SCORE + DISTRIBUTION (bloc parent) ══════════════════ -->
+    <?php $layout_cls = in_array($a['score_layout'], ['left','right'], true) ? ' sj-summary__top--side-' . $a['score_layout'] : ''; ?>
+    <div class="sj-summary__top<?php echo esc_attr($layout_cls); ?>">
 
         <!-- Score global -->
         <div class="sj-summary__score-block">
@@ -339,70 +357,62 @@ if (!empty($a['max_width_mobile'])) {
             </div>
         </div>
 
-        <!-- ── SECTION 2 : DISTRIBUTION + SOUS-CRITÈRES (côte à côte) ──── -->
         <?php
-        // Pré-calcul : nécessaire AVANT d'ouvrir le div pour la classe de grid
-        $crit_labels  = ['qualite_prix'=>'Qualité/prix','ambiance'=>'Ambiance','experience'=>'Expérience','paysage'=>'Paysage'];
-        $has_criteria = $a['show_criteria'] !== '0' && array_filter($stats['criteria_avgs'], fn($v) => $v !== null);
-        $show_dist    = $a['show_distribution'] !== '0';
-        // La classe --split active grid-template-columns: 1fr auto 1fr uniquement quand les deux colonnes existent
-        $middle_cls   = ($show_dist && $has_criteria) ? ' sj-summary__middle--split' : '';
+        $show_dist = $a['show_distribution'] !== '0';
+        if ($show_dist):
         ?>
-        <div class="sj-summary__middle<?php echo esc_attr($middle_cls); ?>">
-
-            <?php if ($show_dist): ?>
-            <!-- Distribution par étoiles -->
-            <div class="sj-summary__distribution">
-                <?php
-                $dist_labels = [5=>'Excellent',4=>'Bien',3=>'Moyen',2=>'Médiocre',1=>'Horrible'];
-                $max_dist    = max(1, max($stats['distribution']));
-                foreach ($dist_labels as $stars => $dlabel):
-                    $count = $stats['distribution'][$stars] ?? 0;
-                    $pct   = round(($count / $max_dist) * 100);
-                ?>
-                <div class="sj-summary__dist-row">
-                    <span class="sj-summary__dist-label"><?php echo esc_html($dlabel); ?></span>
-                    <div class="sj-summary__dist-track"
-                         role="progressbar"
-                         aria-valuenow="<?php echo esc_attr($pct); ?>"
-                         aria-valuemin="0" aria-valuemax="100">
-                        <div class="sj-summary__dist-fill" style="width:<?php echo esc_attr($pct); ?>%"></div>
-                    </div>
-                    <span class="sj-summary__dist-count"><?php echo esc_html($count); ?></span>
+        <!-- Distribution par étoiles -->
+        <div class="sj-summary__distribution">
+            <?php
+            $dist_labels = [5=>'Excellent',4=>'Bien',3=>'Moyen',2=>'Médiocre',1=>'Horrible'];
+            $max_dist    = max(1, max($stats['distribution']));
+            foreach ($dist_labels as $stars => $dlabel):
+                $count = $stats['distribution'][$stars] ?? 0;
+                $pct   = round(($count / $max_dist) * 100);
+            ?>
+            <div class="sj-summary__dist-row">
+                <span class="sj-summary__dist-label"><?php echo esc_html($dlabel); ?></span>
+                <div class="sj-summary__dist-track"
+                     role="progressbar"
+                     aria-valuenow="<?php echo esc_attr($pct); ?>"
+                     aria-valuemin="0" aria-valuemax="100">
+                    <div class="sj-summary__dist-fill" style="width:<?php echo esc_attr($pct); ?>%"></div>
                 </div>
-                <?php endforeach; ?>
+                <span class="sj-summary__dist-count"><?php echo esc_html($count); ?></span>
             </div>
-            <?php endif; ?>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
 
-            <?php if ($has_criteria && $show_dist): ?>
-            <!-- Séparateur vertical (desktop) / horizontal (mobile) -->
-            <div class="sj-summary__middle-divider" aria-hidden="true"></div>
-            <?php endif; ?>
-            <?php if ($has_criteria): ?>
-            <!-- Sous-critères : grille 2 colonnes -->
-            <div class="sj-summary__criteria">
-                <?php foreach ($crit_labels as $k => $lbl):
-                    $crit_avg = $stats['criteria_avgs'][$k];
-                    if ($crit_avg === null) continue;
-                    $crit_pct = round(($crit_avg / 5) * 100);
-                ?>
-                <div class="sj-summary__criterion">
-                    <span class="sj-summary__crit-label"><?php echo esc_html($lbl); ?></span>
-                    <div class="sj-summary__crit-track">
-                        <div class="sj-summary__crit-fill"
-                             style="width:<?php echo esc_attr($crit_pct); ?>%"></div>
-                    </div>
-                    <span class="sj-summary__crit-score">
-                        <?php echo esc_html(number_format($crit_avg, 1, ',', '')); ?>
-                    </span>
+    </div><!-- /.sj-summary__top -->
+
+    <!-- ══ SECTION 2 : SOUS-CRITÈRES (indépendant, masquable) ════════════ -->
+    <?php
+    $crit_labels  = ['qualite_prix'=>'Qualité/prix','ambiance'=>'Ambiance','experience'=>'Expérience','paysage'=>'Paysage'];
+    $has_criteria = $a['show_criteria'] !== '0' && array_filter($stats['criteria_avgs'], fn($v) => $v !== null);
+    if ($has_criteria):
+    ?>
+    <div class="sj-summary__criteria-section">
+        <div class="sj-summary__criteria">
+            <?php foreach ($crit_labels as $k => $lbl):
+                $crit_avg = $stats['criteria_avgs'][$k];
+                if ($crit_avg === null) continue;
+                $crit_pct = round(($crit_avg / 5) * 100);
+            ?>
+            <div class="sj-summary__criterion">
+                <span class="sj-summary__crit-label"><?php echo esc_html($lbl); ?></span>
+                <div class="sj-summary__crit-track">
+                    <div class="sj-summary__crit-fill"
+                         style="width:<?php echo esc_attr($crit_pct); ?>%"></div>
                 </div>
-                <?php endforeach; ?>
+                <span class="sj-summary__crit-score">
+                    <?php echo esc_html(number_format($crit_avg, 1, ',', '')); ?>
+                </span>
             </div>
-            <?php endif; ?>
-
-        </div><!-- /.sj-summary__middle -->
-
-    </div><!-- /.sj-summary__header -->
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <?php
     $show_filters  = $a['show_filters']  !== '0';
