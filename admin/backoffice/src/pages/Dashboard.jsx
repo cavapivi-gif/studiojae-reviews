@@ -23,6 +23,7 @@ export default function Dashboard() {
     lieux, activeLieux, monthlyTrend,
     trends, trendsLoading,
     comparison, comparisonLoading, compareSeason, compareRange,
+    reload,
   } = useDashboard()
 
   const recentCols = [
@@ -72,6 +73,10 @@ export default function Dashboard() {
         title="Tableau de bord"
         actions={
           <div className="flex items-center gap-2">
+            <Btn variant="secondary" size="sm" onClick={async () => { await reload(); toast.success('Dashboard rechargé.') }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+              Recharger
+            </Btn>
             <Btn variant="secondary" size="sm" onClick={handleExport}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
               Export CSV

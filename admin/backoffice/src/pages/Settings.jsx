@@ -273,6 +273,24 @@ export default function Settings() {
             </section>
 
             <section>
+              <SectionHeader>Cache</SectionHeader>
+              <p className="text-xs text-gray-500 mb-3">
+                Vide le cache du dashboard (stats, tendances, répartitions). Utile après un import ou une sync manuelle.
+              </p>
+              <Btn type="button" variant="secondary" size="sm" onClick={async () => {
+                try {
+                  await api.flushCache()
+                  toast.success('Cache vidé avec succès.')
+                } catch (e) {
+                  toast.error(e.message)
+                }
+              }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                Vider le cache
+              </Btn>
+            </section>
+
+            <section>
               <SectionHeader>Synchronisation automatique</SectionHeader>
               <Select
                 label="Fréquence de sync automatique"

@@ -78,6 +78,23 @@ export function useDashboard() {
     }
   }, [])
 
+  // Flush cache + reload all dashboard data
+  const reload = useCallback(async () => {
+    await api.flushCache()
+    const id = ++dashReqId.current
+    setLoading(true)
+    api.dashboard(period, sourceFilter, lieuFilter, fromDate, toDate)
+      .then(d => { if (dashReqId.current === id) setData(d) })
+      .catch(e => { if (dashReqId.current === id) toast.error(e.message) })
+      .finally(() => { if (dashReqId.current === id) setLoading(false) })
+    const tid = ++trendReqId.current
+    setTrendsLoading(true)
+    api.dashboardTrends(period, sourceFilter, lieuFilter, fromDate, toDate)
+      .then(d => { if (trendReqId.current === tid) setTrends(d) })
+      .catch(() => { if (trendReqId.current === tid) setTrends(null) })
+      .finally(() => { if (trendReqId.current === tid) setTrendsLoading(false) })
+  }, [period, sourceFilter, lieuFilter, fromDate, toDate])
+
   // Compare custom date ranges
   const compareRange = useCallback(async (from1, to1, from2, to2) => {
     setComparisonLoading(true)
@@ -99,5 +116,6 @@ export function useDashboard() {
     lieux, activeLieux, monthlyTrend,
     trends, trendsLoading,
     comparison, comparisonLoading, compareSeason, compareRange,
+    reload,
   }
 }

@@ -104,6 +104,10 @@ export const api = {
   testTripadvisorKey: async (key) =>
     (await req('/settings/test-tripadvisor-key', { method: 'POST', body: JSON.stringify({ key }) })).json(),
 
+  /** Flush all dashboard caches */
+  flushCache: async () =>
+    (await req('/flush-cache', { method: 'POST' })).json(),
+
   /** Export CSV */
   exportCsv: async ({ source = '', lieu_id = '', rating = 0 } = {}) => {
     const p = new URLSearchParams({ source, lieu_id, rating })

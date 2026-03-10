@@ -28,6 +28,13 @@ class RestApi {
 
     public function init(): void {
         add_action('rest_api_init', [$this, 'register_routes']);
+
+        // Flush dashboard cache once when plugin version changes (e.g. after a code fix).
+        $cache_ver_key = 'sj_dash_cache_ver';
+        if (get_option($cache_ver_key) !== SJ_REVIEWS_VERSION) {
+            $this->invalidate_dashboard_cache();
+            update_option($cache_ver_key, SJ_REVIEWS_VERSION, true);
+        }
     }
 
     public function register_routes(): void {
@@ -36,6 +43,12 @@ class RestApi {
         $valid_season = fn($v) => in_array($v, ['spring', 'summer', 'autumn', 'winter'], true);
         $valid_year   = fn($v) => is_numeric($v) && (int) $v >= 2000 && (int) $v <= 2100;
         $sanitize_key = fn($v) => sanitize_key($v);
+
+        register_rest_route($this->ns, '/flush-cache', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'flush_cache'],
+            'permission_callback' => [$this, 'is_manager'],
+        ]);
 
         register_rest_route($this->ns, '/dashboard', [
             'methods'             => 'GET',
@@ -362,7 +375,11 @@ class RestApi {
 
         // Per-period cache (only for unfiltered requests)
         $cache_key = self::DASHBOARD_CACHE_PREFIX . $period;
-        if (!$has_filters) {
+        $flush     = $req->get_param('flush');
+        if ($flush) {
+            $this->invalidate_dashboard_cache();
+        }
+        if (!$has_filters && !$flush) {
             $cached = get_transient($cache_key);
             if (is_array($cached)) {
                 $cached['recent'] = array_map(
@@ -619,6 +636,12 @@ class RestApi {
         }
 
         return rest_ensure_response($data);
+    }
+
+    /** REST endpoint: flush all dashboard caches. */
+    public function flush_cache(\WP_REST_Request $req): \WP_REST_Response {
+        $this->invalidate_dashboard_cache();
+        return rest_ensure_response(['ok' => true, 'message' => 'Cache vidé.']);
     }
 
     /** Invalidate all dashboard caches (call after any review CRUD). */
