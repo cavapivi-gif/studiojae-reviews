@@ -6,16 +6,16 @@ import AppSidebar from './Sidebar'
 export default function Layout({ children }) {
   return (
     <TooltipProvider>
-      <SidebarProvider>
+      <SidebarProvider defaultOpen={true}>
         <AppSidebar />
         <SidebarInset>
           <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 !h-4" />
           </header>
-          <main className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto">
             {children}
-          </main>
+          </div>
         </SidebarInset>
       </SidebarProvider>
     </TooltipProvider>

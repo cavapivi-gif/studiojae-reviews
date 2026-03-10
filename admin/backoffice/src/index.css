@@ -59,27 +59,19 @@
   border-color: var(--border);
 }
 
-/* Reset WP admin interference */
-#sj-reviews-root h1,
-#sj-reviews-root h2,
-#sj-reviews-root h3,
-#sj-reviews-root p {
+/* Reset WP admin interference — only margin/padding, let Tailwind handle font-weight */
+#sj-reviews-root :where(h1, h2, h3, p) {
   margin: 0;
   padding: 0;
-  font-weight: 400;
 }
 
-#sj-reviews-root button {
+#sj-reviews-root :where(button) {
   cursor: pointer;
   font-family: inherit;
-  font-size: 13px;
 }
 
-#sj-reviews-root input,
-#sj-reviews-root select,
-#sj-reviews-root textarea {
+#sj-reviews-root :where(input, select, textarea) {
   font-family: inherit;
-  font-size: 13px;
 }
 
 #sj-reviews-root svg {

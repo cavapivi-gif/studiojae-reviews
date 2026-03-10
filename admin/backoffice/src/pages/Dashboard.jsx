@@ -31,7 +31,7 @@ export default function Dashboard() {
         <div className="flex items-center gap-2">
           {r.avatar
             ? <img src={r.avatar} alt="" className="w-6 h-6 rounded-full object-cover" />
-            : <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-xs">{r.author?.[0]}</div>
+            : <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-xs text-muted-foreground">{r.author?.[0]}</div>
           }
           <span>{r.author}</span>
           {r.certified && <Badge variant="certified">Certifié</Badge>}
@@ -40,11 +40,11 @@ export default function Dashboard() {
     },
     { key: 'rating',   label: 'Note',   render: r => <Stars rating={r.rating} size={12} /> },
     { key: 'source',   label: 'Source', render: r => <Badge variant={r.source}>{SOURCE_LABELS[r.source] ?? r.source}</Badge> },
-    { key: 'date_rel', label: 'Date',   render: r => <span className="text-gray-400">{r.date_rel}</span> },
+    { key: 'date_rel', label: 'Date',   render: r => <span className="text-muted-foreground">{r.date_rel}</span> },
     {
       key: 'actions', label: '',
       render: r => (
-        <button onClick={() => navigate(`/reviews/${r.id}`)} className="text-xs text-gray-400 hover:text-black underline">Modifier</button>
+        <button onClick={() => navigate(`/reviews/${r.id}`)} className="text-xs text-muted-foreground hover:text-foreground underline">Modifier</button>
       ),
     },
   ]
@@ -98,7 +98,7 @@ export default function Dashboard() {
           />
 
           {/* Stats — responsive 2→4 columns */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-gray-200 mx-8 mt-4 border border-gray-200">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-border mx-6 mt-4 border border-border rounded-lg overflow-hidden">
             <StatCard
               label="Avis Globaux"
               value={data?.total ?? 0}
@@ -114,13 +114,13 @@ export default function Dashboard() {
               label="Google"
               value={
                 data?.google_total
-                  ? <span>{data.google_total} <span className="text-sm font-normal text-gray-400">avis</span></span>
+                  ? <span>{data.google_total} <span className="text-sm font-normal text-muted-foreground">avis</span></span>
                   : '—'
               }
               sub={
                 data?.google_avg
                   ? <Stars rating={data.google_avg} size={12} />
-                  : <span className="text-xs text-gray-400">Aucun avis Google</span>
+                  : <span className="text-xs text-muted-foreground">Aucun avis Google</span>
               }
             />
             <StatCard
@@ -136,7 +136,7 @@ export default function Dashboard() {
           </div>
 
           {/* Time-series trends */}
-          <div className="mx-8 mt-6">
+          <div className="mx-6 mt-6">
             <ChartCard title="Tendances" loading={trendsLoading}>
               <TimeSeriesChart data={trends} loading={trendsLoading} />
             </ChartCard>
@@ -144,7 +144,7 @@ export default function Dashboard() {
 
           {/* Monthly trend (mini bar) */}
           {monthlyTrend.length > 0 && (
-            <div className="mx-8 mt-6">
+            <div className="mx-6 mt-6">
               <ChartCard title="Évolution mensuelle (6 derniers mois)">
                 <MiniBarChart data={monthlyTrend} />
               </ChartCard>
@@ -152,18 +152,18 @@ export default function Dashboard() {
           )}
 
           {/* Row 2: Source donut + Lieux overview */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mx-8 mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mx-6 mt-6">
             <ChartCard title="Répartition par source">
               <DonutChart segments={data?.by_source?.map(s => ({ source: s.source, count: s.count })) ?? []} />
             </ChartCard>
 
-            <div className="border border-gray-200 p-5">
+            <div className="rounded-lg border bg-card p-5">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-xs text-gray-400 uppercase tracking-widest">Lieux actifs</span>
-                <button onClick={() => navigate('/lieux')} className="text-xs text-gray-400 underline hover:text-black">Gérer</button>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Lieux actifs</span>
+                <button onClick={() => navigate('/lieux')} className="text-xs text-muted-foreground underline hover:text-foreground">Gérer</button>
               </div>
               {activeLieux.length === 0 ? (
-                <p className="text-xs text-gray-400 italic">Aucun lieu actif.</p>
+                <p className="text-xs text-muted-foreground italic">Aucun lieu actif.</p>
               ) : (
                 <div className="flex flex-col gap-2">
                   {activeLieux.slice(0, 5).map(l => {
@@ -172,19 +172,19 @@ export default function Dashboard() {
                     const displayCount = Math.max(platformCount, cptCount)
                     return (
                       <div key={l.id} className="flex items-center gap-3 text-sm">
-                        <span className={`w-2 h-2 shrink-0 ${SOURCE_COLORS[l.source] ?? 'bg-gray-400'}`} />
-                        <span className="text-gray-700 truncate flex-1">{l.name}</span>
+                        <span className={`w-2 h-2 shrink-0 rounded-full ${SOURCE_COLORS[l.source] ?? 'bg-muted-foreground'}`} />
+                        <span className="truncate flex-1">{l.name}</span>
                         {l.rating > 0 && (
-                          <span className="text-xs font-medium text-gray-500">
+                          <span className="text-xs text-muted-foreground">
                             {Number(l.rating).toFixed(1)}
                           </span>
                         )}
-                        <span className="text-xs text-gray-400">{displayCount} avis</span>
+                        <span className="text-xs text-muted-foreground">{displayCount} avis</span>
                       </div>
                     )
                   })}
                   {activeLieux.length > 5 && (
-                    <button onClick={() => navigate('/lieux')} className="text-xs text-gray-400 underline">
+                    <button onClick={() => navigate('/lieux')} className="text-xs text-muted-foreground underline hover:text-foreground">
                       +{activeLieux.length - 5} autres
                     </button>
                   )}
@@ -194,7 +194,7 @@ export default function Dashboard() {
           </div>
 
           {/* Season comparison */}
-          <div className="mx-8 mt-6">
+          <div className="mx-6 mt-6">
             <ChartCard title="Comparateur de périodes">
               <SeasonCompare
                 comparison={comparison}
@@ -207,31 +207,31 @@ export default function Dashboard() {
 
           {/* Per platform */}
           {data?.by_source?.length > 0 && (
-            <div className="mx-8 mt-6">
+            <div className="mx-6 mt-6">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs text-gray-400 uppercase tracking-widest">Par plateforme</span>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Par plateforme</span>
               </div>
-              <div className="border border-gray-200 divide-y">
+              <div className="rounded-lg border divide-y">
                 {data.by_source.map(({ source, count, avg_rating }) => (
                   <button
                     key={source}
                     onClick={() => navigate(`/reviews?source=${source}`)}
-                    className="w-full flex items-center gap-4 px-4 py-3 hover:bg-gray-50 transition-colors text-left group"
+                    className="w-full flex items-center gap-4 px-4 py-3 hover:bg-muted/50 transition-colors text-left group"
                   >
-                    <div className={`w-2.5 h-2.5 shrink-0 ${SOURCE_COLORS[source] ?? 'bg-gray-400'}`} />
-                    <span className="text-sm font-medium text-gray-700 group-hover:text-black w-28">
+                    <div className={`w-2.5 h-2.5 shrink-0 rounded-full ${SOURCE_COLORS[source] ?? 'bg-muted-foreground'}`} />
+                    <span className="text-sm group-hover:text-foreground w-28">
                       {SOURCE_LABELS[source] ?? source}
                     </span>
-                    <span className="text-xs font-semibold text-gray-900 bg-gray-100 px-2 py-0.5 min-w-8 text-center">
+                    <span className="text-xs font-medium bg-secondary px-2 py-0.5 rounded-md min-w-8 text-center">
                       {count}
                     </span>
                     {avg_rating > 0 && (
                       <div className="flex items-center gap-1.5 ml-2">
                         <Stars rating={avg_rating} size={11} />
-                        <span className="text-xs text-gray-500">{avg_rating.toFixed(1)}</span>
+                        <span className="text-xs text-muted-foreground">{avg_rating.toFixed(1)}</span>
                       </div>
                     )}
-                    <span className="ml-auto text-xs text-gray-300 group-hover:text-gray-500">→</span>
+                    <span className="ml-auto text-xs text-muted-foreground/50 group-hover:text-muted-foreground">→</span>
                   </button>
                 ))}
               </div>
@@ -239,14 +239,14 @@ export default function Dashboard() {
           )}
 
           {/* Recent reviews */}
-          <div className="mx-8 mt-6 mb-10">
+          <div className="mx-6 mt-6 mb-10">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-gray-400 uppercase tracking-widest">Avis récents</span>
-              <button onClick={() => navigate('/reviews')} className="text-xs text-gray-400 underline hover:text-black">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider">Avis récents</span>
+              <button onClick={() => navigate('/reviews')} className="text-xs text-muted-foreground underline hover:text-foreground">
                 Tout voir
               </button>
             </div>
-            <div className="border border-gray-200">
+            <div className="rounded-lg border">
               <Table columns={recentCols} data={data?.recent ?? []} empty="Aucun avis pour le moment." />
             </div>
           </div>
