@@ -106,7 +106,7 @@ export default function Dashboard() {
           {/* Stats — responsive 2→4 columns */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-border mx-6 mt-4 border border-border rounded-lg overflow-hidden">
             <StatCard
-              label="Répartition par source"
+              label="Total des avis"
               value={data?.total ?? 0}
               sub={<button onClick={() => navigate('/reviews')} className="text-xs underline">Voir tout</button>}
             />
@@ -144,7 +144,7 @@ export default function Dashboard() {
           {/* Time-series trends */}
           <div className="mx-6 mt-6">
             <ChartCard title="Tendances" loading={trendsLoading}>
-              <TimeSeriesChart data={trends} loading={trendsLoading} />
+              <TimeSeriesChart data={trends} loading={trendsLoading} totalVisible={data?.total} />
             </ChartCard>
           </div>
 

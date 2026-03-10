@@ -25,9 +25,16 @@ function SheetClose({
 }
 
 function SheetPortal({
+  container,
   ...props
 }) {
-  return <SheetPrimitive.Portal data-slot="sheet-portal" {...props} />;
+  return (
+    <SheetPrimitive.Portal
+      data-slot="sheet-portal"
+      container={container ?? document.getElementById('sj-reviews-root') ?? undefined}
+      {...props}
+    />
+  );
 }
 
 function SheetOverlay({

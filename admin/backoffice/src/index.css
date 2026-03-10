@@ -50,7 +50,7 @@
   line-height: 1.5;
   color: var(--foreground);
   background: var(--background);
-  height: 100vh;
+  /* height set by WP admin_head (position:fixed + top/bottom) */
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
