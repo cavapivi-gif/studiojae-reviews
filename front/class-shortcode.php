@@ -41,7 +41,7 @@ class Shortcode {
         self::$instance_count++;
         $uid = 'sj-sc-' . self::$instance_count . '-' . uniqid();
 
-        $opts = get_option('sj_reviews_settings', []);
+        $opts = \SJ_Reviews\Includes\Settings::all();
 
         $a = shortcode_atts([
             'layout'         => $opts['default_layout']  ?? 'slider-i',

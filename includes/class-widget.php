@@ -74,7 +74,7 @@ class ReviewsWidget extends \WP_Widget {
         $mode    = $instance['mode'] ?? 'badge';
         $lieu_id = $instance['lieu_id'] ?? 'all';
         $count   = $instance['count'] ?? 3;
-        $lieux   = (array) get_option('sj_lieux', []);
+        $lieux   = \SJ_Reviews\Includes\Settings::lieux();
         ?>
         <p>
             <label for="<?php echo esc_attr($this->get_field_id('title')); ?>">Titre :</label>

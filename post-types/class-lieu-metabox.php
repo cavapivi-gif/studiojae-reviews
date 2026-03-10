@@ -20,11 +20,10 @@ class LieuMetabox {
     }
 
     public function register(): void {
-        $settings     = get_option('sj_reviews_settings', []);
-        $linked_types = array_filter((array) ($settings['linked_post_types'] ?? []));
+        $linked_types = \SJ_Reviews\Includes\Settings::linked_post_types();
         if (empty($linked_types)) return;
 
-        $lieux = (array) get_option('sj_lieux', []);
+        $lieux = \SJ_Reviews\Includes\Settings::lieux();
         if (empty($lieux)) return;
 
         foreach ($linked_types as $pt) {
@@ -42,7 +41,7 @@ class LieuMetabox {
     public function render(\WP_Post $post): void {
         wp_nonce_field('sj_lieu_metabox', 'sj_lieu_metabox_nonce');
         $current = get_post_meta($post->ID, 'sj_lieu_id', true);
-        $lieux   = (array) get_option('sj_lieux', []);
+        $lieux   = \SJ_Reviews\Includes\Settings::lieux();
         ?>
         <style>
             #sj_lieu_metabox .sj-lm { display:flex; flex-direction:column; gap:6px; }

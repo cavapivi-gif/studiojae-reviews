@@ -530,7 +530,7 @@ class RestApi {
         // ── Platform enrichment ──────────────────────────────────────────────
         // Include platform review counts from lieux (Google, Trustpilot, etc.)
         // so dashboard totals match the front-end widgets.
-        $all_lieux   = (array) get_option('sj_lieux', []);
+        $all_lieux   = \SJ_Reviews\Includes\Settings::lieux();
         $lieu_filter = sanitize_key($req->get_param('lieu_id'));
 
         // Determine which lieux to include
@@ -1394,8 +1394,7 @@ class RestApi {
             return new \WP_Error('no_place_id', 'Ce lieu n\'a pas de Place ID Google.', ['status' => 400]);
         }
 
-        $settings = get_option('sj_reviews_settings', []);
-        $api_key  = $settings['google_api_key'] ?? '';
+        $api_key  = \SJ_Reviews\Includes\Settings::get('google_api_key', '');
         if (empty($api_key)) {
             return new \WP_Error('no_api_key', 'Clé API Google Maps non configurée dans Réglages.', ['status' => 400]);
         }
@@ -1492,8 +1491,7 @@ class RestApi {
             return new \WP_Error('no_domain', 'Ce lieu n\'a pas de domaine Trustpilot configuré.', ['status' => 400]);
         }
 
-        $settings = get_option('sj_reviews_settings', []);
-        $api_key  = $settings['trustpilot_api_key'] ?? '';
+        $api_key  = \SJ_Reviews\Includes\Settings::get('trustpilot_api_key', '');
         if (empty($api_key)) {
             return new \WP_Error('no_api_key', 'Clé API Trustpilot non configurée dans Réglages.', ['status' => 400]);
         }
@@ -1574,8 +1572,7 @@ class RestApi {
             return new \WP_Error('no_location_id', 'Ce lieu n\'a pas de Location ID TripAdvisor configuré.', ['status' => 400]);
         }
 
-        $settings = get_option('sj_reviews_settings', []);
-        $api_key  = $settings['tripadvisor_api_key'] ?? '';
+        $api_key  = \SJ_Reviews\Includes\Settings::get('tripadvisor_api_key', '');
         if (empty($api_key)) {
             return new \WP_Error('no_api_key', 'Clé API TripAdvisor non configurée dans Réglages.', ['status' => 400]);
         }
@@ -1717,25 +1714,14 @@ class RestApi {
             'tripadvisor_api_key' => '',
             'linked_post_types'   => [],
             'sync_frequency'      => 'off',
-            'criteria_labels'     => [
-                'qualite_prix' => 'Qualité/prix',
-                'ambiance'     => 'Ambiance',
-                'experience'   => 'Expérience',
-                'paysage'      => 'Paysage',
-            ],
-            'rating_labels'       => [
-                '5' => 'Excellent',
-                '4' => 'Bien',
-                '3' => 'Moyen',
-                '2' => 'Médiocre',
-                '1' => 'Horrible',
-            ],
+            'criteria_labels'     => \SJ_Reviews\Includes\Labels::CRITERIA_DEFAULTS,
+            'rating_labels'       => \SJ_Reviews\Includes\Labels::RATING_DEFAULTS,
             'bubble_color'        => '#34d399',
             'text_words'          => 40,
             'autoplay_delay'      => 4000,
             'last_sync'           => get_option('sj_reviews_last_sync', ''),
         ];
-        $saved = get_option('sj_reviews_settings', []);
+        $saved = \SJ_Reviews\Includes\Settings::all();
         if (isset($saved['linked_post_types']) && !is_array($saved['linked_post_types'])) {
             $saved['linked_post_types'] = [];
         }
@@ -1765,8 +1751,7 @@ class RestApi {
     }
 
     public function list_linked_posts(\WP_REST_Request $req): \WP_REST_Response {
-        $settings      = get_option('sj_reviews_settings', []);
-        $allowed_types = array_map('sanitize_key', (array) ($settings['linked_post_types'] ?? []));
+        $allowed_types = array_map('sanitize_key', \SJ_Reviews\Includes\Settings::linked_post_types());
 
         if (empty($allowed_types)) {
             return rest_ensure_response([]);
@@ -1896,7 +1881,7 @@ class RestApi {
             'bubble_color', 'text_words', 'autoplay_delay',
         ];
         // Merge with existing to avoid losing keys not sent
-        $existing = get_option('sj_reviews_settings', []);
+        $existing = \SJ_Reviews\Includes\Settings::all();
         $clean    = $existing;
         foreach ($allowed as $key) {
             if (!isset($body[$key])) continue;
@@ -1930,8 +1915,7 @@ class RestApi {
      * GET /import/post-matches — Liste de posts pour le mapping produits→excursions
      */
     public function import_post_matches(\WP_REST_Request $req): \WP_REST_Response {
-        $settings      = get_option('sj_reviews_settings', []);
-        $allowed_types = array_map('sanitize_key', (array) ($settings['linked_post_types'] ?? []));
+        $allowed_types = array_map('sanitize_key', \SJ_Reviews\Includes\Settings::linked_post_types());
         $search        = sanitize_text_field($req->get_param('search'));
         $req_type      = sanitize_key($req->get_param('post_type'));
 
@@ -2199,7 +2183,7 @@ class RestApi {
 
             // Auto-sync place_id depuis lieu
             if ($lieu_id) {
-                $lieux = (array) get_option('sj_lieux', []);
+                $lieux = \SJ_Reviews\Includes\Settings::lieux();
                 foreach ($lieux as $l) {
                     if ($l['id'] === $lieu_id && !empty($l['place_id'])) {
                         update_post_meta($post_id, 'avis_place_id', sanitize_text_field($l['place_id']));
@@ -2225,7 +2209,7 @@ class RestApi {
     // ── Private helpers ───────────────────────────────────────────────────────
 
     private function get_lieux(): array {
-        return (array) get_option('sj_lieux', []);
+        return \SJ_Reviews\Includes\Settings::lieux();
     }
 
     private function validate_lieu_body(\WP_REST_Request $req): array|\WP_Error {
@@ -2308,7 +2292,7 @@ class RestApi {
 
         // Auto-synchronise avis_place_id depuis le lieu si non défini
         if (!get_post_meta($post_id, 'avis_place_id', true) && !empty($data['lieu_id'])) {
-            $lieux = (array) get_option('sj_lieux', []);
+            $lieux = \SJ_Reviews\Includes\Settings::lieux();
             foreach ($lieux as $l) {
                 if ($l['id'] === $data['lieu_id'] && !empty($l['place_id'])) {
                     update_post_meta($post_id, 'avis_place_id', sanitize_text_field($l['place_id']));

@@ -18,23 +18,15 @@ defined('ABSPATH') || exit;
  */
 class InlineRatingShortcode {
 
-    /** Map source slug → nom d'affichage */
-    private const SOURCE_NAMES = [
-        'google'      => 'Google',
-        'tripadvisor' => 'TripAdvisor',
-        'facebook'    => 'Facebook',
-        'trustpilot'  => 'Trustpilot',
-        'regiondo'    => 'Regiondo',
-        'direct'      => 'Direct',
-        'autre'       => 'Autre',
-    ];
+    /** @deprecated Use Labels::SOURCES instead */
+    private const SOURCE_NAMES = [];
 
     public function __construct() {
         add_shortcode('sj_inline_rating', [$this, 'render']);
     }
 
     public function render(array $atts = []): string {
-        $opts = get_option('sj_reviews_settings', []);
+        $opts = \SJ_Reviews\Includes\Settings::all();
 
         $a = shortcode_atts([
             'lieu_id'      => '',
@@ -74,7 +66,7 @@ class InlineRatingShortcode {
 
         // Enrich with platform data (Google, TripAdvisor, etc.)
         // Same logic as summary widget: add non-synced platform reviews
-        $all_lieux = (array) get_option('sj_lieux', []);
+        $all_lieux = \SJ_Reviews\Includes\Settings::lieux();
         if ($lieu_id !== '') {
             $matched_lieux = array_filter($all_lieux, fn($l) => ($l['id'] ?? '') === $lieu_id);
         } else {
@@ -138,7 +130,7 @@ class InlineRatingShortcode {
         if ($show_sources) {
             $raw_sources  = array_unique(array_column($reviews, 'source'));
             $source_names = array_map(
-                fn(string $s) => self::SOURCE_NAMES[$s] ?? ucfirst($s),
+                fn(string $s) => \SJ_Reviews\Includes\Labels::source_name($s),
                 $raw_sources
             );
             sort($source_names);

@@ -83,8 +83,7 @@ class FormShortcode {
 
         <?php if ($a['show_criteria'] === '1'): ?>
         <?php
-        $settings = get_option('sj_reviews_settings', []);
-        $crit_labels = $settings['criteria_labels'] ?? ['qualite_prix' => 'Qualité/prix', 'ambiance' => 'Ambiance', 'experience' => 'Expérience', 'paysage' => 'Paysage'];
+        $crit_labels = \SJ_Reviews\Includes\Labels::criteria();
         foreach ($crit_labels as $key => $label):
         ?>
         <div class="sj-form__field">

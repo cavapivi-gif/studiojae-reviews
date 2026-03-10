@@ -68,7 +68,7 @@ class SummaryWidget extends SjWidgetBase {
             'tab'   => Controls_Manager::TAB_CONTENT,
         ]);
 
-        $lieux     = (array) get_option('sj_lieux', []);
+        $lieux     = \SJ_Reviews\Includes\Settings::lieux();
         $lieu_opts = [
             'auto' => __('Auto (lieu de la page)', 'sj-reviews'),
             'all'  => __('Tous les avis',          'sj-reviews'),
@@ -90,15 +90,7 @@ class SummaryWidget extends SjWidgetBase {
                 'label'    => __('Filtrer par source(s)', 'sj-reviews'),
                 'type'     => Controls_Manager::SELECT2,
                 'multiple' => true,
-                'options'  => [
-                    'google'      => 'Google',
-                    'tripadvisor' => 'TripAdvisor',
-                    'facebook'    => 'Facebook',
-                    'regiondo'    => 'Regiondo',
-                    'trustpilot'  => 'Trustpilot',
-                    'direct'      => 'Direct',
-                    'autre'       => 'Autre',
-                ],
+                'options'  => \SJ_Reviews\Includes\Labels::SOURCES,
                 'default'  => [],
                 'description' => __('Laisser vide = toutes les sources', 'sj-reviews'),
             ]

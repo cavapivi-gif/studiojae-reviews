@@ -13,6 +13,8 @@ class Plugin {
         (new \SJ_Reviews\PostTypes\LieuMetabox())->init();
 
         // Helpers
+        require_once SJ_REVIEWS_DIR . 'includes/class-settings.php';
+        require_once SJ_REVIEWS_DIR . 'includes/class-labels.php';
         require_once SJ_REVIEWS_DIR . 'includes/helpers.php';
 
         // Cron — auto-sync

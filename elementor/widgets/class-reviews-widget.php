@@ -78,7 +78,7 @@ class ReviewsWidget extends SjWidgetBase {
         ]);
 
         // Lieu filter
-        $lieux = (array) get_option('sj_lieux', []);
+        $lieux = \SJ_Reviews\Includes\Settings::lieux();
         $lieu_opts = ['all' => __('Tous les lieux', 'sj-reviews')];
         foreach ($lieux as $l) {
             $lieu_opts[$l['id']] = esc_html(($l['name'] ?? $l['id']) . ' (' . ($l['source'] ?? '') . ')');

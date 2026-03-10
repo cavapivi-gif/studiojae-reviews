@@ -27,7 +27,7 @@ class RatingShortcode {
     }
 
     public function render(array $atts): string {
-        $opts = get_option('sj_reviews_settings', []);
+        $opts = \SJ_Reviews\Includes\Settings::all();
 
         $a = shortcode_atts([
             'lieu_id'     => 'all',
@@ -45,7 +45,7 @@ class RatingShortcode {
         $label       = esc_html($a['label']);
         $lieu_id_req = sanitize_text_field($a['lieu_id']);
 
-        $all_lieux = (array) get_option('sj_lieux', []);
+        $all_lieux = \SJ_Reviews\Includes\Settings::lieux();
 
         // Filtre : un lieu précis ou tous les actifs avec données
         if ($lieu_id_req === 'all') {
@@ -160,14 +160,7 @@ class RatingShortcode {
     }
 
     private function source_name(string $source): string {
-        return match($source) {
-            'google'      => 'Google',
-            'tripadvisor' => 'TripAdvisor',
-            'facebook'    => 'Facebook',
-            'trustpilot'  => 'Trustpilot',
-            'regiondo'    => 'Regiondo',
-            default       => ucfirst($source),
-        };
+        return \SJ_Reviews\Includes\Labels::source_name($source);
     }
 
     private function source_icon_html(string $source): string {

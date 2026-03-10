@@ -23,7 +23,7 @@ class CoupDeCoeurShortcode {
     }
 
     public function render(array $atts = []): string {
-        $opts = get_option('sj_reviews_settings', []);
+        $opts = \SJ_Reviews\Includes\Settings::all();
 
         $a = shortcode_atts([
             'post_id'          => 0,
