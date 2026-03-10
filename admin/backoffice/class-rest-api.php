@@ -1723,6 +1723,13 @@ class RestApi {
                 'experience'   => 'Expérience',
                 'paysage'      => 'Paysage',
             ],
+            'rating_labels'       => [
+                '5' => 'Excellent',
+                '4' => 'Bien',
+                '3' => 'Moyen',
+                '2' => 'Médiocre',
+                '1' => 'Horrible',
+            ],
             'bubble_color'        => '#34d399',
             'text_words'          => 40,
             'autoplay_delay'      => 4000,
@@ -1734,6 +1741,9 @@ class RestApi {
         }
         if (isset($saved['criteria_labels']) && !is_array($saved['criteria_labels'])) {
             $saved['criteria_labels'] = $defaults['criteria_labels'];
+        }
+        if (isset($saved['rating_labels']) && !is_array($saved['rating_labels'])) {
+            $saved['rating_labels'] = $defaults['rating_labels'];
         }
         $merged = array_merge($defaults, $saved);
         $merged['last_sync'] = get_option('sj_reviews_last_sync', '');
@@ -1882,7 +1892,7 @@ class RestApi {
         $allowed = [
             'default_layout', 'default_preset', 'star_color', 'certified_label',
             'max_front', 'google_api_key', 'trustpilot_api_key', 'tripadvisor_api_key',
-            'linked_post_types', 'sync_frequency', 'criteria_labels',
+            'linked_post_types', 'sync_frequency', 'criteria_labels', 'rating_labels',
             'bubble_color', 'text_words', 'autoplay_delay',
         ];
         // Merge with existing to avoid losing keys not sent
@@ -1892,7 +1902,7 @@ class RestApi {
             if (!isset($body[$key])) continue;
             if ($key === 'linked_post_types') {
                 $clean[$key] = array_values(array_map('sanitize_key', array_filter((array) $body[$key])));
-            } elseif ($key === 'criteria_labels') {
+            } elseif ($key === 'criteria_labels' || $key === 'rating_labels') {
                 $labels = (array) $body[$key];
                 $clean[$key] = array_map('sanitize_text_field', $labels);
             } elseif (in_array($key, ['text_words', 'autoplay_delay', 'max_front'], true)) {
