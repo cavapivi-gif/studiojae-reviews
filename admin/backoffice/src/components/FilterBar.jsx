@@ -6,6 +6,7 @@ const PERIODS = [
   { value: '90d', label: '90 jours' },
   { value: '12m', label: '12 mois' },
   { value: 'all', label: 'Tout' },
+  { value: 'custom', label: 'Période' },
 ]
 
 export default function FilterBar({
@@ -13,8 +14,18 @@ export default function FilterBar({
   sourceFilter, setSourceFilter,
   lieuFilter, setLieuFilter,
   lieux = [],
+  fromDate = '', setFromDate,
+  toDate = '', setToDate,
 }) {
   const activeLieux = lieux.filter(l => l.active)
+
+  const handlePeriodClick = (value) => {
+    setPeriod(value)
+    if (value !== 'custom') {
+      setFromDate?.('')
+      setToDate?.('')
+    }
+  }
 
   return (
     <div className="px-8 mt-6 flex items-center gap-4 flex-wrap">
@@ -23,7 +34,7 @@ export default function FilterBar({
         {PERIODS.map(p => (
           <button
             key={p.value}
-            onClick={() => setPeriod(p.value)}
+            onClick={() => handlePeriodClick(p.value)}
             role="radio"
             aria-checked={period === p.value}
             aria-pressed={period === p.value}
@@ -34,6 +45,27 @@ export default function FilterBar({
           </button>
         ))}
       </div>
+
+      {/* Custom date range */}
+      {period === 'custom' && (
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={fromDate}
+            onChange={e => setFromDate?.(e.target.value)}
+            className="text-xs border border-gray-200 px-2 py-1.5 bg-white text-gray-600 focus:outline-none focus:border-gray-400"
+            aria-label="Date de début"
+          />
+          <span className="text-xs text-gray-400">→</span>
+          <input
+            type="date"
+            value={toDate}
+            onChange={e => setToDate?.(e.target.value)}
+            className="text-xs border border-gray-200 px-2 py-1.5 bg-white text-gray-600 focus:outline-none focus:border-gray-400"
+            aria-label="Date de fin"
+          />
+        </div>
+      )}
 
       {/* Source dropdown */}
       <select

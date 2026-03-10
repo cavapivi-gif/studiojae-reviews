@@ -11,6 +11,10 @@ export function useDashboard() {
   const [sourceFilter, setSourceFilter] = useState('')
   const [lieuFilter, setLieuFilter] = useState('')
 
+  // Custom date range
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
+
   // Trends (separate endpoint)
   const [trends, setTrends] = useState(null)
   const [trendsLoading, setTrendsLoading] = useState(false)
@@ -32,27 +36,27 @@ export function useDashboard() {
   useEffect(() => {
     const id = ++dashReqId.current
     setLoading(true)
-    api.dashboard(period, sourceFilter, lieuFilter)
+    api.dashboard(period, sourceFilter, lieuFilter, fromDate, toDate)
       .then(d => { if (dashReqId.current === id) setData(d) })
       .catch(e => { if (dashReqId.current === id) toast.error(e.message) })
       .finally(() => { if (dashReqId.current === id) setLoading(false) })
-  }, [period, sourceFilter, lieuFilter])
+  }, [period, sourceFilter, lieuFilter, fromDate, toDate])
 
   // Fetch trends on filter change (with stale-request guard)
   useEffect(() => {
     const id = ++trendReqId.current
     setTrendsLoading(true)
-    api.dashboardTrends(period, sourceFilter, lieuFilter)
+    api.dashboardTrends(period, sourceFilter, lieuFilter, fromDate, toDate)
       .then(d => { if (trendReqId.current === id) setTrends(d) })
       .catch(() => { if (trendReqId.current === id) setTrends(null) })
       .finally(() => { if (trendReqId.current === id) setTrendsLoading(false) })
-  }, [period, sourceFilter, lieuFilter])
+  }, [period, sourceFilter, lieuFilter, fromDate, toDate])
 
   // Monthly trend derived from main data (for MiniBarChart)
   const monthlyTrend = useMemo(() => {
     if (!data?.monthly_trend?.length) return []
     return data.monthly_trend.map(m => ({
-      label: new Date(m.year, m.month - 1).toLocaleDateString('fr-FR', { month: 'short' }),
+      label: new Date(m.year, m.month - 1).toLocaleDateString('fr-FR', { month: 'short', year: m.year !== new Date().getFullYear() ? '2-digit' : undefined }),
       count: m.count,
     }))
   }, [data])
@@ -60,7 +64,7 @@ export function useDashboard() {
   // Active lieux (memoized)
   const activeLieux = useMemo(() => lieux.filter(l => l.active), [lieux])
 
-  // Compare seasons
+  // Compare seasons or custom ranges
   const compareSeason = useCallback(async (season1, year1, season2, year2) => {
     setComparisonLoading(true)
     try {
@@ -74,11 +78,26 @@ export function useDashboard() {
     }
   }, [])
 
+  // Compare custom date ranges
+  const compareRange = useCallback(async (from1, to1, from2, to2) => {
+    setComparisonLoading(true)
+    try {
+      const result = await api.dashboardCompareRange(from1, to1, from2, to2)
+      setComparison(result)
+    } catch (e) {
+      toast.error(e.message)
+      setComparison(null)
+    } finally {
+      setComparisonLoading(false)
+    }
+  }, [])
+
   return {
     data, loading, period, setPeriod,
     sourceFilter, setSourceFilter, lieuFilter, setLieuFilter,
+    fromDate, setFromDate, toDate, setToDate,
     lieux, activeLieux, monthlyTrend,
     trends, trendsLoading,
-    comparison, comparisonLoading, compareSeason,
+    comparison, comparisonLoading, compareSeason, compareRange,
   }
 }

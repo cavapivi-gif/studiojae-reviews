@@ -75,6 +75,20 @@ class ReviewsWidget extends SjWidgetBase {
             'default' => 'cpt',
         ]);
 
+        // Lieu filter
+        $lieux = (array) get_option('sj_lieux', []);
+        $lieu_opts = ['all' => __('Tous les lieux', 'sj-reviews')];
+        foreach ($lieux as $l) {
+            $lieu_opts[$l['id']] = esc_html(($l['name'] ?? $l['id']) . ' (' . ($l['source'] ?? '') . ')');
+        }
+        $this->add_control('lieu_id', [
+            'label'     => __('Lieu', 'sj-reviews'),
+            'type'      => \Elementor\Controls_Manager::SELECT,
+            'options'   => $lieu_opts,
+            'default'   => 'all',
+            'condition' => ['source_type' => 'cpt'],
+        ]);
+
         $this->add_control('max_reviews', [
             'label'   => __('Nombre max d\'avis', 'sj-reviews'),
             'type'    => \Elementor\Controls_Manager::NUMBER,
@@ -1014,14 +1028,26 @@ class ReviewsWidget extends SjWidgetBase {
         }
 
         $args = ['posts_per_page' => $max];
+        $meta_query = [];
         $rating_min = (int) ($s['rating_min'] ?? 0);
         if ($rating_min > 0) {
-            $args['meta_query'] = [[
+            $meta_query[] = [
                 'key'     => 'avis_rating',
                 'value'   => $rating_min,
                 'compare' => '>=',
                 'type'    => 'NUMERIC',
-            ]];
+            ];
+        }
+        $lieu_id = sanitize_text_field($s['lieu_id'] ?? 'all');
+        if ($lieu_id && $lieu_id !== 'all') {
+            $meta_query[] = [
+                'key'   => 'avis_lieu_id',
+                'value' => $lieu_id,
+            ];
+        }
+        if (!empty($meta_query)) {
+            $meta_query['relation'] = 'AND';
+            $args['meta_query'] = $meta_query;
         }
         return sj_get_reviews($args);
     }

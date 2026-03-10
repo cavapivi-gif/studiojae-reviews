@@ -31,7 +31,8 @@ class RestApi {
     }
 
     public function register_routes(): void {
-        $valid_period = fn($v) => in_array($v, ['all', '7d', '30d', '90d', '12m'], true);
+        $valid_period = fn($v) => in_array($v, ['all', '7d', '30d', '90d', '12m', 'custom'], true);
+        $valid_date   = fn($v) => !$v || (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $v);
         $valid_season = fn($v) => in_array($v, ['spring', 'summer', 'autumn', 'winter'], true);
         $valid_year   = fn($v) => is_numeric($v) && (int) $v >= 2000 && (int) $v <= 2100;
         $sanitize_key = fn($v) => sanitize_key($v);
@@ -41,9 +42,11 @@ class RestApi {
             'callback'            => [$this, 'dashboard'],
             'permission_callback' => [$this, 'is_manager'],
             'args'                => [
-                'period'  => ['default' => 'all', 'type' => 'string', 'validate_callback' => $valid_period, 'sanitize_callback' => $sanitize_key],
-                'source'  => ['default' => '',    'type' => 'string', 'sanitize_callback' => $sanitize_key],
-                'lieu_id' => ['default' => '',    'type' => 'string', 'sanitize_callback' => $sanitize_key],
+                'period'    => ['default' => 'all', 'type' => 'string', 'validate_callback' => $valid_period, 'sanitize_callback' => $sanitize_key],
+                'source'    => ['default' => '',    'type' => 'string', 'sanitize_callback' => $sanitize_key],
+                'lieu_id'   => ['default' => '',    'type' => 'string', 'sanitize_callback' => $sanitize_key],
+                'from_date' => ['default' => '',    'type' => 'string', 'validate_callback' => $valid_date, 'sanitize_callback' => 'sanitize_text_field'],
+                'to_date'   => ['default' => '',    'type' => 'string', 'validate_callback' => $valid_date, 'sanitize_callback' => 'sanitize_text_field'],
             ],
         ]);
 
@@ -52,9 +55,11 @@ class RestApi {
             'callback'            => [$this, 'dashboard_trends'],
             'permission_callback' => [$this, 'is_manager'],
             'args'                => [
-                'period'  => ['default' => 'all', 'type' => 'string', 'validate_callback' => $valid_period, 'sanitize_callback' => $sanitize_key],
-                'source'  => ['default' => '',    'type' => 'string', 'sanitize_callback' => $sanitize_key],
-                'lieu_id' => ['default' => '',    'type' => 'string', 'sanitize_callback' => $sanitize_key],
+                'period'    => ['default' => 'all', 'type' => 'string', 'validate_callback' => $valid_period, 'sanitize_callback' => $sanitize_key],
+                'source'    => ['default' => '',    'type' => 'string', 'sanitize_callback' => $sanitize_key],
+                'lieu_id'   => ['default' => '',    'type' => 'string', 'sanitize_callback' => $sanitize_key],
+                'from_date' => ['default' => '',    'type' => 'string', 'validate_callback' => $valid_date, 'sanitize_callback' => 'sanitize_text_field'],
+                'to_date'   => ['default' => '',    'type' => 'string', 'validate_callback' => $valid_date, 'sanitize_callback' => 'sanitize_text_field'],
             ],
         ]);
 
@@ -67,6 +72,18 @@ class RestApi {
                 'year1'   => ['required' => true, 'type' => 'integer', 'validate_callback' => $valid_year],
                 'season2' => ['required' => true, 'type' => 'string', 'validate_callback' => $valid_season, 'sanitize_callback' => $sanitize_key],
                 'year2'   => ['required' => true, 'type' => 'integer', 'validate_callback' => $valid_year],
+            ],
+        ]);
+
+        register_rest_route($this->ns, '/dashboard/compare-range', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'dashboard_compare_range'],
+            'permission_callback' => [$this, 'is_manager'],
+            'args'                => [
+                'from1' => ['required' => true, 'type' => 'string', 'validate_callback' => $valid_date, 'sanitize_callback' => 'sanitize_text_field'],
+                'to1'   => ['required' => true, 'type' => 'string', 'validate_callback' => $valid_date, 'sanitize_callback' => 'sanitize_text_field'],
+                'from2' => ['required' => true, 'type' => 'string', 'validate_callback' => $valid_date, 'sanitize_callback' => 'sanitize_text_field'],
+                'to2'   => ['required' => true, 'type' => 'string', 'validate_callback' => $valid_date, 'sanitize_callback' => 'sanitize_text_field'],
             ],
         ]);
 
@@ -271,11 +288,12 @@ class RestApi {
 
     private const DASHBOARD_CACHE_PREFIX = 'sj_dash_';
     private const DASHBOARD_CACHE_TTL = [
-        '7d'  => 5 * MINUTE_IN_SECONDS,
-        '30d' => 15 * MINUTE_IN_SECONDS,
-        '90d' => HOUR_IN_SECONDS,
-        '12m' => HOUR_IN_SECONDS,
-        'all' => HOUR_IN_SECONDS,
+        '7d'     => 5 * MINUTE_IN_SECONDS,
+        '30d'    => 15 * MINUTE_IN_SECONDS,
+        '90d'    => HOUR_IN_SECONDS,
+        '12m'    => HOUR_IN_SECONDS,
+        'all'    => HOUR_IN_SECONDS,
+        'custom' => HOUR_IN_SECONDS,
     ];
 
     /**
@@ -284,24 +302,33 @@ class RestApi {
     private function build_dashboard_filters(\WP_REST_Request $req): array {
         global $wpdb;
 
-        $period  = sanitize_key($req->get_param('period') ?? 'all');
-        $source  = sanitize_key($req->get_param('source') ?? '');
-        $lieu_id = sanitize_key($req->get_param('lieu_id') ?? '');
+        $period    = sanitize_key($req->get_param('period') ?? 'all');
+        $source    = sanitize_key($req->get_param('source') ?? '');
+        $lieu_id   = sanitize_key($req->get_param('lieu_id') ?? '');
+        $from_date = sanitize_text_field($req->get_param('from_date') ?? '');
+        $to_date   = sanitize_text_field($req->get_param('to_date') ?? '');
 
         $date_where = '';
-        switch ($period) {
-            case '7d':
-                $date_where = $wpdb->prepare(" AND p.post_date >= %s", gmdate('Y-m-d H:i:s', strtotime('-7 days')));
-                break;
-            case '30d':
-                $date_where = $wpdb->prepare(" AND p.post_date >= %s", gmdate('Y-m-d H:i:s', strtotime('-30 days')));
-                break;
-            case '90d':
-                $date_where = $wpdb->prepare(" AND p.post_date >= %s", gmdate('Y-m-d H:i:s', strtotime('-90 days')));
-                break;
-            case '12m':
-                $date_where = $wpdb->prepare(" AND p.post_date >= %s", gmdate('Y-m-d H:i:s', strtotime('-12 months')));
-                break;
+        if ($period === 'custom' && $from_date) {
+            $date_where = $wpdb->prepare(" AND p.post_date >= %s", $from_date . ' 00:00:00');
+            if ($to_date) {
+                $date_where .= $wpdb->prepare(" AND p.post_date <= %s", $to_date . ' 23:59:59');
+            }
+        } else {
+            switch ($period) {
+                case '7d':
+                    $date_where = $wpdb->prepare(" AND p.post_date >= %s", gmdate('Y-m-d H:i:s', strtotime('-7 days')));
+                    break;
+                case '30d':
+                    $date_where = $wpdb->prepare(" AND p.post_date >= %s", gmdate('Y-m-d H:i:s', strtotime('-30 days')));
+                    break;
+                case '90d':
+                    $date_where = $wpdb->prepare(" AND p.post_date >= %s", gmdate('Y-m-d H:i:s', strtotime('-90 days')));
+                    break;
+                case '12m':
+                    $date_where = $wpdb->prepare(" AND p.post_date >= %s", gmdate('Y-m-d H:i:s', strtotime('-12 months')));
+                    break;
+            }
         }
 
         // Source filter: JOIN + WHERE on postmeta
@@ -420,14 +447,23 @@ class RestApi {
             }
         }
 
-        // Monthly trend (last 6 months, respects source/lieu filters but not period)
+        // Monthly trend — respects period + source/lieu filters
+        // For short periods (7d, 30d), show last 6 months for meaningful monthly context;
+        // otherwise, match the selected period.
+        $monthly_date_where = $date_where;
+        if (!$monthly_date_where || in_array($period, ['7d', '30d'], true)) {
+            $monthly_date_where = $wpdb->prepare(
+                " AND p.post_date >= %s",
+                gmdate('Y-m-d H:i:s', strtotime('-6 months'))
+            );
+        }
         $monthly_trend = $wpdb->get_results(
             "SELECT YEAR(p.post_date) AS year, MONTH(p.post_date) AS month, COUNT(*) AS cnt
              FROM {$wpdb->posts} p
              {$extra_joins}
              WHERE p.post_type = 'sj_avis'
              AND p.post_status = 'publish'
-             AND p.post_date >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+             {$monthly_date_where}
              {$extra_where}
              GROUP BY YEAR(p.post_date), MONTH(p.post_date)
              ORDER BY year ASC, month ASC"
@@ -484,9 +520,9 @@ class RestApi {
             $matched_lieux = $all_lieux;
         }
 
-        // For each lieu, add the platform reviews that are NOT already stored as CPT
-        $platform_google_total = 0;
-        $platform_google_sum   = 0;
+        // Track platform extras per source for by_source enrichment
+        $platform_extras = []; // source => ['extra' => int, 'rating' => float, 'total' => int]
+
         foreach ($matched_lieux as $l) {
             $platform_count  = (int) ($l['reviews_count'] ?? 0);
             $platform_rating = (float) ($l['rating'] ?? 0);
@@ -503,7 +539,6 @@ class RestApi {
 
             $extra = max(0, $platform_count - $lieu_cpt_count);
             if ($extra > 0) {
-                // Weighted average: combine CPT avg with platform avg for the extra reviews
                 $combined_total = $total + $extra;
                 $avg = ($total > 0)
                     ? round(($avg * $total + $platform_rating * $extra) / $combined_total, 1)
@@ -511,18 +546,58 @@ class RestApi {
                 $total = $combined_total;
             }
 
-            // Accumulate platform Google totals for the Google stat card
+            // Accumulate platform totals per source
             $source = $l['source'] ?? '';
-            if ($source === 'google') {
-                $platform_google_total += $platform_count;
-                $platform_google_sum   += $platform_count * $platform_rating;
+            if ($source) {
+                if (!isset($platform_extras[$source])) {
+                    $platform_extras[$source] = ['total' => 0, 'sum' => 0];
+                }
+                $platform_extras[$source]['total'] += $platform_count;
+                $platform_extras[$source]['sum']   += $platform_count * $platform_rating;
             }
         }
 
-        // Google card: use platform totals when available (to avoid double-counting)
-        if ($platform_google_total > 0) {
-            $google_total = $platform_google_total;
-            $google_avg   = round($platform_google_sum / $platform_google_total, 1);
+        // Enrich by_source with platform data (use platform totals to avoid double-counting)
+        foreach ($platform_extras as $src => $pdata) {
+            if ($pdata['total'] <= 0) continue;
+            $platform_avg = round($pdata['sum'] / $pdata['total'], 1);
+            $found = false;
+            foreach ($by_source as &$entry) {
+                if ($entry['source'] === $src) {
+                    // Use the higher of CPT count or platform count
+                    $entry['count']      = max($entry['count'], $pdata['total']);
+                    $entry['avg_rating'] = ($pdata['total'] > $entry['count'])
+                        ? $platform_avg
+                        : $entry['avg_rating'];
+                    $found = true;
+                    break;
+                }
+            }
+            unset($entry);
+            if (!$found) {
+                $by_source[] = [
+                    'source'     => $src,
+                    'count'      => $pdata['total'],
+                    'avg_rating' => $platform_avg,
+                ];
+            }
+        }
+
+        // Google stat card: use platform totals when available
+        $google_total = 0;
+        $google_avg   = 0;
+        if (isset($platform_extras['google']) && $platform_extras['google']['total'] > 0) {
+            $google_total = $platform_extras['google']['total'];
+            $google_avg   = round($platform_extras['google']['sum'] / $google_total, 1);
+        } else {
+            // Fall back to CPT data
+            foreach ($by_source as $entry) {
+                if ($entry['source'] === 'google') {
+                    $google_total = $entry['count'];
+                    $google_avg   = $entry['avg_rating'];
+                    break;
+                }
+            }
         }
 
         $data = [
@@ -562,12 +637,31 @@ class RestApi {
         $extra_where = $f['source_where'] . $f['lieu_where'];
 
         // Auto granularity: day for ≤30d, week for ≤90d, month otherwise
-        $period = $f['period'];
-        if (in_array($period, ['7d', '30d'], true)) {
+        $period    = $f['period'];
+        $from_date = sanitize_text_field($req->get_param('from_date') ?? '');
+        $to_date   = sanitize_text_field($req->get_param('to_date') ?? '');
+
+        // For custom period, compute span in days for auto-granularity
+        if ($period === 'custom' && $from_date) {
+            $span_days = $to_date
+                ? max(1, (int) ((strtotime($to_date) - strtotime($from_date)) / DAY_IN_SECONDS))
+                : 365;
+            if ($span_days <= 31) {
+                $auto_period = '30d';
+            } elseif ($span_days <= 90) {
+                $auto_period = '90d';
+            } else {
+                $auto_period = '12m';
+            }
+        } else {
+            $auto_period = $period;
+        }
+
+        if (in_array($auto_period, ['7d', '30d'], true)) {
             $granularity = 'day';
             $select_date = "DATE(p.post_date) AS date_key";
             $group_by    = "DATE(p.post_date)";
-        } elseif ($period === '90d') {
+        } elseif ($auto_period === '90d') {
             $granularity = 'week';
             $select_date = "CONCAT(YEAR(p.post_date), '-W', LPAD(WEEK(p.post_date, 3), 2, '0')) AS date_key";
             $group_by    = "YEAR(p.post_date), WEEK(p.post_date, 3)";
@@ -577,11 +671,20 @@ class RestApi {
             $group_by    = "DATE_FORMAT(p.post_date, '%Y-%m')";
         }
 
-        // If no period set, limit to last 12 months for trends
-        $trend_date_where = $date_where ?: $wpdb->prepare(
-            " AND p.post_date >= %s",
-            gmdate('Y-m-d H:i:s', strtotime('-12 months'))
-        );
+        // If no period set ('all'), use actual data range from DB
+        if ($date_where) {
+            $trend_date_where = $date_where;
+        } else {
+            $oldest_date = $wpdb->get_var(
+                "SELECT MIN(p.post_date) FROM {$wpdb->posts} p
+                 {$extra_joins}
+                 WHERE p.post_type = 'sj_avis' AND p.post_status = 'publish'
+                 {$extra_where}"
+            );
+            $trend_date_where = $oldest_date
+                ? $wpdb->prepare(" AND p.post_date >= %s", $oldest_date)
+                : '';
+        }
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         // Review count over time
@@ -669,7 +772,21 @@ class RestApi {
             case '30d': $start = strtotime('-30 days'); break;
             case '90d': $start = strtotime('-90 days'); break;
             case '12m': $start = strtotime('-12 months'); break;
-            default:    $start = strtotime('-12 months'); break;
+            default:
+                // 'all' or custom: derive start from actual data
+                $first_key = array_key_first($data_map);
+                if ($granularity === 'month') {
+                    $start = strtotime($first_key . '-01');
+                } elseif ($granularity === 'week') {
+                    // ISO week key like '2024-W03'
+                    $parts = explode('-W', $first_key);
+                    $dt = new \DateTime();
+                    $dt->setISODate((int) $parts[0], (int) ($parts[1] ?? 1));
+                    $start = $dt->getTimestamp();
+                } else {
+                    $start = strtotime($first_key);
+                }
+                break;
         }
 
         $all_keys = [];
@@ -796,6 +913,80 @@ class RestApi {
             $results[] = [
                 'season'       => $s['season'],
                 'year'         => $s['year'],
+                'total'        => (int) ($stats->total ?? 0),
+                'avg_rating'   => round((float) ($stats->avg_rating ?? 0), 2),
+                'distribution' => $distribution,
+                'by_source'    => $by_source,
+            ];
+        }
+
+        return rest_ensure_response(['periods' => $results]);
+    }
+
+    // ── Dashboard custom date range comparison ──────────────────────────────
+
+    public function dashboard_compare_range(\WP_REST_Request $req): \WP_REST_Response {
+        global $wpdb;
+
+        $from1 = sanitize_text_field($req->get_param('from1'));
+        $to1   = sanitize_text_field($req->get_param('to1'));
+        $from2 = sanitize_text_field($req->get_param('from2'));
+        $to2   = sanitize_text_field($req->get_param('to2'));
+
+        $results = [];
+        foreach ([['from' => $from1, 'to' => $to1], ['from' => $from2, 'to' => $to2]] as $range) {
+            $date_conds = $wpdb->prepare(
+                "(p.post_date >= %s AND p.post_date <= %s)",
+                $range['from'] . ' 00:00:00',
+                $range['to'] . ' 23:59:59'
+            );
+
+            // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            $stats = $wpdb->get_row(
+                "SELECT
+                    COUNT(*) AS total,
+                    ROUND(AVG(CAST(pm_r.meta_value AS DECIMAL(3,1))), 2) AS avg_rating
+                 FROM {$wpdb->posts} p
+                 INNER JOIN {$wpdb->postmeta} pm_r ON pm_r.post_id = p.ID AND pm_r.meta_key = 'avis_rating'
+                 WHERE p.post_type = 'sj_avis' AND p.post_status = 'publish'
+                 AND {$date_conds}"
+            );
+
+            $dist_rows = $wpdb->get_results(
+                "SELECT CAST(pm_r.meta_value AS UNSIGNED) AS rating, COUNT(*) AS cnt
+                 FROM {$wpdb->posts} p
+                 INNER JOIN {$wpdb->postmeta} pm_r ON pm_r.post_id = p.ID AND pm_r.meta_key = 'avis_rating'
+                 WHERE p.post_type = 'sj_avis' AND p.post_status = 'publish'
+                 AND pm_r.meta_value BETWEEN '1' AND '5'
+                 AND {$date_conds}
+                 GROUP BY rating"
+            );
+
+            $src_rows = $wpdb->get_results(
+                "SELECT pm_src.meta_value AS source, COUNT(*) AS cnt
+                 FROM {$wpdb->posts} p
+                 INNER JOIN {$wpdb->postmeta} pm_src ON pm_src.post_id = p.ID AND pm_src.meta_key = 'avis_source'
+                 WHERE p.post_type = 'sj_avis' AND p.post_status = 'publish'
+                 AND {$date_conds}
+                 GROUP BY pm_src.meta_value
+                 ORDER BY cnt DESC"
+            );
+            // phpcs:enable
+
+            $distribution = [1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0];
+            foreach ($dist_rows as $row) {
+                $distribution[(int) $row->rating] = (int) $row->cnt;
+            }
+
+            $by_source = [];
+            foreach ($src_rows as $row) {
+                $by_source[] = ['source' => $row->source, 'count' => (int) $row->cnt];
+            }
+
+            $results[] = [
+                'label'        => $range['from'] . ' → ' . $range['to'],
+                'from'         => $range['from'],
+                'to'           => $range['to'],
                 'total'        => (int) ($stats->total ?? 0),
                 'avg_rating'   => round((float) ($stats->avg_rating ?? 0), 2),
                 'distribution' => $distribution,

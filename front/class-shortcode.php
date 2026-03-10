@@ -69,6 +69,7 @@ class Shortcode {
             'schema'         => 1,
             'certified_label'=> $opts['certified_label'] ?? 'Certifié',
             'star_color'     => $opts['star_color']       ?? '#f5a623',
+            'lieu_id'        => 'all',
         ], $atts, 'sj_reviews');
 
         // Nettoyage
@@ -80,15 +81,29 @@ class Shortcode {
         $place_id       = sanitize_text_field($a['place_id']);
         $star_color     = sanitize_hex_color($a['star_color']) ?: '#f5a623';
 
+        // Lieu filter
+        $lieu_id = sanitize_text_field($a['lieu_id']);
+
         // Récupère les avis
         $args = ['posts_per_page' => $max];
+        $meta_query = [];
         if ($rating_min > 0) {
-            $args['meta_query'] = [[
+            $meta_query[] = [
                 'key'     => 'avis_rating',
                 'value'   => $rating_min,
                 'compare' => '>=',
                 'type'    => 'NUMERIC',
-            ]];
+            ];
+        }
+        if ($lieu_id && $lieu_id !== 'all') {
+            $meta_query[] = [
+                'key'   => 'avis_lieu_id',
+                'value' => $lieu_id,
+            ];
+        }
+        if (!empty($meta_query)) {
+            $meta_query['relation'] = 'AND';
+            $args['meta_query'] = $meta_query;
         }
         $reviews = sj_get_reviews($args);
         $agg     = sj_aggregate($reviews);
