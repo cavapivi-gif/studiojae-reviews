@@ -526,7 +526,7 @@ class RestApi {
         foreach ($matched_lieux as $l) {
             $platform_count  = (int) ($l['reviews_count'] ?? 0);
             $platform_rating = (float) ($l['rating'] ?? 0);
-            if ($platform_count <= 0 || $platform_rating <= 0) continue;
+            if ($platform_count <= 0) continue;
 
             // How many CPT reviews do we already have for this lieu?
             $lieu_cpt_count = (int) $wpdb->get_var($wpdb->prepare(
@@ -540,9 +540,11 @@ class RestApi {
             $extra = max(0, $platform_count - $lieu_cpt_count);
             if ($extra > 0) {
                 $combined_total = $total + $extra;
-                $avg = ($total > 0)
-                    ? round(($avg * $total + $platform_rating * $extra) / $combined_total, 1)
-                    : round($platform_rating, 1);
+                if ($platform_rating > 0) {
+                    $avg = ($total > 0)
+                        ? round(($avg * $total + $platform_rating * $extra) / $combined_total, 1)
+                        : round($platform_rating, 1);
+                }
                 $total = $combined_total;
             }
 
