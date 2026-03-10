@@ -55,6 +55,14 @@ class Backoffice {
         wp_enqueue_style('sj-reviews-admin', $build_url . 'index.css', [], $css_ver);
         wp_enqueue_script('sj-reviews-admin', $build_url . 'index.js', [], $js_ver, true);
 
+        // Vite outputs ES modules — force type="module" on our scripts
+        add_filter('script_loader_tag', function ($tag, $handle) {
+            if (in_array($handle, ['sj-reviews-admin', 'sj-reviews-charts'], true)) {
+                $tag = str_replace(' src=', ' type="module" src=', $tag);
+            }
+            return $tag;
+        }, 10, 2);
+
         wp_localize_script('sj-reviews-admin', 'sjReviews', [
             'rest_url'  => rest_url('sj-reviews/v1'),
             'nonce'     => wp_create_nonce('wp_rest'),
