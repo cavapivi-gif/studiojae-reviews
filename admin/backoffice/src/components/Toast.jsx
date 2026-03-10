@@ -62,9 +62,9 @@ function ToastItem({ toast, onDismiss }) {
   }, [])
 
   const styles = {
-    success: 'bg-black text-white',
-    error:   'bg-red-600 text-white',
-    info:    'bg-gray-700 text-white',
+    success: 'bg-primary text-primary-foreground',
+    error:   'bg-destructive text-white',
+    info:    'bg-primary text-primary-foreground',
     warn:    'bg-amber-500 text-black',
   }
 
@@ -98,7 +98,7 @@ function ToastItem({ toast, onDismiss }) {
 
   return (
     <div
-      className={`pointer-events-auto flex items-center gap-2.5 px-4 py-3 text-sm font-medium shadow-lg
+      className={`pointer-events-auto flex items-center gap-2.5 px-4 py-3 text-sm font-medium shadow-lg rounded-md
         transition-all duration-300 max-w-sm cursor-pointer
         ${styles[toast.type] ?? styles.info}
         ${visible ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'}`}

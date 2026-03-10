@@ -1,4 +1,4 @@
-@import "tailwindcss" important(#sj-reviews-root);
+@import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
