@@ -19,7 +19,22 @@ async function req(path, options = {}) {
 
 export const api = {
   /** Dashboard stats */
-  dashboard: async () => (await req('/dashboard')).json(),
+  dashboard: async (period = 'all', source = '', lieu_id = '') => {
+    const p = new URLSearchParams({ period, source, lieu_id })
+    return (await req(`/dashboard?${p}`)).json()
+  },
+
+  /** Dashboard time-series trends */
+  dashboardTrends: async (period = 'all', source = '', lieu_id = '') => {
+    const p = new URLSearchParams({ period, source, lieu_id })
+    return (await req(`/dashboard/trends?${p}`)).json()
+  },
+
+  /** Dashboard season comparison */
+  dashboardCompare: async (season1, year1, season2, year2) => {
+    const p = new URLSearchParams({ season1, year1, season2, year2 })
+    return (await req(`/dashboard/compare?${p}`)).json()
+  },
 
   /** Liste des avis avec filtres */
   reviews: async ({ page = 1, perPage = 20, search = '', rating = 0, source = '', lieu_id = '', orderby = 'date', order = 'DESC', email = '' } = {}) => {

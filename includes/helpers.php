@@ -120,9 +120,13 @@ function sj_normalize_review(\WP_Post $post, bool $private = false): array {
     $place_id = (string) ($get('avis_place_id') ?: '');
 
     // Dérive le place_id depuis le lieu si non défini directement
+    // Static cache to avoid N+1 get_option() calls when normalizing multiple reviews
     if (!$place_id && $lieu_id) {
-        $lieux = (array) get_option('sj_lieux', []);
-        foreach ($lieux as $l) {
+        static $lieux_cache = null;
+        if ($lieux_cache === null) {
+            $lieux_cache = (array) get_option('sj_lieux', []);
+        }
+        foreach ($lieux_cache as $l) {
             if ($l['id'] === $lieu_id && !empty($l['place_id'])) {
                 $place_id = (string) $l['place_id'];
                 break;

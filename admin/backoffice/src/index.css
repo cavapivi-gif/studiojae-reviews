@@ -51,5 +51,26 @@
 #sj-reviews-root ::-webkit-scrollbar-track { background: transparent; }
 #sj-reviews-root ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
 
+/* Chart theming */
+#sj-reviews-root {
+  --chart-primary: #000;
+  --chart-secondary: #374151;
+  --chart-muted: #9CA3AF;
+  --chart-grid: #f0f0f0;
+  --chart-bg: #fff;
+  --chart-tooltip-bg: #fff;
+  --chart-tooltip-border: #e5e7eb;
+}
+
+/* Recharts overrides scoped to our root */
+#sj-reviews-root .recharts-cartesian-grid-horizontal line,
+#sj-reviews-root .recharts-cartesian-grid-vertical line {
+  stroke: var(--chart-grid);
+}
+
+#sj-reviews-root .recharts-tooltip-wrapper {
+  outline: none;
+}
+
 /* Stars */
 .sj-star-display { color: #f5a623; display: inline-flex; gap: 1px; }
