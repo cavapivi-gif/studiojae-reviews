@@ -36,7 +36,32 @@ class RestApi {
             'callback'            => [$this, 'dashboard'],
             'permission_callback' => [$this, 'is_manager'],
             'args'                => [
-                'period' => ['default' => 'all', 'type' => 'string'],
+                'period'  => ['default' => 'all', 'type' => 'string'],
+                'source'  => ['default' => '',    'type' => 'string'],
+                'lieu_id' => ['default' => '',    'type' => 'string'],
+            ],
+        ]);
+
+        register_rest_route($this->ns, '/dashboard/trends', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'dashboard_trends'],
+            'permission_callback' => [$this, 'is_manager'],
+            'args'                => [
+                'period'  => ['default' => 'all', 'type' => 'string'],
+                'source'  => ['default' => '',    'type' => 'string'],
+                'lieu_id' => ['default' => '',    'type' => 'string'],
+            ],
+        ]);
+
+        register_rest_route($this->ns, '/dashboard/compare', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'dashboard_compare'],
+            'permission_callback' => [$this, 'is_manager'],
+            'args'                => [
+                'season1' => ['required' => true, 'type' => 'string'],
+                'year1'   => ['required' => true, 'type' => 'integer'],
+                'season2' => ['required' => true, 'type' => 'string'],
+                'year2'   => ['required' => true, 'type' => 'integer'],
             ],
         ]);
 
@@ -242,12 +267,16 @@ class RestApi {
     private const DASHBOARD_CACHE_KEY = 'sj_dashboard_cache';
     private const DASHBOARD_CACHE_TTL = HOUR_IN_SECONDS;
 
-    public function dashboard(\WP_REST_Request $req): \WP_REST_Response {
+    /**
+     * Build reusable WHERE fragments for dashboard queries.
+     */
+    private function build_dashboard_filters(\WP_REST_Request $req): array {
         global $wpdb;
 
-        $period = $req->get_param('period') ?? 'all';
+        $period  = sanitize_key($req->get_param('period') ?? 'all');
+        $source  = sanitize_key($req->get_param('source') ?? '');
+        $lieu_id = sanitize_key($req->get_param('lieu_id') ?? '');
 
-        // Build date filter SQL fragment
         $date_where = '';
         switch ($period) {
             case '7d':
@@ -264,8 +293,37 @@ class RestApi {
                 break;
         }
 
-        // Use cache only for 'all' period (no date filter)
-        if ($period === 'all') {
+        // Source filter: JOIN + WHERE on postmeta
+        $source_join  = '';
+        $source_where = '';
+        if ($source) {
+            $source_join  = " INNER JOIN {$wpdb->postmeta} pm_fsrc ON pm_fsrc.post_id = p.ID AND pm_fsrc.meta_key = 'avis_source'";
+            $source_where = $wpdb->prepare(" AND pm_fsrc.meta_value = %s", $source);
+        }
+
+        // Lieu filter: JOIN + WHERE on postmeta
+        $lieu_join  = '';
+        $lieu_where = '';
+        if ($lieu_id) {
+            $lieu_join  = " INNER JOIN {$wpdb->postmeta} pm_flieu ON pm_flieu.post_id = p.ID AND pm_flieu.meta_key = 'avis_lieu_id'";
+            $lieu_where = $wpdb->prepare(" AND pm_flieu.meta_value = %s", $lieu_id);
+        }
+
+        return compact('period', 'date_where', 'source_join', 'source_where', 'lieu_join', 'lieu_where');
+    }
+
+    public function dashboard(\WP_REST_Request $req): \WP_REST_Response {
+        global $wpdb;
+
+        $f = $this->build_dashboard_filters($req);
+        $period      = $f['period'];
+        $date_where  = $f['date_where'];
+        $extra_joins = $f['source_join'] . $f['lieu_join'];
+        $extra_where = $f['source_where'] . $f['lieu_where'];
+        $has_filters = $f['source_where'] || $f['lieu_where'];
+
+        // Use cache only for unfiltered 'all' period
+        if ($period === 'all' && !$has_filters) {
             $cached = get_transient(self::DASHBOARD_CACHE_KEY);
             if (is_array($cached)) {
                 $cached['recent'] = array_map(
@@ -276,23 +334,25 @@ class RestApi {
             }
         }
 
-        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $date_where is prepared above
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- fragments are prepared above
         $total = (int) $wpdb->get_var(
             "SELECT COUNT(*)
              FROM {$wpdb->posts} p
+             {$extra_joins}
              WHERE p.post_type = 'sj_avis'
              AND p.post_status = 'publish'
-             {$date_where}"
+             {$date_where}{$extra_where}"
         );
 
         $avg_raw = $wpdb->get_var(
             "SELECT AVG(CAST(pm.meta_value AS DECIMAL(3,1)))
              FROM {$wpdb->postmeta} pm
              INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+             {$extra_joins}
              WHERE pm.meta_key = 'avis_rating'
              AND p.post_type = 'sj_avis'
              AND p.post_status = 'publish'
-             {$date_where}"
+             {$date_where}{$extra_where}"
         );
         $avg = round((float) $avg_raw, 1);
 
@@ -302,11 +362,12 @@ class RestApi {
             "SELECT CAST(pm.meta_value AS UNSIGNED) AS rating, COUNT(*) AS cnt
              FROM {$wpdb->postmeta} pm
              INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+             {$extra_joins}
              WHERE pm.meta_key = 'avis_rating'
              AND p.post_type = 'sj_avis'
              AND p.post_status = 'publish'
              AND pm.meta_value BETWEEN '1' AND '5'
-             {$date_where}
+             {$date_where}{$extra_where}
              GROUP BY rating"
         );
         foreach ($dist_rows as $row) {
@@ -323,10 +384,11 @@ class RestApi {
              INNER JOIN {$wpdb->posts} p ON p.ID = pm_src.post_id
              LEFT JOIN {$wpdb->postmeta} pm_rat
                 ON pm_rat.post_id = pm_src.post_id AND pm_rat.meta_key = 'avis_rating'
+             {$extra_joins}
              WHERE pm_src.meta_key = 'avis_source'
              AND p.post_type = 'sj_avis'
              AND p.post_status = 'publish'
-             {$date_where}
+             {$date_where}{$extra_where}
              GROUP BY pm_src.meta_value
              ORDER BY total DESC"
         );
@@ -346,13 +408,15 @@ class RestApi {
             }
         }
 
-        // Monthly trend (last 6 months, always unfiltered by period to show the trend)
+        // Monthly trend (last 6 months, respects source/lieu filters but not period)
         $monthly_trend = $wpdb->get_results(
             "SELECT YEAR(p.post_date) AS year, MONTH(p.post_date) AS month, COUNT(*) AS cnt
              FROM {$wpdb->posts} p
+             {$extra_joins}
              WHERE p.post_type = 'sj_avis'
              AND p.post_status = 'publish'
              AND p.post_date >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+             {$extra_where}
              GROUP BY YEAR(p.post_date), MONTH(p.post_date)
              ORDER BY year ASC, month ASC"
         );
@@ -365,7 +429,7 @@ class RestApi {
             ];
         }
 
-        // Avis récents (within period)
+        // Avis récents (within period + filters)
         $date_query = [];
         if ($date_where) {
             switch ($period) {
@@ -378,6 +442,16 @@ class RestApi {
         $recent_args = ['post_type' => 'sj_avis', 'posts_per_page' => 5, 'orderby' => 'date', 'order' => 'DESC'];
         if ($date_query) {
             $recent_args['date_query'] = [$date_query];
+        }
+        $meta_query = [];
+        if ($f['source_where']) {
+            $meta_query[] = ['key' => 'avis_source', 'value' => sanitize_key($req->get_param('source'))];
+        }
+        if ($f['lieu_where']) {
+            $meta_query[] = ['key' => 'avis_lieu_id', 'value' => sanitize_key($req->get_param('lieu_id'))];
+        }
+        if ($meta_query) {
+            $recent_args['meta_query'] = $meta_query;
         }
         $recent = array_map(
             fn($p) => sj_normalize_review($p, true),
@@ -396,7 +470,7 @@ class RestApi {
             'recent'        => $recent,
         ];
 
-        if ($period === 'all') {
+        if ($period === 'all' && !$has_filters) {
             set_transient(self::DASHBOARD_CACHE_KEY, $data, self::DASHBOARD_CACHE_TTL);
         }
 
@@ -406,6 +480,207 @@ class RestApi {
     /** Invalidate dashboard cache (call after any review CRUD). */
     private function invalidate_dashboard_cache(): void {
         delete_transient(self::DASHBOARD_CACHE_KEY);
+    }
+
+    // ── Dashboard trends (time-series) ──────────────────────────────────────
+
+    public function dashboard_trends(\WP_REST_Request $req): \WP_REST_Response {
+        global $wpdb;
+
+        $f = $this->build_dashboard_filters($req);
+        $date_where  = $f['date_where'];
+        $extra_joins = $f['source_join'] . $f['lieu_join'];
+        $extra_where = $f['source_where'] . $f['lieu_where'];
+
+        // Auto granularity: day for ≤30d, week for ≤90d, month otherwise
+        $period = $f['period'];
+        if (in_array($period, ['7d', '30d'], true)) {
+            $granularity = 'day';
+            $select_date = "DATE(p.post_date) AS date_key";
+            $group_by    = "DATE(p.post_date)";
+        } elseif ($period === '90d') {
+            $granularity = 'week';
+            $select_date = "CONCAT(YEAR(p.post_date), '-W', LPAD(WEEK(p.post_date, 3), 2, '0')) AS date_key";
+            $group_by    = "YEAR(p.post_date), WEEK(p.post_date, 3)";
+        } else {
+            $granularity = 'month';
+            $select_date = "DATE_FORMAT(p.post_date, '%Y-%m') AS date_key";
+            $group_by    = "DATE_FORMAT(p.post_date, '%Y-%m')";
+        }
+
+        // If no period set, limit to last 12 months for trends
+        $trend_date_where = $date_where ?: $wpdb->prepare(
+            " AND p.post_date >= %s",
+            gmdate('Y-m-d H:i:s', strtotime('-12 months'))
+        );
+
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        // Review count over time
+        $count_rows = $wpdb->get_results(
+            "SELECT {$select_date}, COUNT(*) AS cnt
+             FROM {$wpdb->posts} p
+             {$extra_joins}
+             WHERE p.post_type = 'sj_avis' AND p.post_status = 'publish'
+             {$trend_date_where}{$extra_where}
+             GROUP BY {$group_by}
+             ORDER BY date_key ASC"
+        );
+
+        // Average rating over time
+        $avg_rows = $wpdb->get_results(
+            "SELECT {$select_date},
+                    ROUND(AVG(CAST(pm_r.meta_value AS DECIMAL(3,1))), 2) AS avg_rating
+             FROM {$wpdb->posts} p
+             INNER JOIN {$wpdb->postmeta} pm_r ON pm_r.post_id = p.ID AND pm_r.meta_key = 'avis_rating'
+             {$extra_joins}
+             WHERE p.post_type = 'sj_avis' AND p.post_status = 'publish'
+             {$trend_date_where}{$extra_where}
+             GROUP BY {$group_by}
+             ORDER BY date_key ASC"
+        );
+
+        // Count by source over time
+        $source_rows = $wpdb->get_results(
+            "SELECT {$select_date},
+                    pm_src.meta_value AS source,
+                    COUNT(*) AS cnt
+             FROM {$wpdb->posts} p
+             INNER JOIN {$wpdb->postmeta} pm_src ON pm_src.post_id = p.ID AND pm_src.meta_key = 'avis_source'
+             {$extra_joins}
+             WHERE p.post_type = 'sj_avis' AND p.post_status = 'publish'
+             {$trend_date_where}{$extra_where}
+             GROUP BY {$group_by}, pm_src.meta_value
+             ORDER BY date_key ASC"
+        );
+        // phpcs:enable
+
+        // Merge into unified data points
+        $points = [];
+        foreach ($count_rows as $row) {
+            $points[$row->date_key] = [
+                'date'    => $row->date_key,
+                'count'   => (int) $row->cnt,
+                'avg'     => 0,
+                'sources' => [],
+            ];
+        }
+        foreach ($avg_rows as $row) {
+            if (isset($points[$row->date_key])) {
+                $points[$row->date_key]['avg'] = round((float) $row->avg_rating, 2);
+            }
+        }
+        foreach ($source_rows as $row) {
+            if (isset($points[$row->date_key])) {
+                $points[$row->date_key]['sources'][$row->source] = (int) $row->cnt;
+            }
+        }
+
+        return rest_ensure_response([
+            'granularity' => $granularity,
+            'points'      => array_values($points),
+        ]);
+    }
+
+    // ── Dashboard season comparison ─────────────────────────────────────────
+
+    private const SEASON_MONTHS = [
+        'spring' => [3, 4, 5],
+        'summer' => [6, 7, 8],
+        'autumn' => [9, 10, 11],
+        'winter' => [12, 1, 2],
+    ];
+
+    public function dashboard_compare(\WP_REST_Request $req): \WP_REST_Response {
+        global $wpdb;
+
+        $season1 = sanitize_key($req->get_param('season1'));
+        $year1   = (int) $req->get_param('year1');
+        $season2 = sanitize_key($req->get_param('season2'));
+        $year2   = (int) $req->get_param('year2');
+
+        if (!isset(self::SEASON_MONTHS[$season1], self::SEASON_MONTHS[$season2])) {
+            return new \WP_REST_Response(['message' => 'Invalid season name'], 400);
+        }
+        if ($year1 < 2000 || $year1 > 2100 || $year2 < 2000 || $year2 > 2100) {
+            return new \WP_REST_Response(['message' => 'Invalid year'], 400);
+        }
+
+        $results = [];
+        foreach ([['season' => $season1, 'year' => $year1], ['season' => $season2, 'year' => $year2]] as $i => $s) {
+            $months = self::SEASON_MONTHS[$s['season']];
+            $year   = $s['year'];
+
+            // Winter spans two years: Dec of previous year + Jan-Feb of current year
+            if ($s['season'] === 'winter') {
+                $date_conds = $wpdb->prepare(
+                    "(
+                        (YEAR(p.post_date) = %d AND MONTH(p.post_date) = 12)
+                        OR (YEAR(p.post_date) = %d AND MONTH(p.post_date) IN (1, 2))
+                    )",
+                    $year - 1,
+                    $year
+                );
+            } else {
+                $in_months = implode(',', array_map('intval', $months));
+                $date_conds = $wpdb->prepare(
+                    "(YEAR(p.post_date) = %d AND MONTH(p.post_date) IN ({$in_months}))",
+                    $year
+                );
+            }
+
+            // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            $stats = $wpdb->get_row(
+                "SELECT
+                    COUNT(*) AS total,
+                    ROUND(AVG(CAST(pm_r.meta_value AS DECIMAL(3,1))), 2) AS avg_rating
+                 FROM {$wpdb->posts} p
+                 INNER JOIN {$wpdb->postmeta} pm_r ON pm_r.post_id = p.ID AND pm_r.meta_key = 'avis_rating'
+                 WHERE p.post_type = 'sj_avis' AND p.post_status = 'publish'
+                 AND {$date_conds}"
+            );
+
+            $dist_rows = $wpdb->get_results(
+                "SELECT CAST(pm_r.meta_value AS UNSIGNED) AS rating, COUNT(*) AS cnt
+                 FROM {$wpdb->posts} p
+                 INNER JOIN {$wpdb->postmeta} pm_r ON pm_r.post_id = p.ID AND pm_r.meta_key = 'avis_rating'
+                 WHERE p.post_type = 'sj_avis' AND p.post_status = 'publish'
+                 AND pm_r.meta_value BETWEEN '1' AND '5'
+                 AND {$date_conds}
+                 GROUP BY rating"
+            );
+
+            $src_rows = $wpdb->get_results(
+                "SELECT pm_src.meta_value AS source, COUNT(*) AS cnt
+                 FROM {$wpdb->posts} p
+                 INNER JOIN {$wpdb->postmeta} pm_src ON pm_src.post_id = p.ID AND pm_src.meta_key = 'avis_source'
+                 WHERE p.post_type = 'sj_avis' AND p.post_status = 'publish'
+                 AND {$date_conds}
+                 GROUP BY pm_src.meta_value
+                 ORDER BY cnt DESC"
+            );
+            // phpcs:enable
+
+            $distribution = [1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0];
+            foreach ($dist_rows as $row) {
+                $distribution[(int) $row->rating] = (int) $row->cnt;
+            }
+
+            $by_source = [];
+            foreach ($src_rows as $row) {
+                $by_source[] = ['source' => $row->source, 'count' => (int) $row->cnt];
+            }
+
+            $results[] = [
+                'season'       => $s['season'],
+                'year'         => $s['year'],
+                'total'        => (int) ($stats->total ?? 0),
+                'avg_rating'   => round((float) ($stats->avg_rating ?? 0), 2),
+                'distribution' => $distribution,
+                'by_source'    => $by_source,
+            ];
+        }
+
+        return rest_ensure_response(['periods' => $results]);
     }
 
     // ── Front reviews (public, AJAX pagination) ────────────────────────────
