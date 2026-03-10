@@ -19,14 +19,14 @@ async function req(path, options = {}) {
 
 export const api = {
   /** Dashboard stats */
-  dashboard: async (period = 'all', source = '', lieu_id = '') => {
-    const p = new URLSearchParams({ period, source, lieu_id })
+  dashboard: async (period = 'all', source = '', lieu_id = '', from_date = '', to_date = '') => {
+    const p = new URLSearchParams({ period, source, lieu_id, from_date, to_date })
     return (await req(`/dashboard?${p}`)).json()
   },
 
   /** Dashboard time-series trends */
-  dashboardTrends: async (period = 'all', source = '', lieu_id = '') => {
-    const p = new URLSearchParams({ period, source, lieu_id })
+  dashboardTrends: async (period = 'all', source = '', lieu_id = '', from_date = '', to_date = '') => {
+    const p = new URLSearchParams({ period, source, lieu_id, from_date, to_date })
     return (await req(`/dashboard/trends?${p}`)).json()
   },
 
@@ -34,6 +34,12 @@ export const api = {
   dashboardCompare: async (season1, year1, season2, year2) => {
     const p = new URLSearchParams({ season1, year1, season2, year2 })
     return (await req(`/dashboard/compare?${p}`)).json()
+  },
+
+  /** Dashboard custom date range comparison */
+  dashboardCompareRange: async (from1, to1, from2, to2) => {
+    const p = new URLSearchParams({ from1, to1, from2, to2 })
+    return (await req(`/dashboard/compare-range?${p}`)).json()
   },
 
   /** Liste des avis avec filtres */

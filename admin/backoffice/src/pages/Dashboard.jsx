@@ -18,9 +18,10 @@ export default function Dashboard() {
   const {
     data, loading, period, setPeriod,
     sourceFilter, setSourceFilter, lieuFilter, setLieuFilter,
+    fromDate, setFromDate, toDate, setToDate,
     lieux, activeLieux, monthlyTrend,
     trends, trendsLoading,
-    comparison, comparisonLoading, compareSeason,
+    comparison, comparisonLoading, compareSeason, compareRange,
   } = useDashboard()
 
   const recentCols = [
@@ -91,6 +92,8 @@ export default function Dashboard() {
             period={period} setPeriod={setPeriod}
             sourceFilter={sourceFilter} setSourceFilter={setSourceFilter}
             lieuFilter={lieuFilter} setLieuFilter={setLieuFilter}
+            fromDate={fromDate} setFromDate={setFromDate}
+            toDate={toDate} setToDate={setToDate}
             lieux={lieux}
           />
 
@@ -192,11 +195,12 @@ export default function Dashboard() {
 
           {/* Season comparison */}
           <div className="mx-8 mt-6">
-            <ChartCard title="Comparaison saisonnière">
+            <ChartCard title="Comparateur de périodes">
               <SeasonCompare
                 comparison={comparison}
                 loading={comparisonLoading}
                 onCompare={compareSeason}
+                onCompareRange={compareRange}
               />
             </ChartCard>
           </div>
