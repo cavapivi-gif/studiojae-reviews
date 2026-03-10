@@ -50,7 +50,8 @@
   line-height: 1.5;
   color: var(--foreground);
   background: var(--background);
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
