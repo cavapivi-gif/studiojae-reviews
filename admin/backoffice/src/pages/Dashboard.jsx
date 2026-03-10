@@ -100,7 +100,7 @@ export default function Dashboard() {
           {/* Stats — responsive 2→4 columns */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-gray-200 mx-8 mt-4 border border-gray-200">
             <StatCard
-              label="Avis publiés"
+              label="Avis Globaux"
               value={data?.total ?? 0}
               sub={<button onClick={() => navigate('/reviews')} className="text-xs underline">Voir tout</button>}
             />

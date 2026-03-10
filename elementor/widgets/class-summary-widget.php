@@ -216,6 +216,21 @@ class SummaryWidget extends SjWidgetBase {
             'condition'    => ['show_reviews' => '1'],
         ]);
 
+        $this->add_control('show_verified_banner', [
+            'label'        => __('Bandeau "avis vérifiés"', 'sj-reviews'),
+            'type'         => \Elementor\Controls_Manager::SWITCHER,
+            'return_value' => '1',
+            'default'      => '',
+            'condition'    => ['show_reviews' => '1'],
+        ]);
+
+        $this->add_control('verified_banner_text', [
+            'label'     => __('Texte du bandeau', 'sj-reviews'),
+            'type'      => \Elementor\Controls_Manager::TEXT,
+            'default'   => 'Tous les avis proviennent de client·es vérifié·es',
+            'condition' => ['show_verified_banner' => '1', 'show_reviews' => '1'],
+        ]);
+
         $this->add_control('text_words', [
             'label'       => __('Mots avant "Voir plus"', 'sj-reviews'),
             'type'        => \Elementor\Controls_Manager::NUMBER,
@@ -1186,6 +1201,8 @@ class SummaryWidget extends SjWidgetBase {
             'text_words'           => max(0, (int) ($s['text_words'] ?: 40)),
             'show_card_criteria'   => ($s['show_card_criteria'] ?? '') === '1' ? '1' : '0',
             'show_certified'       => ($s['show_certified'] ?? '') === '1' ? '1' : '0',
+            'show_verified_banner' => ($s['show_verified_banner'] ?? '') === '1' ? '1' : '0',
+            'verified_banner_text' => $s['verified_banner_text'] ?? 'Tous les avis proviennent de client·es vérifié·es',
             'schema_enabled'       => ($s['schema_enabled']       ?? '') === '1' ? '1' : '0',
             'source_filter'        => implode(',', (array) ($s['source_filter'] ?? [])),
             'lieu_ids'             => implode(',', (array) ($s['lieu_ids'] ?? [])),
