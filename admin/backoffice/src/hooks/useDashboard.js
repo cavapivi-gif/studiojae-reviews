@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { api } from '../lib/api'
 import { useToast } from '../components/Toast'
 
@@ -19,27 +19,33 @@ export function useDashboard() {
   const [comparison, setComparison] = useState(null)
   const [comparisonLoading, setComparisonLoading] = useState(false)
 
+  // Request ID to prevent stale responses from overwriting newer data
+  const dashReqId = useRef(0)
+  const trendReqId = useRef(0)
+
   // Fetch lieux ONCE
   useEffect(() => {
     api.lieux().then(setLieux).catch(() => {})
   }, [])
 
-  // Fetch dashboard on filter change
+  // Fetch dashboard on filter change (with stale-request guard)
   useEffect(() => {
+    const id = ++dashReqId.current
     setLoading(true)
     api.dashboard(period, sourceFilter, lieuFilter)
-      .then(setData)
-      .catch(e => toast.error(e.message))
-      .finally(() => setLoading(false))
+      .then(d => { if (dashReqId.current === id) setData(d) })
+      .catch(e => { if (dashReqId.current === id) toast.error(e.message) })
+      .finally(() => { if (dashReqId.current === id) setLoading(false) })
   }, [period, sourceFilter, lieuFilter])
 
-  // Fetch trends on filter change
+  // Fetch trends on filter change (with stale-request guard)
   useEffect(() => {
+    const id = ++trendReqId.current
     setTrendsLoading(true)
     api.dashboardTrends(period, sourceFilter, lieuFilter)
-      .then(setTrends)
-      .catch(() => setTrends(null))
-      .finally(() => setTrendsLoading(false))
+      .then(d => { if (trendReqId.current === id) setTrends(d) })
+      .catch(() => { if (trendReqId.current === id) setTrends(null) })
+      .finally(() => { if (trendReqId.current === id) setTrendsLoading(false) })
   }, [period, sourceFilter, lieuFilter])
 
   // Monthly trend derived from main data (for MiniBarChart)
