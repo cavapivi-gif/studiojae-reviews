@@ -45,11 +45,13 @@ class Plugin {
         require_once SJ_REVIEWS_DIR . 'front/class-summary-shortcode.php';
         require_once SJ_REVIEWS_DIR . 'front/class-inline-rating-shortcode.php';
         require_once SJ_REVIEWS_DIR . 'front/class-form-shortcode.php';
+        require_once SJ_REVIEWS_DIR . 'front/class-coup-de-coeur-shortcode.php';
         (new \SJ_Reviews\Front\Shortcode())->init();
         (new \SJ_Reviews\Front\RatingShortcode())->init();
         (new \SJ_Reviews\Front\SummaryShortcode())->init();
         new \SJ_Reviews\Front\InlineRatingShortcode();
         (new \SJ_Reviews\Front\FormShortcode())->init();
+        (new \SJ_Reviews\Front\CoupDeCoeurShortcode())->init();
 
         // Elementor
         add_action('elementor/widgets/register', function ($manager) {
@@ -61,10 +63,12 @@ class Plugin {
             require_once SJ_REVIEWS_DIR . 'elementor/widgets/class-rating-badge-widget.php';
             require_once SJ_REVIEWS_DIR . 'elementor/widgets/class-summary-widget.php';
             require_once SJ_REVIEWS_DIR . 'elementor/widgets/class-inline-rating-widget.php';
+            require_once SJ_REVIEWS_DIR . 'elementor/widgets/class-coup-de-coeur-widget.php';
             $manager->register(new \SJ_Reviews\Elementor\Widgets\ReviewsWidget());
             $manager->register(new \SJ_Reviews\Elementor\Widgets\RatingBadgeWidget());
             $manager->register(new \SJ_Reviews\Elementor\Widgets\SummaryWidget());
             $manager->register(new \SJ_Reviews\Elementor\Widgets\InlineRatingWidget());
+            $manager->register(new \SJ_Reviews\Elementor\Widgets\CoupDeCoeurWidget());
         });
 
         add_action('elementor/frontend/after_enqueue_styles', [$this, 'enqueue_front_assets']);
@@ -93,6 +97,12 @@ class Plugin {
         wp_enqueue_style(
             'sj-form',
             SJ_REVIEWS_URL . 'front/assets/sj-form.css',
+            [],
+            SJ_REVIEWS_VERSION
+        );
+        wp_enqueue_style(
+            'sj-coup-de-coeur',
+            SJ_REVIEWS_URL . 'front/assets/sj-coup-de-coeur.css',
             [],
             SJ_REVIEWS_VERSION
         );
