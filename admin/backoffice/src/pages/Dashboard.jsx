@@ -24,6 +24,15 @@ export default function Dashboard() {
     comparison, comparisonLoading, compareSeason, compareRange,
   } = useDashboard()
 
+  const totalFromSources = data?.by_source?.reduce(
+    (sum, s) => sum + (s.count ?? 0),
+    0,
+  ) ?? 0
+
+  const totalForDisplay = (data?.by_source?.length ?? 0) > 0
+    ? totalFromSources
+    : (data?.total ?? 0)
+
   const recentCols = [
     {
       key: 'author', label: 'Auteur',
@@ -101,7 +110,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-border mx-6 mt-4 border border-border rounded-lg overflow-hidden">
             <StatCard
               label="Avis Globaux"
-              value={data?.total ?? 0}
+              value={totalForDisplay}
               sub={<button onClick={() => navigate('/reviews')} className="text-xs underline">Voir tout</button>}
             />
             <StatCard
@@ -128,7 +137,7 @@ export default function Dashboard() {
               value={
                 <div className="flex flex-col gap-1 mt-2">
                   {[5, 4, 3, 2, 1].map(n => (
-                    <RatingBar key={n} value={n} count={data?.distribution?.[n] ?? 0} max={data?.total ?? 1} />
+                    <RatingBar key={n} value={n} count={data?.distribution?.[n] ?? 0} max={totalForDisplay || 1} />
                   ))}
                 </div>
               }
