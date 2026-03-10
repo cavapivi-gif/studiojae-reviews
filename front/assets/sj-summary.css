@@ -22,18 +22,21 @@
   padding: 28px 24px;
 }
 
-/* ── 2. En-tête : score global ────────────────────────────────── */
-.sj-summary__header {
-  margin-bottom: 0;
+/* ── 2. Top : score + distribution (wrapper) ─────────────────── */
+.sj-summary__top {
+  display: flex;
+  align-items: flex-start;
+  gap: 32px;
+  padding-bottom: 20px;
+  border-bottom: var(--sj-divider-width, 1px) solid var(--sj-divider-color, #f0f0f0);
+  margin-bottom: 20px;
 }
 
 .sj-summary__score-block {
   display: flex;
   align-items: center;
   gap: 18px;
-  padding-bottom: 20px;
-  border-bottom: var(--sj-score-divider-width, 1px) solid var(--sj-score-divider-color, #f0f0f0);
-  margin-bottom: 20px;
+  flex-shrink: 0;
 }
 
 .sj-summary__score-num {
@@ -90,34 +93,17 @@
   gap: 3px;
 }
 
-/* ── 3. Zone centrale : distribution + sous-critères ─────────── */
-.sj-summary__middle {
-  display: grid;
-  grid-template-columns: 1fr; /* une seule section visible */
-  gap: 0;
-  margin-bottom: 20px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-/* Les deux sections présentes → split 50/divider/50 */
-.sj-summary__middle--split {
-  grid-template-columns: 1fr auto 1fr;
-}
-
-/* Divider vertical entre distribution et critères */
-.sj-summary__middle-divider {
-  width: 1px;
-  background: var(--sj-middle-divider-color, #f0f0f0);
-  margin: 0 28px;
-  align-self: stretch;
-}
+/* ── 3. Distribution (inside top) ────────────────────────────── */
 
 /* Distribution par étoiles */
 .sj-summary__distribution {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding-left: 32px;
+  border-left: var(--sj-divider-width, 1px) solid var(--sj-divider-color, #f0f0f0);
 }
 
 .sj-summary__dist-row {
@@ -154,6 +140,13 @@
   color: #6b7280;
   font-weight: 600;
   text-align: right;
+}
+
+/* Sous-critères section (standalone block) */
+.sj-summary__criteria-section {
+  padding-bottom: 20px;
+  border-bottom: var(--sj-divider-width, 1px) solid var(--sj-divider-color, #f0f0f0);
+  margin-bottom: 20px;
 }
 
 /* Sous-critères : grille 2 colonnes */
@@ -467,15 +460,23 @@
 
 /* ── 9. Responsive ───────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .sj-summary__middle--split {
-    grid-template-columns: 1fr;
+  .sj-summary__top {
+    flex-direction: column;
     gap: 0;
   }
 
-  .sj-summary__middle-divider {
-    width: auto;
-    height: 1px;
-    margin: 16px 0;
+  .sj-summary__top .sj-summary__score-block {
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+    border-bottom: var(--sj-divider-width, 1px) solid var(--sj-divider-color, #f0f0f0);
+    width: 100%;
+  }
+
+  .sj-summary__distribution {
+    border-left: none !important;
+    border-right: none !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
   }
 
   .sj-summary__criteria {
@@ -523,6 +524,13 @@
     text-align: center;
   }
 
+  .sj-search__wrap--inline {
+    flex: 1 1 100%;
+    max-width: 100%;
+    margin-left: 0;
+    order: 10;
+  }
+
   .sj-card {
     padding: 14px 16px;
   }
@@ -541,7 +549,7 @@
     padding: 12px 20px;
   }
 
-  .sj-search__wrap {
+  .sj-search__wrap:not(.sj-search__wrap--inline) {
     max-width: 100%;
   }
 }
@@ -731,10 +739,10 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  border: 1.5px solid var(--sj-dot-color, #22c55e);
+  border: 1.5px solid var(--sj-dot-color, #34d399);
   background: transparent;
 }
-.sj-filter-modal__dot--full { background: var(--sj-dot-color, #22c55e); }
+.sj-filter-modal__dot--full { background: var(--sj-dot-color, #34d399); }
 .sj-filter-modal__dot-count { font-size: 13px; font-weight: 600; margin-left: 2px; }
 /* Pills ─────────────────────────────────────────────────────────────────── */
 .sj-filter-modal__pills {
@@ -861,68 +869,54 @@ body.sj-modal-open { overflow: hidden; }
   padding: 2px 8px;
 }
 
-/* ── Layout side : score-block à côté du middle ──────────────────── */
-.sj-summary__header--side-left,
-.sj-summary__header--side-right {
-  display: flex;
-  align-items: flex-start;
-  gap: 32px;
-  padding-bottom: 24px;
-  border-bottom: 1px solid #f0f0f0;
-  margin-bottom: 20px;
+/* ── Layout side variant ──────────────────────────────────────── */
+.sj-summary__top--side-left {
+  /* Default is already flex row, this is the normal state */
 }
 
-.sj-summary__header--side-left .sj-summary__score-block,
-.sj-summary__header--side-right .sj-summary__score-block {
-  flex: 0 0 33%;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  border-bottom: none;
-  padding-bottom: 0;
-  margin-bottom: 0;
-}
-
-.sj-summary__header--side-left .sj-summary__middle,
-.sj-summary__header--side-right .sj-summary__middle {
-  flex: 1;
-  border-bottom: none;
-  padding-bottom: 0;
-  margin-bottom: 0;
-}
-
-.sj-summary__header--side-right {
+.sj-summary__top--side-right {
   flex-direction: row-reverse;
 }
 
-@media (max-width: 768px) {
-  .sj-summary__header--side-left,
-  .sj-summary__header--side-right {
-    flex-direction: column;
-    gap: 0;
-    border-bottom: none;
-    padding-bottom: 0;
+.sj-summary__top--side-right .sj-summary__distribution {
+  border-left: none;
+  padding-left: 0;
+  border-right: var(--sj-divider-width, 1px) solid var(--sj-divider-color, #f0f0f0);
+  padding-right: 32px;
+}
+
+/* ── Container max-width ──────────────────────────────────────── */
+.sj-summary--has-max-width {
+  max-width: var(--sj-max-width, none);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (max-width: 1024px) {
+  .sj-summary--has-max-width {
+    max-width: var(--sj-max-width-tablet, var(--sj-max-width, none));
   }
-  .sj-summary__header--side-left .sj-summary__score-block,
-  .sj-summary__header--side-right .sj-summary__score-block {
-    flex: none;
-    width: 100%;
-    border-bottom: 1px solid #f0f0f0;
-    padding-bottom: 20px;
-    margin-bottom: 20px;
+}
+
+@media (max-width: 600px) {
+  .sj-summary--has-max-width {
+    max-width: var(--sj-max-width-mobile, var(--sj-max-width-tablet, var(--sj-max-width, none)));
   }
 }
 
 /* ── Barre de recherche (shadcn-like) ────────────────────────── */
-.sj-summary__search {
-  margin-bottom: 16px;
-}
-
 .sj-search__wrap {
   position: relative;
   display: flex;
   align-items: center;
   max-width: 480px;
+}
+
+/* Inline variant inside filterbar */
+.sj-search__wrap--inline {
+  margin-left: auto;
+  flex: 0 1 260px;
+  max-width: 260px;
 }
 
 .sj-search__icon {

@@ -298,6 +298,21 @@ class SummaryWidget extends Widget_Base {
             'selectors'  => ['{{WRAPPER}} .sj-summary' => 'padding: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};'],
         ]);
 
+        $this->add_responsive_control('widget_max_width', [
+            'label'      => __('Largeur max.', 'sj-reviews'),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => ['px', '%', 'vw'],
+            'range'      => [
+                'px' => ['min' => 200, 'max' => 1600, 'step' => 10],
+                '%'  => ['min' => 10, 'max' => 100],
+                'vw' => ['min' => 10, 'max' => 100],
+            ],
+            'selectors'  => [
+                '{{WRAPPER}} .sj-summary' => 'max-width: {{SIZE}}{{UNIT}}; margin-left: auto; margin-right: auto;',
+            ],
+            'separator' => 'before',
+        ]);
+
         $this->end_controls_section();
 
         /* ── Style : En-tête & Score ────────────────────────────────── */
@@ -382,18 +397,18 @@ class SummaryWidget extends Widget_Base {
         ]);
 
         $this->add_control('score_divider_color', [
-            'label'     => __('Couleur ligne séparatrice du score', 'sj-reviews'),
+            'label'     => __('Couleur des séparateurs', 'sj-reviews'),
             'type'      => Controls_Manager::COLOR,
             'separator' => 'before',
-            'selectors' => ['{{WRAPPER}} .sj-summary__score-block' => '--sj-score-divider-color: {{VALUE}};'],
+            'selectors' => ['{{WRAPPER}} .sj-summary' => '--sj-divider-color: {{VALUE}};'],
         ]);
 
         $this->add_responsive_control('score_divider_width', [
-            'label'      => __('Épaisseur ligne séparatrice', 'sj-reviews'),
+            'label'      => __('Épaisseur des séparateurs', 'sj-reviews'),
             'type'       => Controls_Manager::SLIDER,
             'size_units' => ['px'],
             'range'      => ['px' => ['min' => 0, 'max' => 4]],
-            'selectors'  => ['{{WRAPPER}} .sj-summary__score-block' => '--sj-score-divider-width: {{SIZE}}{{UNIT}};'],
+            'selectors'  => ['{{WRAPPER}} .sj-summary' => '--sj-divider-width: {{SIZE}}{{UNIT}};'],
         ]);
 
         $this->end_controls_section();
@@ -447,11 +462,11 @@ class SummaryWidget extends Widget_Base {
             ]
         );
 
-        $this->add_control('middle_divider_color', [
-            'label'     => __('Couleur séparateur Distribution / Critères', 'sj-reviews'),
+        $this->add_control('divider_color', [
+            'label'     => __('Couleur des séparateurs', 'sj-reviews'),
             'type'      => Controls_Manager::COLOR,
             'separator' => 'before',
-            'selectors' => ['{{WRAPPER}} .sj-summary__middle-divider' => 'background: {{VALUE}};'],
+            'selectors' => ['{{WRAPPER}} .sj-summary' => '--sj-divider-color: {{VALUE}};'],
         ]);
 
         $this->end_controls_section();
