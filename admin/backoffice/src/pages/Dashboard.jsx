@@ -163,18 +163,23 @@ export default function Dashboard() {
                 <p className="text-xs text-gray-400 italic">Aucun lieu actif.</p>
               ) : (
                 <div className="flex flex-col gap-2">
-                  {activeLieux.slice(0, 5).map(l => (
-                    <div key={l.id} className="flex items-center gap-3 text-sm">
-                      <span className={`w-2 h-2 shrink-0 ${SOURCE_COLORS[l.source] ?? 'bg-gray-400'}`} />
-                      <span className="text-gray-700 truncate flex-1">{l.name}</span>
-                      {l.rating > 0 && (
-                        <span className="text-xs font-medium text-gray-500">
-                          {Number(l.rating).toFixed(1)} ({l.reviews_count})
-                        </span>
-                      )}
-                      <span className="text-xs text-gray-400">{l.avis_count ?? 0} avis</span>
-                    </div>
-                  ))}
+                  {activeLieux.slice(0, 5).map(l => {
+                    const platformCount = l.reviews_count ?? 0
+                    const cptCount = l.avis_count ?? 0
+                    const displayCount = Math.max(platformCount, cptCount)
+                    return (
+                      <div key={l.id} className="flex items-center gap-3 text-sm">
+                        <span className={`w-2 h-2 shrink-0 ${SOURCE_COLORS[l.source] ?? 'bg-gray-400'}`} />
+                        <span className="text-gray-700 truncate flex-1">{l.name}</span>
+                        {l.rating > 0 && (
+                          <span className="text-xs font-medium text-gray-500">
+                            {Number(l.rating).toFixed(1)}
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-400">{displayCount} avis</span>
+                      </div>
+                    )
+                  })}
                   {activeLieux.length > 5 && (
                     <button onClick={() => navigate('/lieux')} className="text-xs text-gray-400 underline">
                       +{activeLieux.length - 5} autres
