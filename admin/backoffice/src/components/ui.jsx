@@ -1,6 +1,7 @@
 // Design system SJ Reviews — uses shadcn CSS variables for consistency
 
 import { cn } from '@/lib/utils'
+import { Progress } from '@/components/ui/progress'
 
 export function Btn({ children, variant = 'primary', size = 'md', loading, disabled, className = '', ...props }) {
   const base = 'inline-flex items-center justify-center gap-1.5 font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none rounded-md'
@@ -309,9 +310,7 @@ export function RatingBar({ value, max, count }) {
   return (
     <div className="flex items-center gap-2 text-xs">
       <span className="w-2 text-muted-foreground">{value}</span>
-      <div className="flex-1 h-1.5 rounded-full bg-secondary">
-        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
-      </div>
+      <Progress value={pct} className="h-2 flex-1" />
       <span className="w-6 text-right text-muted-foreground tabular-nums">{count}</span>
     </div>
   )
