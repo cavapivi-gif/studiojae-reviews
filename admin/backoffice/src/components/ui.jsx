@@ -158,19 +158,19 @@ export function Stars({ rating, max = 5, size = 14 }) {
 export function Badge({ children, variant = 'default' }) {
   const variants = {
     default:     'bg-secondary text-secondary-foreground',
-    ok:          'bg-primary text-primary-foreground',
-    certified:   'bg-primary text-primary-foreground',
-    warn:        'bg-muted text-muted-foreground',
-    google:      'bg-[#4285F4] text-white',
-    tripadvisor: 'bg-[#00AF87] text-white',
-    facebook:    'bg-[#1877F2] text-white',
-    trustpilot:  'bg-[#00B67A] text-white',
-    regiondo:    'bg-[#e85c2c] text-white',
-    direct:      'bg-primary text-primary-foreground',
-    autre:       'bg-muted-foreground text-white',
+    ok:          'bg-emerald-50 text-emerald-700 border border-emerald-200',
+    certified:   'bg-emerald-50 text-emerald-700 border border-emerald-200',
+    warn:        'bg-amber-50 text-amber-700 border border-amber-200',
+    google:      'bg-[#4285F4]/10 text-[#4285F4] border border-[#4285F4]/20',
+    tripadvisor: 'bg-[#00AF87]/10 text-[#00AF87] border border-[#00AF87]/20',
+    facebook:    'bg-[#1877F2]/10 text-[#1877F2] border border-[#1877F2]/20',
+    trustpilot:  'bg-[#00B67A]/10 text-[#00B67A] border border-[#00B67A]/20',
+    regiondo:    'bg-[#e85c2c]/10 text-[#e85c2c] border border-[#e85c2c]/20',
+    direct:      'bg-primary/10 text-primary border border-primary/20',
+    autre:       'bg-secondary text-muted-foreground border border-border',
   }
   return (
-    <span className={cn('inline-block px-2 py-0.5 text-xs rounded-md', variants[variant] ?? variants.default)}>
+    <span className={cn('inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded-md', variants[variant] ?? variants.default)}>
       {children}
     </span>
   )
@@ -188,7 +188,7 @@ export function PageHeader({ title, subtitle, actions }) {
   return (
     <div className="flex items-center justify-between px-6 py-5 border-b">
       <div>
-        <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
+        <h1 className="text-base font-medium tracking-tight">{title}</h1>
         {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
@@ -206,7 +206,7 @@ export function Table({ columns, data, loading, empty = 'Aucune donnée.' }) {
         <thead>
           <tr className="border-b">
             {columns.map(col => (
-              <th key={col.key} className="px-4 py-3 text-left text-xs text-muted-foreground uppercase tracking-wider font-medium">
+              <th key={col.key} className="px-4 py-3 text-left text-xs text-muted-foreground uppercase tracking-wider font-normal">
                 {col.label}
               </th>
             ))}
@@ -254,12 +254,12 @@ export function Notice({ type = 'info', children }) {
 export function StatCard({ label, value, sub, accent = false }) {
   return (
     <div className={cn(
-      'rounded-lg border px-6 py-5',
+      'px-6 py-5',
       accent ? 'bg-primary text-primary-foreground' : 'bg-card'
     )}>
-      <div className={cn('text-xs uppercase tracking-wider mb-2', accent ? 'text-primary-foreground/70' : 'text-muted-foreground')}>{label}</div>
-      <div className="text-3xl font-semibold">{value ?? '—'}</div>
-      {sub && <div className={cn('text-xs mt-1', accent ? 'text-primary-foreground/70' : 'text-muted-foreground')}>{sub}</div>}
+      <div className={cn('text-[11px] uppercase tracking-wider mb-2', accent ? 'text-primary-foreground/60' : 'text-muted-foreground')}>{label}</div>
+      <div className="text-2xl">{value ?? '—'}</div>
+      {sub && <div className={cn('text-xs mt-1.5', accent ? 'text-primary-foreground/60' : 'text-muted-foreground')}>{sub}</div>}
     </div>
   )
 }

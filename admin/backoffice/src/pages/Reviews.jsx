@@ -84,8 +84,8 @@ export default function Reviews() {
   const SortIcon = ({ col }) => {
     if (orderby !== col) return null
     return order === 'DESC'
-      ? <IconArrowDown className="w-3 h-3 inline ml-1 text-gray-400" />
-      : <IconArrowUp className="w-3 h-3 inline ml-1 text-gray-400" />
+      ? <IconArrowDown className="w-3 h-3 inline ml-1 text-muted-foreground" />
+      : <IconArrowUp className="w-3 h-3 inline ml-1 text-muted-foreground" />
   }
 
   async function handleDelete(id) {
@@ -117,7 +117,7 @@ export default function Reviews() {
         <div className="flex items-center gap-2">
           {r.avatar
             ? <img src={r.avatar} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
-            : <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-medium shrink-0">
+            : <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs font-medium text-muted-foreground shrink-0">
                 {r.author?.[0]?.toUpperCase()}
               </div>
           }
@@ -147,14 +147,14 @@ export default function Reviews() {
     {
       key: 'text', label: 'Avis',
       render: r => (
-        <span className="text-gray-500 line-clamp-2 max-w-xs text-sm">
-          {r.text || <em className="text-gray-300">—</em>}
+        <span className="text-muted-foreground line-clamp-2 max-w-xs text-sm">
+          {r.text || <em className="text-muted-foreground/50">—</em>}
         </span>
       ),
     },
     {
       key: 'source', label: 'Source',
-      render: r => <span className="text-xs text-gray-500">{SOURCE_LABELS[r.source] ?? r.source}</span>,
+      render: r => <Badge variant={r.source}>{SOURCE_LABELS[r.source] ?? r.source}</Badge>,
     },
     {
       key: 'date_rel', label: (
@@ -162,7 +162,7 @@ export default function Reviews() {
           Date <SortIcon col="date" />
         </button>
       ),
-      render: r => <span className="text-xs text-gray-400">{r.date_rel}</span>,
+      render: r => <span className="text-xs text-muted-foreground">{r.date_rel}</span>,
     },
     {
       key: 'actions', label: '',
@@ -192,7 +192,7 @@ export default function Reviews() {
       />
 
       {/* Filtres */}
-      <div className="flex flex-wrap items-center gap-2 px-8 py-4 border-b border-gray-100">
+      <div className="flex flex-wrap items-center gap-2 px-6 py-4 border-b">
         <div className="w-52">
           <Input
             placeholder="Rechercher…"
@@ -244,12 +244,12 @@ export default function Reviews() {
         {hasFilters && (
           <Btn size="sm" variant="ghost" onClick={resetFilters}>Réinitialiser</Btn>
         )}
-        <span className="ml-auto text-xs text-gray-400">{total} avis</span>
+        <span className="ml-auto text-xs text-muted-foreground">{total} avis</span>
       </div>
 
       {/* errors shown via toast */}
 
-      <div className="border-t border-gray-100">
+      <div className="border-t">
         <Table columns={columns} data={items} loading={loading} empty="Aucun avis trouvé." />
         <Pagination page={page} total={total} perPage={PER_PAGE} onChange={setPage} />
       </div>
