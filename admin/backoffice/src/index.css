@@ -112,3 +112,13 @@
 
 /* Stars */
 .sj-star-display { color: #f5a623; display: inline-flex; gap: 1px; }
+
+/* Sidebar — explicit desktop breakpoint rules (belt-and-suspenders over Tailwind md: variants) */
+@media (min-width: 768px) {
+  #sj-reviews-root [data-slot="sidebar-wrapper"] > [class*="peer"] {
+    display: block;
+  }
+  #sj-reviews-root [data-slot="sidebar-container"] {
+    display: flex;
+  }
+}
