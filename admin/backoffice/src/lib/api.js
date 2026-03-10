@@ -19,7 +19,10 @@ async function req(path, options = {}) {
 
 export const api = {
   /** Dashboard stats */
-  dashboard: async () => (await req('/dashboard')).json(),
+  dashboard: async (period = 'all') => {
+    const p = period !== 'all' ? `?period=${encodeURIComponent(period)}` : ''
+    return (await req(`/dashboard${p}`)).json()
+  },
 
   /** Liste des avis avec filtres */
   reviews: async ({ page = 1, perPage = 20, search = '', rating = 0, source = '', lieu_id = '', orderby = 'date', order = 'DESC', email = '' } = {}) => {

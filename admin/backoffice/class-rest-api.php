@@ -35,6 +35,9 @@ class RestApi {
             'methods'             => 'GET',
             'callback'            => [$this, 'dashboard'],
             'permission_callback' => [$this, 'is_manager'],
+            'args'                => [
+                'period' => ['default' => 'all', 'type' => 'string'],
+            ],
         ]);
 
         register_rest_route($this->ns, '/reviews', [
@@ -240,31 +243,60 @@ class RestApi {
     private const DASHBOARD_CACHE_TTL = HOUR_IN_SECONDS;
 
     public function dashboard(\WP_REST_Request $req): \WP_REST_Response {
-        $cached = get_transient(self::DASHBOARD_CACHE_KEY);
-        if (is_array($cached)) {
-            // Always refresh recent reviews (cheap query, keeps dashboard current)
-            $cached['recent'] = array_map(
-                fn($p) => sj_normalize_review($p, true),
-                get_posts(['post_type' => 'sj_avis', 'posts_per_page' => 5, 'orderby' => 'date', 'order' => 'DESC'])
-            );
-            return rest_ensure_response($cached);
-        }
-
         global $wpdb;
 
-        $total = (int) wp_count_posts('sj_avis')->publish;
+        $period = $req->get_param('period') ?? 'all';
+
+        // Build date filter SQL fragment
+        $date_where = '';
+        switch ($period) {
+            case '7d':
+                $date_where = $wpdb->prepare(" AND p.post_date >= %s", gmdate('Y-m-d H:i:s', strtotime('-7 days')));
+                break;
+            case '30d':
+                $date_where = $wpdb->prepare(" AND p.post_date >= %s", gmdate('Y-m-d H:i:s', strtotime('-30 days')));
+                break;
+            case '90d':
+                $date_where = $wpdb->prepare(" AND p.post_date >= %s", gmdate('Y-m-d H:i:s', strtotime('-90 days')));
+                break;
+            case '12m':
+                $date_where = $wpdb->prepare(" AND p.post_date >= %s", gmdate('Y-m-d H:i:s', strtotime('-12 months')));
+                break;
+        }
+
+        // Use cache only for 'all' period (no date filter)
+        if ($period === 'all') {
+            $cached = get_transient(self::DASHBOARD_CACHE_KEY);
+            if (is_array($cached)) {
+                $cached['recent'] = array_map(
+                    fn($p) => sj_normalize_review($p, true),
+                    get_posts(['post_type' => 'sj_avis', 'posts_per_page' => 5, 'orderby' => 'date', 'order' => 'DESC'])
+                );
+                return rest_ensure_response($cached);
+            }
+        }
+
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $date_where is prepared above
+        $total = (int) $wpdb->get_var(
+            "SELECT COUNT(*)
+             FROM {$wpdb->posts} p
+             WHERE p.post_type = 'sj_avis'
+             AND p.post_status = 'publish'
+             {$date_where}"
+        );
 
         $avg_raw = $wpdb->get_var(
-            "SELECT AVG(CAST(meta_value AS DECIMAL(3,1)))
+            "SELECT AVG(CAST(pm.meta_value AS DECIMAL(3,1)))
              FROM {$wpdb->postmeta} pm
              INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
              WHERE pm.meta_key = 'avis_rating'
              AND p.post_type = 'sj_avis'
-             AND p.post_status = 'publish'"
+             AND p.post_status = 'publish'
+             {$date_where}"
         );
         $avg = round((float) $avg_raw, 1);
 
-        // Répartition par note — single GROUP BY query instead of 5 separate ones
+        // Répartition par note
         $distribution = [1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0];
         $dist_rows = $wpdb->get_results(
             "SELECT CAST(pm.meta_value AS UNSIGNED) AS rating, COUNT(*) AS cnt
@@ -274,6 +306,7 @@ class RestApi {
              AND p.post_type = 'sj_avis'
              AND p.post_status = 'publish'
              AND pm.meta_value BETWEEN '1' AND '5'
+             {$date_where}
              GROUP BY rating"
         );
         foreach ($dist_rows as $row) {
@@ -293,6 +326,7 @@ class RestApi {
              WHERE pm_src.meta_key = 'avis_source'
              AND p.post_type = 'sj_avis'
              AND p.post_status = 'publish'
+             {$date_where}
              GROUP BY pm_src.meta_value
              ORDER BY total DESC"
         );
@@ -312,23 +346,59 @@ class RestApi {
             }
         }
 
-        // Avis récents
+        // Monthly trend (last 6 months, always unfiltered by period to show the trend)
+        $monthly_trend = $wpdb->get_results(
+            "SELECT YEAR(p.post_date) AS year, MONTH(p.post_date) AS month, COUNT(*) AS cnt
+             FROM {$wpdb->posts} p
+             WHERE p.post_type = 'sj_avis'
+             AND p.post_status = 'publish'
+             AND p.post_date >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+             GROUP BY YEAR(p.post_date), MONTH(p.post_date)
+             ORDER BY year ASC, month ASC"
+        );
+        $trend = [];
+        foreach ($monthly_trend as $row) {
+            $trend[] = [
+                'year'  => (int) $row->year,
+                'month' => (int) $row->month,
+                'count' => (int) $row->cnt,
+            ];
+        }
+
+        // Avis récents (within period)
+        $date_query = [];
+        if ($date_where) {
+            switch ($period) {
+                case '7d':  $date_query = ['after' => '7 days ago']; break;
+                case '30d': $date_query = ['after' => '30 days ago']; break;
+                case '90d': $date_query = ['after' => '90 days ago']; break;
+                case '12m': $date_query = ['after' => '12 months ago']; break;
+            }
+        }
+        $recent_args = ['post_type' => 'sj_avis', 'posts_per_page' => 5, 'orderby' => 'date', 'order' => 'DESC'];
+        if ($date_query) {
+            $recent_args['date_query'] = [$date_query];
+        }
         $recent = array_map(
             fn($p) => sj_normalize_review($p, true),
-            get_posts(['post_type' => 'sj_avis', 'posts_per_page' => 5, 'orderby' => 'date', 'order' => 'DESC'])
+            get_posts($recent_args)
         );
+        // phpcs:enable
 
         $data = [
-            'total'        => $total,
-            'avg_rating'   => $avg,
-            'distribution' => $distribution,
-            'by_source'    => $by_source,
-            'google_total' => $google_total,
-            'google_avg'   => $google_avg,
-            'recent'       => $recent,
+            'total'         => $total,
+            'avg_rating'    => $avg,
+            'distribution'  => $distribution,
+            'by_source'     => $by_source,
+            'google_total'  => $google_total,
+            'google_avg'    => $google_avg,
+            'monthly_trend' => $trend,
+            'recent'        => $recent,
         ];
 
-        set_transient(self::DASHBOARD_CACHE_KEY, $data, self::DASHBOARD_CACHE_TTL);
+        if ($period === 'all') {
+            set_transient(self::DASHBOARD_CACHE_KEY, $data, self::DASHBOARD_CACHE_TTL);
+        }
 
         return rest_ensure_response($data);
     }

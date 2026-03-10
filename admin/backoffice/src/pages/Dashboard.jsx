@@ -96,28 +96,20 @@ export default function Dashboard() {
   const [lieux, setLieux]     = useState([])
 
   useEffect(() => {
-    Promise.all([api.dashboard(), api.lieux()])
+    setLoading(true)
+    Promise.all([api.dashboard(period), api.lieux()])
       .then(([d, l]) => { setData(d); setLieux(l) })
       .catch(e => toast.error(e.message))
       .finally(() => setLoading(false))
-  }, [])
+  }, [period])
 
-  // Monthly trend from recent reviews (simulate from data we have)
+  // Monthly trend from backend data
   const monthlyTrend = useMemo(() => {
-    if (!data?.recent) return []
-    // Build last 6 months labels
-    const months = []
-    const now = new Date()
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      months.push({
-        label: d.toLocaleDateString('fr-FR', { month: 'short' }),
-        year: d.getFullYear(),
-        month: d.getMonth(),
-        count: 0,
-      })
-    }
-    return months
+    if (!data?.monthly_trend?.length) return []
+    return data.monthly_trend.map(m => ({
+      label: new Date(m.year, m.month - 1).toLocaleDateString('fr-FR', { month: 'short' }),
+      count: m.count,
+    }))
   }, [data])
 
   const recentCols = [
@@ -235,6 +227,14 @@ export default function Dashboard() {
               }
             />
           </div>
+
+          {/* Monthly trend */}
+          {monthlyTrend.length > 0 && (
+            <div className="mx-8 mt-6 border border-gray-200 p-5">
+              <div className="text-xs text-gray-400 uppercase tracking-widest mb-4">Évolution mensuelle</div>
+              <MiniBarChart data={monthlyTrend} />
+            </div>
+          )}
 
           {/* Row 2: Source donut + Lieux overview */}
           <div className="grid grid-cols-2 gap-6 mx-8 mt-6">
