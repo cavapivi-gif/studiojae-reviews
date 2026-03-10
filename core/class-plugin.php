@@ -57,7 +57,13 @@ class Plugin {
         add_action('elementor/widgets/register', function ($manager) {
             require_once SJ_REVIEWS_DIR . 'elementor/class-elementor-manager.php';
             require_once SJ_REVIEWS_DIR . 'elementor/class-widget-base.php';
+            require_once SJ_REVIEWS_DIR . 'elementor/traits/trait-typography-controls.php';
+            require_once SJ_REVIEWS_DIR . 'elementor/traits/trait-box-controls.php';
+            require_once SJ_REVIEWS_DIR . 'elementor/traits/trait-interactive-controls.php';
+            require_once SJ_REVIEWS_DIR . 'elementor/traits/trait-media-controls.php';
             require_once SJ_REVIEWS_DIR . 'elementor/traits/trait-shared-controls.php';
+            require_once SJ_REVIEWS_DIR . 'elementor/traits/trait-reviews-style-controls.php';
+            require_once SJ_REVIEWS_DIR . 'elementor/traits/trait-summary-style-controls.php';
             require_once SJ_REVIEWS_DIR . 'elementor/widgets/class-reviews-widget.php';
             require_once SJ_REVIEWS_DIR . 'front/class-rating-shortcode.php';
             require_once SJ_REVIEWS_DIR . 'front/class-summary-shortcode.php';
