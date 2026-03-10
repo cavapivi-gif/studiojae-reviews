@@ -1,0 +1,203 @@
+/* ==========================================================================
+   SJ Reviews — Coup de cœur (style Airbnb)
+   ========================================================================== */
+
+.sj-cdc {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 16px 24px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #222;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* ── Colonne 1 : Badge décoratif ─────────────────────────────────────── */
+
+.sj-cdc__badge {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+}
+
+.sj-cdc__badge-inner {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.sj-cdc__leaf {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.sj-cdc__leaf svg {
+    display: block;
+    height: 32px;
+    width: auto;
+}
+
+.sj-cdc__badge-text {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    max-width: 90px;
+    white-space: normal;
+}
+
+/* ── Colonne 2 : Description ─────────────────────────────────────────── */
+
+.sj-cdc__desc {
+    flex: 1 1 auto;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.35;
+    padding: 0 20px;
+    border-left: 1px solid #e0e0e0;
+    min-width: 0;
+}
+
+/* ── Colonne 3 : Stats (note + commentaires) ─────────────────────────── */
+
+.sj-cdc__stats {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-left: 1px solid #e0e0e0;
+    padding-left: 20px;
+}
+
+/* Note */
+.sj-cdc__rating-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.sj-cdc__avg {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+}
+
+.sj-cdc__stars {
+    display: flex;
+    align-items: center;
+}
+
+.sj-cdc__stars-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+}
+
+.sj-cdc__stars-wrap svg {
+    display: block;
+}
+
+/* Séparateur */
+.sj-cdc__sep {
+    width: 1px;
+    height: 40px;
+    background: #e0e0e0;
+    flex-shrink: 0;
+}
+
+/* Commentaires */
+.sj-cdc__count-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+}
+
+.sj-cdc__count {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+}
+
+.sj-cdc__count-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: #717171;
+    margin-top: 2px;
+    text-transform: capitalize;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+/* Tablette */
+@media (max-width: 768px) {
+    .sj-cdc {
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 14px 16px;
+    }
+
+    .sj-cdc__badge {
+        flex: 0 0 auto;
+    }
+
+    .sj-cdc__desc {
+        flex: 1 1 0;
+        border-left: none;
+        padding: 0;
+        min-width: 120px;
+    }
+
+    .sj-cdc__stats {
+        flex: 0 0 auto;
+        border-left: none;
+        padding-left: 0;
+        border-top: 1px solid #e0e0e0;
+        padding-top: 12px;
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+    .sj-cdc {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 10px;
+        padding: 14px;
+    }
+
+    .sj-cdc__desc {
+        border-left: none;
+        padding: 0;
+        border-top: 1px solid #e0e0e0;
+        padding-top: 10px;
+    }
+
+    .sj-cdc__stats {
+        border-left: none;
+        padding-left: 0;
+        border-top: 1px solid #e0e0e0;
+        padding-top: 10px;
+    }
+
+    .sj-cdc__leaf svg {
+        height: 28px;
+    }
+
+    .sj-cdc__badge-text {
+        font-size: 13px;
+    }
+}
