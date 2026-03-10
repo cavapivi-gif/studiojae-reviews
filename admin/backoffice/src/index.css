@@ -3,6 +3,8 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 
+@source "./components";
+
 /* ── Scope: all shadcn variables under our WP root ── */
 @layer base {
   #sj-reviews-root {
