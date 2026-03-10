@@ -19,6 +19,12 @@ class Plugin {
         require_once SJ_REVIEWS_DIR . 'includes/class-cron.php';
         (new \SJ_Reviews\Includes\Cron())->init();
 
+        // Classic WP Widget
+        require_once SJ_REVIEWS_DIR . 'includes/class-widget.php';
+        add_action('widgets_init', function () {
+            register_widget(\SJ_Reviews\Includes\ReviewsWidget::class);
+        });
+
         // Admin backoffice
         if (is_admin()) {
             require_once SJ_REVIEWS_DIR . 'admin/backoffice/class-backoffice.php';
@@ -38,10 +44,12 @@ class Plugin {
         require_once SJ_REVIEWS_DIR . 'front/class-rating-shortcode.php';
         require_once SJ_REVIEWS_DIR . 'front/class-summary-shortcode.php';
         require_once SJ_REVIEWS_DIR . 'front/class-inline-rating-shortcode.php';
+        require_once SJ_REVIEWS_DIR . 'front/class-form-shortcode.php';
         (new \SJ_Reviews\Front\Shortcode())->init();
         (new \SJ_Reviews\Front\RatingShortcode())->init();
         (new \SJ_Reviews\Front\SummaryShortcode())->init();
         new \SJ_Reviews\Front\InlineRatingShortcode();
+        (new \SJ_Reviews\Front\FormShortcode())->init();
 
         // Elementor
         add_action('elementor/widgets/register', function ($manager) {
@@ -82,6 +90,12 @@ class Plugin {
             [],
             SJ_REVIEWS_VERSION
         );
+        wp_enqueue_style(
+            'sj-form',
+            SJ_REVIEWS_URL . 'front/assets/sj-form.css',
+            [],
+            SJ_REVIEWS_VERSION
+        );
 
         wp_enqueue_script(
             'sj-summary',
@@ -90,6 +104,10 @@ class Plugin {
             SJ_REVIEWS_VERSION,
             true
         );
+        wp_localize_script('sj-summary', 'sjReviewsConfig', [
+            'restUrl' => esc_url_raw(rest_url('sj-reviews/v1/')),
+            'nonce'   => wp_create_nonce('wp_rest'),
+        ]);
 
         wp_enqueue_script(
             'sj-reviews-front',

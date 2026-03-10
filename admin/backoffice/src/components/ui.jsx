@@ -97,18 +97,33 @@ export function Toggle({ label, checked, onChange }) {
 }
 
 export function Stars({ rating, max = 5, size = 14 }) {
+  const r = typeof rating === 'number' ? rating : parseFloat(rating) || 0
   return (
-    <span className="inline-flex gap-0.5" aria-label={`${rating}/${max}`}>
-      {Array.from({ length: max }, (_, i) => (
-        <svg key={i} width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-            fill={i < rating ? '#f5a623' : 'none'}
-            stroke={i < rating ? '#f5a623' : '#d1d5db'}
-            strokeWidth="1.5"
-          />
-        </svg>
-      ))}
+    <span className="inline-flex gap-0.5" aria-label={`${r}/${max}`}>
+      {Array.from({ length: max }, (_, i) => {
+        const fill = Math.min(1, Math.max(0, r - i))
+        const isFull = fill >= 0.75
+        const isHalf = fill >= 0.25 && fill < 0.75
+        const gradId = `sj-star-g-${i}-${Math.round(r * 10)}`
+        return (
+          <svg key={i} width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+            {isHalf && (
+              <defs>
+                <linearGradient id={gradId}>
+                  <stop offset="50%" stopColor="#f5a623" />
+                  <stop offset="50%" stopColor="#d1d5db" />
+                </linearGradient>
+              </defs>
+            )}
+            <path
+              d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+              fill={isFull ? '#f5a623' : isHalf ? `url(#${gradId})` : 'none'}
+              stroke={isFull || isHalf ? '#f5a623' : '#d1d5db'}
+              strokeWidth="1.5"
+            />
+          </svg>
+        )
+      })}
     </span>
   )
 }

@@ -209,7 +209,7 @@ export default function Dashboard() {
               label="Note moyenne"
               value={data?.avg_rating ? `${data.avg_rating} / 5` : '—'}
               accent
-              sub={<Stars rating={Math.round(data?.avg_rating ?? 0)} size={12} />}
+              sub={<Stars rating={data?.avg_rating ?? 0} size={12} />}
             />
             <StatCard
               label="Google"
@@ -220,7 +220,7 @@ export default function Dashboard() {
               }
               sub={
                 data?.google_avg
-                  ? <Stars rating={Math.round(data.google_avg)} size={12} />
+                  ? <Stars rating={data.google_avg} size={12} />
                   : <span className="text-xs text-gray-400">Aucun avis Google</span>
               }
             />
@@ -298,7 +298,7 @@ export default function Dashboard() {
                     </span>
                     {avg_rating > 0 && (
                       <div className="flex items-center gap-1.5 ml-2">
-                        <Stars rating={Math.round(avg_rating)} size={11} />
+                        <Stars rating={avg_rating} size={11} />
                         <span className="text-xs text-gray-500">{avg_rating.toFixed(1)}</span>
                       </div>
                     )}

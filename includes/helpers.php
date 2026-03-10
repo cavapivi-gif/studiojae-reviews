@@ -93,10 +93,13 @@ function sj_normalize_review(\WP_Post $post, bool $private = false): array {
 
     $avatar_field = $get('avis_avatar');
     $avatar_url   = '';
+    $avatar_id    = 0;
     if (is_array($avatar_field)) {
         $avatar_url = $avatar_field['sizes']['thumbnail'] ?? $avatar_field['url'] ?? '';
+        $avatar_id  = (int) ($avatar_field['ID'] ?? $avatar_field['id'] ?? 0);
     } elseif (is_numeric($avatar_field) && $avatar_field) {
-        $avatar_url = wp_get_attachment_image_url((int) $avatar_field, 'thumbnail') ?: '';
+        $avatar_id  = (int) $avatar_field;
+        $avatar_url = wp_get_attachment_image_url($avatar_id, 'thumbnail') ?: '';
     }
 
     $linked_post_id  = (int) ($get('avis_linked_post') ?: 0);
@@ -151,6 +154,7 @@ function sj_normalize_review(\WP_Post $post, bool $private = false): array {
         'place_id'     => $place_id,
         'lieu_id'      => $lieu_id,
         'avatar'       => $avatar_url,
+        'avatar_id'    => $avatar_id,
         'date'         => $post->post_date,
         'date_rel'     => sj_relative_date($post->post_date),
         'linked_post_id' => $linked_post_id ?: null,

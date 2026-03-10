@@ -122,7 +122,7 @@ class SummaryShortcode {
         $args = [
             'post_type'      => 'sj_avis',
             'post_status'    => 'publish',
-            'posts_per_page' => -1,
+            'posts_per_page' => 200,
             'no_found_rows'  => true,
             'orderby'        => 'date',
             'order'          => 'DESC',
@@ -213,7 +213,11 @@ class SummaryShortcode {
         ?>
 <div class="sj-summary" id="<?php echo esc_attr($uid); ?>"
      data-initial="<?php echo esc_attr((int) $a['reviews_initial']); ?>"
-     data-words="<?php echo esc_attr((int)$a['text_words']); ?>">
+     data-words="<?php echo esc_attr((int)$a['text_words']); ?>"
+     data-total-reviews="<?php echo esc_attr($stats['total']); ?>"
+     data-lieu-id="<?php echo esc_attr($lieu_id); ?>"
+     data-lieu-ids="<?php echo esc_attr($a['lieu_ids']); ?>"
+     data-source-filter="<?php echo esc_attr($a['source_filter']); ?>">
 
     <!-- ══ SECTION 1 : EN-TÊTE ══════════════════════════════════════════════ -->
     <?php $layout_cls = in_array($a['score_layout'], ['left','right'], true) ? ' sj-summary__header--side-' . $a['score_layout'] : ''; ?>
@@ -334,7 +338,7 @@ class SummaryShortcode {
     <?php endif; ?>
 
     <!-- Bouton filtrer -->
-    <button type="button" class="sj-filter-trigger" data-summary="<?php echo esc_attr($uid); ?>" aria-expanded="false">
+    <button type="button" class="sj-filter-trigger" data-summary="<?php echo esc_attr($uid); ?>" aria-expanded="false" aria-controls="<?php echo esc_attr($uid); ?>-modal">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
         Filtrer
         <span class="sj-filter-trigger__badge" hidden></span>
@@ -451,6 +455,7 @@ class SummaryShortcode {
     <?php if ($show_reviews): ?>
     <!-- ══ SECTION 4 : CARDS D'AVIS ══════════════════════════════════════════ -->
     <div class="sj-summary__reviews sj-cards-grid sj-cards-grid--<?php echo esc_attr($a['cards_columns']); ?>col"
+         id="<?php echo esc_attr($uid); ?>-reviews"
          data-summary="<?php echo esc_attr($uid); ?>"
          aria-live="polite">
         <?php
@@ -482,12 +487,36 @@ class SummaryShortcode {
             <div class="sj-card__header">
                 <div class="sj-card__author-block">
                     <?php if (!empty($rv['avatar'])): ?>
+                        <?php
+                        // srcset for avatar images
+                        $avatar_srcset = '';
+                        if (is_numeric($rv['avatar_id'] ?? 0) && $rv['avatar_id'] > 0) {
+                            $srcset = wp_get_attachment_image_srcset((int) $rv['avatar_id'], 'thumbnail');
+                            if ($srcset) $avatar_srcset = ' srcset="' . esc_attr($srcset) . '"';
+                        }
+                        ?>
                         <img class="sj-card__avatar sj-card__avatar--img"
                              src="<?php echo esc_url($rv['avatar']); ?>"
                              alt="<?php echo esc_attr($rv['author']); ?>"
-                             width="36" height="36" loading="lazy">
+                             width="36" height="36" loading="lazy"<?php echo $avatar_srcset; ?>>
                     <?php else: ?>
-                        <div class="sj-card__avatar sj-card__avatar--initiale" aria-hidden="true">
+                        <?php
+                        // Colored backgrounds based on author name
+                        $avatar_colors = [
+                            ['bg' => '#e0e7ff', 'color' => '#4f46e5'],
+                            ['bg' => '#fce7f3', 'color' => '#be185d'],
+                            ['bg' => '#d1fae5', 'color' => '#059669'],
+                            ['bg' => '#fef3c7', 'color' => '#d97706'],
+                            ['bg' => '#ede9fe', 'color' => '#7c3aed'],
+                            ['bg' => '#fee2e2', 'color' => '#dc2626'],
+                            ['bg' => '#e0f2fe', 'color' => '#0284c7'],
+                            ['bg' => '#f0fdf4', 'color' => '#16a34a'],
+                        ];
+                        $color_idx = ord(mb_strtolower(mb_substr($rv['author'] ?: 'A', 0, 1))) % count($avatar_colors);
+                        $ac = $avatar_colors[$color_idx];
+                        ?>
+                        <div class="sj-card__avatar sj-card__avatar--initiale" aria-hidden="true"
+                             style="background:<?php echo esc_attr($ac['bg']); ?>;color:<?php echo esc_attr($ac['color']); ?>">
                             <?php echo esc_html(mb_strtoupper(mb_substr($rv['author'], 0, 1))); ?>
                         </div>
                     <?php endif; ?>
@@ -589,7 +618,8 @@ class SummaryShortcode {
     <?php if ($hidden_count > 0): ?>
     <div class="sj-summary__loadmore">
         <button type="button" class="sj-summary__load-btn"
-                data-summary="<?php echo esc_attr($uid); ?>">
+                data-summary="<?php echo esc_attr($uid); ?>"
+                aria-controls="<?php echo esc_attr($uid); ?>-reviews">
             Voir plus d'avis
             <span class="sj-summary__load-count">(<?php echo esc_html($hidden_count); ?>)</span>
         </button>
@@ -605,6 +635,7 @@ class SummaryShortcode {
         '@context'        => 'https://schema.org',
         '@type'           => 'LocalBusiness',
         'name'            => get_the_title() ?: get_bloginfo('name'),
+        'url'             => get_permalink() ?: home_url('/'),
         'aggregateRating' => [
             '@type'       => 'AggregateRating',
             'ratingValue' => $stats['avg'],
@@ -613,6 +644,29 @@ class SummaryShortcode {
             'worstRating' => 1,
         ],
     ];
+    // Enrich with lieu data if available
+    $schema_lieux = (array) get_option('sj_lieux', []);
+    $schema_lieu  = null;
+    if ($lieu_id && $lieu_id !== 'all') {
+        foreach ($schema_lieux as $_sl) {
+            if ($_sl['id'] === $lieu_id) { $schema_lieu = $_sl; break; }
+        }
+    } elseif (count($schema_lieux) === 1) {
+        $schema_lieu = $schema_lieux[0];
+    }
+    if ($schema_lieu && !empty($schema_lieu['address'])) {
+        $schema['address'] = [
+            '@type'         => 'PostalAddress',
+            'streetAddress' => $schema_lieu['address'],
+        ];
+    }
+    $custom_logo_id = get_theme_mod('custom_logo');
+    if ($custom_logo_id) {
+        $logo_url = wp_get_attachment_image_url($custom_logo_id, 'full');
+        if ($logo_url) {
+            $schema['image'] = $logo_url;
+        }
+    }
 
     // Inject a few individual reviews for Google rich results (max 5)
     $schema_reviews = [];
