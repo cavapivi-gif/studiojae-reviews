@@ -4,7 +4,7 @@ import { SEASONS, SOURCE_LABELS, SOURCE_HEX } from '../../lib/constants'
 import { Spinner } from '../ui'
 
 const currentYear = new Date().getFullYear()
-const YEARS = Array.from({ length: 5 }, (_, i) => currentYear - i)
+const YEARS = Array.from({ length: 15 }, (_, i) => currentYear - i)
 
 const SEASON_OPTIONS = Object.entries(SEASONS).map(([k, v]) => ({ value: k, label: v.label }))
 
@@ -15,7 +15,7 @@ function SeasonSelector({ label, season, year, onSeasonChange, onYearChange }) {
       <select
         value={season}
         onChange={e => onSeasonChange(e.target.value)}
-        className="text-xs border border-gray-200 px-2 py-1 bg-white text-gray-600"
+        className="text-xs border border-gray-200 pl-2 pr-6 py-1 bg-white text-gray-600 appearance-auto"
       >
         {SEASON_OPTIONS.map(o => (
           <option key={o.value} value={o.value}>{o.label}</option>
@@ -24,7 +24,7 @@ function SeasonSelector({ label, season, year, onSeasonChange, onYearChange }) {
       <select
         value={year}
         onChange={e => onYearChange(parseInt(e.target.value))}
-        className="text-xs border border-gray-200 px-2 py-1 bg-white text-gray-600"
+        className="text-xs border border-gray-200 pl-2 pr-6 py-1 bg-white text-gray-600 appearance-auto"
       >
         {YEARS.map(y => (
           <option key={y} value={y}>{y}</option>

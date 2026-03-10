@@ -471,6 +471,60 @@ class RestApi {
         );
         // phpcs:enable
 
+        // ── Platform enrichment ──────────────────────────────────────────────
+        // Include platform review counts from lieux (Google, Trustpilot, etc.)
+        // so dashboard totals match the front-end widgets.
+        $all_lieux   = (array) get_option('sj_lieux', []);
+        $lieu_filter = sanitize_key($req->get_param('lieu_id'));
+
+        // Determine which lieux to include
+        if ($lieu_filter) {
+            $matched_lieux = array_filter($all_lieux, fn($l) => ($l['id'] ?? '') === $lieu_filter);
+        } else {
+            $matched_lieux = $all_lieux;
+        }
+
+        // For each lieu, add the platform reviews that are NOT already stored as CPT
+        $platform_google_total = 0;
+        $platform_google_sum   = 0;
+        foreach ($matched_lieux as $l) {
+            $platform_count  = (int) ($l['reviews_count'] ?? 0);
+            $platform_rating = (float) ($l['rating'] ?? 0);
+            if ($platform_count <= 0 || $platform_rating <= 0) continue;
+
+            // How many CPT reviews do we already have for this lieu?
+            $lieu_cpt_count = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->posts} p
+                 INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID AND pm.meta_key = 'avis_lieu_id'
+                 WHERE p.post_type = 'sj_avis' AND p.post_status = 'publish'
+                 AND pm.meta_value = %s",
+                $l['id']
+            ));
+
+            $extra = max(0, $platform_count - $lieu_cpt_count);
+            if ($extra > 0) {
+                // Weighted average: combine CPT avg with platform avg for the extra reviews
+                $combined_total = $total + $extra;
+                $avg = ($total > 0)
+                    ? round(($avg * $total + $platform_rating * $extra) / $combined_total, 1)
+                    : round($platform_rating, 1);
+                $total = $combined_total;
+            }
+
+            // Accumulate platform Google totals for the Google stat card
+            $source = $l['source'] ?? '';
+            if ($source === 'google') {
+                $platform_google_total += $platform_count;
+                $platform_google_sum   += $platform_count * $platform_rating;
+            }
+        }
+
+        // Google card: use platform totals when available (to avoid double-counting)
+        if ($platform_google_total > 0) {
+            $google_total = $platform_google_total;
+            $google_avg   = round($platform_google_sum / $platform_google_total, 1);
+        }
+
         $data = [
             'total'         => $total,
             'avg_rating'    => $avg,
