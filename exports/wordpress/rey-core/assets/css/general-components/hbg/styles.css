@@ -1,0 +1,1 @@
+.--hs-25bars{--hbg-bars-w3: 50%}.--hs-2bars{--hbg-bars-d3: none}.--hs-hover2bars{--hbg-bars-d3: none;--tr-val: 0.2em;--hbg-bars-tr: translateX(var(--tr-val));--hbg-bars-tr2: translateX(calc(-1 * var(--tr-val)));--hbg-bars-trd: 0s}.--hs-hover2bars:hover{--tr-val: 0}.--hs-hover2bars2{--hbg-bars-w2: 50%;--hbg-bars-d3: none}

@@ -1,0 +1,1 @@
+!function(e){"use strict";var n=function(e){"undefined"!=typeof elementorFrontend&&elementorFrontend.hooks&&elementorFrontend.hooks.doAction("frontend/element_ready/image-carousel.default",e,jQuery)};rey.hooks.addAction("elementor/init",(function(e){e.registerElement({name:"image-carousel.carousel_links",cb:n})}))}(jQuery);

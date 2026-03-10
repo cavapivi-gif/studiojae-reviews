@@ -1,0 +1,15 @@
+{
+	"name": "reycore/spacer-v1",
+	"category": "rey-blocks",
+	"attributes": {
+		"heightDesktop": {
+			"type": "number"
+		},
+		"heightTablet": {
+			"type": "number"
+		},
+		"heightMobile": {
+			"type": "number"
+		}
+	}
+}

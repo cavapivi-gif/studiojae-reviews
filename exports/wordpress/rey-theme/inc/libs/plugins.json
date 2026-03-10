@@ -1,0 +1,88 @@
+{
+	"rey-core": {
+		"name": "Rey Core",
+		"slug": "rey-core",
+		"required": true,
+		"visibility": "public",
+		"type": "rey",
+		"file_path": "rey-core/rey-core.php",
+		"php_class": "ReyCore",
+		"desc": "The core of Rey Theme.",
+		"source": "rey-core/rey-core.php",
+		"version": "1.0.0",
+		"url": "http://www.reytheme.com/"
+	},
+	"elementor": {
+		"name": "Elementor",
+		"slug": "elementor",
+		"required": false,
+		"visibility": "public",
+		"type": "repo",
+		"file_path": "elementor/elementor.php",
+		"php_class": "Elementor\\Plugin",
+		"desc": "The most powerful page builder for WordPress."
+	},
+	"woocommerce": {
+		"name": "WooCommerce",
+		"slug": "woocommerce",
+		"required": false,
+		"visibility": "public",
+		"type": "repo",
+		"file_path": "woocommerce/woocommerce.php",
+		"php_class": "WooCommerce",
+		"desc": "The most powerful ecommerce plugin for WordPress."
+	},
+	"one-click-demo-import": {
+		"name": "One Click Demo Import",
+		"slug": "one-click-demo-import",
+		"required": true,
+		"visibility": "public",
+		"type": "repo",
+		"file_path": "one-click-demo-import/one-click-demo-import.php",
+		"php_class": "OCDI_Plugin",
+		"desc": "Import Rey Theme's demo content, widgets and theme settings with one click."
+	},
+	"wp-store-locator": {
+		"name": "WP Store Locator",
+		"slug": "wp-store-locator",
+		"required": false,
+		"visibility": "public",
+		"type": "repo",
+		"file_path": "wp-store-locator/wp-store-locator.php",
+		"php_class": "WP_Store_locator",
+		"desc": "Powerful and easy to use location management system."
+	},
+	"mailchimp-for-wp": {
+		"name": "Mailchimp for WordPress",
+		"slug": "mailchimp-for-wp",
+		"required": false,
+		"visibility": "public",
+		"type": "repo",
+		"file_path": "mailchimp-for-wp/mailchimp-for-wp.php",
+		"php_class": "MC4WP_Plugin",
+		"desc": "Add newsletter forms and manage your Mailchimp lists."
+	},
+	"contact-form-7": {
+		"name": "Contact Form 7",
+		"slug": "contact-form-7",
+		"required": false,
+		"visibility": "public",
+		"type": "repo",
+		"file_path": "contact-form-7/wp-contact-form-7.php",
+		"php_class": "WPCF7",
+		"desc": "Most powerful contact form generator for WordPress."
+	},
+	"revslider": {
+		"name": "Revolution Slider",
+		"slug": "revslider",
+		"required": false,
+		"visibility": "public",
+		"type": "rey",
+		"file_path": "revslider/revslider.php",
+		"php_class": "RevSliderSlider",
+		"desc": "The most powerful slider builder plugin for WordPress.",
+		"source": "revslider/revslider.php",
+		"version": "6.0.9",
+		"url": "https://revolution.themepunch.com/"
+	}
+}

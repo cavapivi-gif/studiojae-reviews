@@ -1,0 +1,24 @@
+.wc-product-table .wpt_variations_form {
+	display: inline-flex;
+	flex-direction: column;
+	margin-bottom: 20px !important;
+	text-align: end;
+}
+
+.wc-product-table .wpt_variations_form .single_variation_wrap,
+.wc-product-table .wpt_variations_form .variations {
+	margin-bottom: 20px;
+}
+
+.wc-product-table .add-to-cart-wrapper .single_add_to_cart_button .rey-lineLoader,
+.wc-product-table .wpt_variations_form .single_add_to_cart_button .rey-lineLoader {
+	--loader-color: inherit;
+	--loader-width: 60px;
+	--loader-height: 2px;
+	opacity: 0;
+}
+
+
+.wc-product-table .wpt_variations_form .woo-variation-raw-select ~ .variable-items-wrapper {
+	display:none;
+}
