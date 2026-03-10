@@ -1,28 +1,56 @@
 <?php
 namespace SJ_Reviews\Elementor\Widgets;
 
-use Elementor\Widget_Base;
 use Elementor\Controls_Manager;
+use SJ_Reviews\Elementor\SjWidgetBase;
+use SJ_Reviews\Elementor\Traits\SharedControls;
 
 defined('ABSPATH') || exit;
 
-class RatingBadgeWidget extends Widget_Base {
+/**
+ * Elementor Widget — SJ Rating Badge.
+ *
+ * Refactored to use SjWidgetBase + SharedControls.
+ * Adds: proper hover tabs via trait, rating typography, count typography.
+ */
+class RatingBadgeWidget extends SjWidgetBase {
 
-    public function get_name():  string { return 'sj_rating_badge'; }
-    public function get_title(): string { return 'SJ — Badge de note'; }
-    public function get_icon():  string { return 'eicon-rating'; }
-    public function get_categories(): array { return ['sj-reviews']; }
-    public function get_keywords(): array { return ['rating', 'badge', 'avis', 'google', 'note', 'sj']; }
+    use SharedControls;
+
+    protected static function get_sj_config(): array {
+        return [
+            'id'       => 'sj_rating_badge',
+            'title'    => 'SJ — Badge de note',
+            'icon'     => 'eicon-rating',
+            'keywords' => ['rating', 'badge', 'avis', 'google', 'note', 'sj'],
+            'css'      => ['sj-rating-badge'],
+        ];
+    }
+
+    public function __construct($data = [], $args = null) {
+        parent::__construct($data, $args);
+
+        $this->selectors = array_merge($this->selectors, [
+            'badge'      => '{{WRAPPER}} .sj-badge',
+            'badge_hover'=> '{{WRAPPER}} .sj-badge:hover',
+            'rating'     => '{{WRAPPER}} .sj-badge__rating, {{WRAPPER}} .sj-badge__big-rating',
+            'stars'      => '{{WRAPPER}} .sj-badge__stars',
+            'count'      => '{{WRAPPER}} .sj-badge__count',
+            'name'       => '{{WRAPPER}} .sj-badge__name',
+            'source'     => '{{WRAPPER}} .sj-badge__source, {{WRAPPER}} .sj-badge__source-link',
+            'meta'       => '{{WRAPPER}} .sj-badge__meta',
+        ]);
+    }
 
     protected function register_controls(): void {
         $lieux  = (array) get_option('sj_lieux', []);
-        $opts   = [];
-        $opts['all'] = 'Tous les lieux actifs';
+        $opts   = ['all' => 'Tous les lieux actifs'];
         foreach ($lieux as $l) {
             $opts[$l['id']] = esc_html($l['name'] . ' (' . ($l['source'] ?? '') . ')');
         }
 
-        // ── Contenu ──────────────────────────────────────────────────────────
+        // ── CONTENT TAB ─────────────────────────────────────────────────────
+
         $this->start_controls_section('section_content', [
             'label' => 'Contenu',
             'tab'   => Controls_Manager::TAB_CONTENT,
@@ -69,124 +97,47 @@ class RatingBadgeWidget extends Widget_Base {
 
         $this->end_controls_section();
 
-        // ── Style ────────────────────────────────────────────────────────────
-        $this->start_controls_section('section_style', [
-            'label' => 'Style',
-            'tab'   => Controls_Manager::TAB_STYLE,
-        ]);
+        // ── STYLE TAB — shared controls ─────────────────────────────────────
 
-        $this->add_control('star_color', [
-            'label'     => 'Couleur des étoiles',
-            'type'      => Controls_Manager::COLOR,
-            'default'   => '#f5a623',
-            'selectors' => [
-                '{{WRAPPER}} .sj-badge' => '--sj-star-color: {{VALUE}};',
-            ],
-        ]);
-
-        $this->add_group_control(
-            \Elementor\Group_Control_Background::get_type(),
-            [
-                'name'     => 'badge_bg',
-                'label'    => __('Fond du badge', 'sj-reviews'),
-                'types'    => ['classic', 'gradient'],
-                'selector' => '{{WRAPPER}} .sj-badge',
-            ]
+        // Badge container with hover tabs (bg, border, shadow, transform)
+        $this->register_box_hover_controls(
+            'badge', 'Badge',
+            $this->sel('badge'),
+            ['radius' => 12, 'transition' => 200, 'hover_transform' => '']
         );
 
-        $this->add_group_control(
-            \Elementor\Group_Control_Border::get_type(),
-            [
-                'name'     => 'badge_border',
-                'selector' => '{{WRAPPER}} .sj-badge',
-            ]
+        // Stars
+        $this->register_stars_controls(
+            'badge_stars', 'Étoiles',
+            $this->sel('stars'),
+            ['color' => '#f5a623', 'size' => 14]
         );
 
-        $this->start_controls_tabs('badge_state_tabs');
-
-        $this->start_controls_tab('badge_state_normal', [
-            'label' => __('Normal', 'sj-reviews'),
-        ]);
-
-        $this->add_group_control(
-            \Elementor\Group_Control_Box_Shadow::get_type(),
-            [
-                'name'     => 'badge_shadow',
-                'selector' => '{{WRAPPER}} .sj-badge',
-            ]
+        // Rating number typography
+        $this->register_typography_controls(
+            'rating', 'Note (chiffre)',
+            $this->sel('rating'),
+            ['color' => '#111111']
         );
 
-        $this->end_controls_tab();
-
-        $this->start_controls_tab('badge_state_hover', [
-            'label' => __('Survol', 'sj-reviews'),
-        ]);
-
-        $this->add_group_control(
-            \Elementor\Group_Control_Background::get_type(),
-            [
-                'name'     => 'badge_bg_hover',
-                'label'    => __('Fond au survol', 'sj-reviews'),
-                'types'    => ['classic', 'gradient'],
-                'selector' => '{{WRAPPER}} .sj-badge:hover',
-            ]
+        // Count typography
+        $this->register_typography_controls(
+            'count', 'Compteur d\'avis',
+            $this->sel('count')
         );
 
-        $this->add_group_control(
-            \Elementor\Group_Control_Border::get_type(),
-            [
-                'name'     => 'badge_border_hover',
-                'label'    => __('Bordure au survol', 'sj-reviews'),
-                'selector' => '{{WRAPPER}} .sj-badge:hover',
-            ]
+        // Name typography
+        $this->register_typography_controls(
+            'name', 'Nom du lieu',
+            $this->sel('name')
         );
 
-        $this->add_group_control(
-            \Elementor\Group_Control_Box_Shadow::get_type(),
-            [
-                'name'     => 'badge_shadow_hover',
-                'label'    => __('Ombre au survol', 'sj-reviews'),
-                'selector' => '{{WRAPPER}} .sj-badge:hover',
-            ]
+        // Source typography
+        $this->register_typography_controls(
+            'source', 'Source',
+            $this->sel('source'),
+            ['hover' => true]
         );
-
-        $this->end_controls_tab();
-        $this->end_controls_tabs();
-
-        $this->add_control('rating_color', [
-            'label'     => 'Couleur de la note',
-            'type'      => Controls_Manager::COLOR,
-            'default'   => '#111111',
-            'selectors' => [
-                '{{WRAPPER}} .sj-badge__rating'     => 'color: {{VALUE}}',
-                '{{WRAPPER}} .sj-badge__big-rating' => 'color: {{VALUE}}',
-            ],
-        ]);
-
-        $this->add_group_control(
-            \Elementor\Group_Control_Typography::get_type(),
-            [
-                'name'     => 'badge_typography',
-                'selector' => '{{WRAPPER}} .sj-badge',
-            ]
-        );
-
-        $this->add_responsive_control('badge_padding', [
-            'label'      => 'Padding interne',
-            'type'       => Controls_Manager::DIMENSIONS,
-            'size_units' => ['px', 'em'],
-            'selectors'  => ['{{WRAPPER}} .sj-badge--card, {{WRAPPER}} .sj-badge--hero' => 'padding: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}}'],
-        ]);
-
-        $this->add_responsive_control('badge_radius', [
-            'label'      => 'Border radius',
-            'type'       => Controls_Manager::SLIDER,
-            'size_units' => ['px'],
-            'range'      => ['px' => ['min' => 0, 'max' => 40]],
-            'selectors'  => ['{{WRAPPER}} .sj-badge' => '--sj-radius: {{SIZE}}{{UNIT}}'],
-        ]);
-
-        $this->end_controls_section();
     }
 
     protected function render(): void {

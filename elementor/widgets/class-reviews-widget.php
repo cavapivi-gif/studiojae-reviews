@@ -1,6 +1,9 @@
 <?php
 namespace SJ_Reviews\Elementor\Widgets;
 
+use SJ_Reviews\Elementor\SjWidgetBase;
+use SJ_Reviews\Elementor\Traits\SharedControls;
+
 defined('ABSPATH') || exit;
 
 /**
@@ -14,17 +17,43 @@ defined('ABSPATH') || exit;
  *  - list       : Liste verticale
  *
  * Presets de style : minimal | dark | white
+ *
+ * Migrated to SjWidgetBase + SharedControls. Existing controls preserved,
+ * SharedControls available for future enhancements.
  */
-class ReviewsWidget extends \Elementor\Widget_Base {
+class ReviewsWidget extends SjWidgetBase {
 
-    public function get_name():       string { return 'sj-reviews'; }
-    public function get_title():      string { return 'SJ — Carrousel / Grille'; }
-    public function get_icon():       string { return 'eicon-rating'; }
-    public function get_categories(): array  { return ['sj-reviews', 'general']; }
-    public function get_keywords():   array  { return ['avis', 'reviews', 'rating', 'étoiles', 'slider', 'badge', 'sj']; }
+    use SharedControls;
 
-    public function get_style_depends():  array { return ['sj-reviews-front', 'swiper']; }
-    public function get_script_depends(): array { return ['sj-reviews-front', 'swiper']; }
+    protected static function get_sj_config(): array {
+        return [
+            'id'         => 'sj-reviews',
+            'title'      => 'SJ — Carrousel / Grille',
+            'icon'       => 'eicon-rating',
+            'keywords'   => ['avis', 'reviews', 'rating', 'étoiles', 'slider', 'badge', 'sj'],
+            'css'        => ['sj-reviews-front', 'swiper'],
+            'js'         => ['sj-reviews-front', 'swiper'],
+            'categories' => ['sj-reviews', 'general'],
+        ];
+    }
+
+    public function __construct($data = [], $args = null) {
+        parent::__construct($data, $args);
+
+        $this->selectors = array_merge($this->selectors, [
+            'container'  => '{{WRAPPER}} .sj-reviews',
+            'title'      => '{{WRAPPER}} .sj-reviews__title',
+            'card'       => '{{WRAPPER}} .sj-review-card',
+            'card_hover' => '{{WRAPPER}} .sj-review-card:hover',
+            'card_text'  => '{{WRAPPER}} .sj-review__text',
+            'card_author'=> '{{WRAPPER}} .sj-review__author',
+            'card_date'  => '{{WRAPPER}} .sj-review__date',
+            'card_avatar'=> '{{WRAPPER}} .sj-review__avatar img',
+            'stars'      => '{{WRAPPER}} .sj-stars',
+            'arrow'      => '{{WRAPPER}} .sj-arrow',
+            'dots'       => '{{WRAPPER}} .swiper-pagination-bullet',
+        ]);
+    }
 
     // ── CONTROLS ─────────────────────────────────────────────────────────────
 

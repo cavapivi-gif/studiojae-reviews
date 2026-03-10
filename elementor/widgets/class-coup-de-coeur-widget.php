@@ -1,29 +1,57 @@
 <?php
 namespace SJ_Reviews\Elementor\Widgets;
 
-use Elementor\Widget_Base;
 use Elementor\Controls_Manager;
+use SJ_Reviews\Elementor\SjWidgetBase;
+use SJ_Reviews\Elementor\Traits\SharedControls;
 
 defined('ABSPATH') || exit;
 
 /**
  * Elementor Widget — Coup de cœur (style Airbnb).
  *
- * Affiche une bannière "Coup de cœur voyageurs" sur les posts
- * dont le champ ACF `best_seller` est activé, avec la note moyenne
- * et le nombre d'avis liés au post.
+ * Uses SjWidgetBase + SharedControls trait for centralized controls.
+ * All style controls use {{WRAPPER}} selectors → driven by Elementor, not hardcoded CSS.
  */
-class CoupDeCoeurWidget extends Widget_Base {
+class CoupDeCoeurWidget extends SjWidgetBase {
 
-    public function get_name():  string { return 'sj_coup_de_coeur'; }
-    public function get_title(): string { return 'SJ — Coup de cœur'; }
-    public function get_icon():  string { return 'eicon-heart'; }
-    public function get_categories(): array { return ['sj-reviews']; }
-    public function get_keywords(): array { return ['coup de coeur', 'best seller', 'favori', 'airbnb', 'badge', 'avis', 'sj']; }
+    use SharedControls;
+
+    protected static function get_sj_config(): array {
+        return [
+            'id'         => 'sj_coup_de_coeur',
+            'title'      => 'SJ — Coup de cœur',
+            'icon'       => 'eicon-heart',
+            'keywords'   => ['coup de coeur', 'best seller', 'favori', 'airbnb', 'badge', 'avis', 'sj'],
+            'css'        => ['sj-coup-de-coeur'],
+            'categories' => ['sj-reviews'],
+        ];
+    }
+
+    public function __construct($data = [], $args = null) {
+        parent::__construct($data, $args);
+
+        // Selector dictionary — maps logical names to CSS selectors
+        $this->selectors = array_merge($this->selectors, [
+            'container'   => '{{WRAPPER}} .sj-cdc',
+            'badge'       => '{{WRAPPER}} .sj-cdc__badge-inner',
+            'badge_text'  => '{{WRAPPER}} .sj-cdc__badge-text',
+            'leaf'        => '{{WRAPPER}} .sj-cdc__leaf svg',
+            'desc'        => '{{WRAPPER}} .sj-cdc__desc',
+            'avg'         => '{{WRAPPER}} .sj-cdc__avg',
+            'stars'       => '{{WRAPPER}} .sj-cdc__stars-wrap',
+            'sep'         => '{{WRAPPER}} .sj-cdc__sep',
+            'sep_desc'    => '{{WRAPPER}} .sj-cdc__desc',
+            'count'       => '{{WRAPPER}} .sj-cdc__count',
+            'count_label' => '{{WRAPPER}} .sj-cdc__count-label',
+            'stats'       => '{{WRAPPER}} .sj-cdc__stats',
+        ]);
+    }
 
     protected function register_controls(): void {
 
-        // ── Section Contenu ─────────────────────────────────────────────────
+        // ── CONTENT TAB ─────────────────────────────────────────────────────
+
         $this->start_controls_section('section_content', [
             'label' => 'Contenu',
             'tab'   => Controls_Manager::TAB_CONTENT,
@@ -31,7 +59,7 @@ class CoupDeCoeurWidget extends Widget_Base {
 
         $this->add_control('post_id', [
             'label'       => 'Post ID',
-            'description' => 'Laisser vide pour utiliser le post courant.',
+            'description' => 'Laisser vide = post courant.',
             'type'        => Controls_Manager::NUMBER,
             'default'     => 0,
         ]);
@@ -48,55 +76,84 @@ class CoupDeCoeurWidget extends Widget_Base {
             'default' => 'Un des logements préférés des voyageurs',
         ]);
 
-        $this->add_control('star_color', [
-            'label'   => 'Couleur des étoiles',
-            'type'    => Controls_Manager::COLOR,
-            'default' => '#222222',
-        ]);
-
         $this->end_controls_section();
 
-        // ── Section Style ───────────────────────────────────────────────────
-        $this->start_controls_section('section_style', [
-            'label' => 'Style',
+        // ── STYLE TAB — shared controls from trait ──────────────────────────
+
+        // Container (bg, border, radius, padding, shadow)
+        $this->register_box_controls(
+            'container', 'Conteneur',
+            $this->sel('container'),
+            ['radius' => 12]
+        );
+
+        // Layout (gap, alignment)
+        $this->register_layout_controls(
+            'main', 'Disposition',
+            $this->sel('container')
+        );
+
+        // Badge text typography
+        $this->register_typography_controls(
+            'badge', 'Badge (texte)',
+            $this->sel('badge_text'),
+            ['color' => '#222222']
+        );
+
+        // Description typography
+        $this->register_typography_controls(
+            'desc', 'Description',
+            $this->sel('desc'),
+            ['color' => '#222222']
+        );
+
+        // Rating number typography
+        $this->register_typography_controls(
+            'avg', 'Note (chiffre)',
+            $this->sel('avg'),
+            ['color' => '#222222']
+        );
+
+        // Stars
+        $this->register_stars_controls(
+            'rating', 'Étoiles',
+            $this->sel('stars'),
+            ['color' => '#222222', 'size' => 10]
+        );
+
+        // Separator
+        $this->register_separator_controls(
+            'divider', 'Séparateurs',
+            $this->sel('sep')
+        );
+
+        // Count number typography
+        $this->register_typography_controls(
+            'count', 'Nombre de commentaires',
+            $this->sel('count'),
+            ['color' => '#222222']
+        );
+
+        // Count label typography
+        $this->register_typography_controls(
+            'count_label', 'Label "Commentaires"',
+            $this->sel('count_label'),
+            ['color' => '#717171']
+        );
+
+        // Leaf SVG size
+        $this->start_controls_section('section_leaf_style', [
+            'label' => 'Feuilles décoratives',
             'tab'   => Controls_Manager::TAB_STYLE,
         ]);
 
-        $this->add_control('bg_color', [
-            'label'     => 'Couleur de fond',
-            'type'      => Controls_Manager::COLOR,
-            'default'   => '#ffffff',
-            'selectors' => ['{{WRAPPER}} .sj-cdc' => 'background-color: {{VALUE}};'],
-        ]);
-
-        $this->add_control('border_color', [
-            'label'     => 'Couleur de bordure',
-            'type'      => Controls_Manager::COLOR,
-            'default'   => '#e0e0e0',
-            'selectors' => ['{{WRAPPER}} .sj-cdc' => 'border-color: {{VALUE}};'],
-        ]);
-
-        $this->add_responsive_control('border_radius', [
-            'label'      => 'Rayon de bordure',
+        $this->add_responsive_control('leaf_height', [
+            'label'      => 'Hauteur',
             'type'       => Controls_Manager::SLIDER,
             'size_units' => ['px'],
-            'range'      => ['px' => ['min' => 0, 'max' => 24]],
-            'default'    => ['size' => 12, 'unit' => 'px'],
-            'selectors'  => ['{{WRAPPER}} .sj-cdc' => 'border-radius: {{SIZE}}{{UNIT}};'],
-        ]);
-
-        $this->add_responsive_control('padding', [
-            'label'      => 'Padding',
-            'type'       => Controls_Manager::DIMENSIONS,
-            'size_units' => ['px'],
-            'selectors'  => ['{{WRAPPER}} .sj-cdc' => 'padding: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};'],
-        ]);
-
-        $this->add_control('text_color', [
-            'label'     => 'Couleur du texte',
-            'type'      => Controls_Manager::COLOR,
-            'default'   => '#222222',
-            'selectors' => ['{{WRAPPER}} .sj-cdc' => 'color: {{VALUE}};'],
+            'range'      => ['px' => ['min' => 16, 'max' => 48]],
+            'default'    => ['size' => 32, 'unit' => 'px'],
+            'selectors'  => [$this->sel('leaf') => 'height: {{SIZE}}{{UNIT}}; width: auto;'],
         ]);
 
         $this->end_controls_section();
@@ -107,11 +164,16 @@ class CoupDeCoeurWidget extends Widget_Base {
 
         require_once SJ_REVIEWS_DIR . 'front/class-coup-de-coeur-shortcode.php';
 
+        // Pass star colors from the shared controls
+        $star_color = $s['rating_star_color'] ?? '#222222';
+        $star_empty = $s['rating_star_empty_color'] ?? '#d1d5db';
+
         $atts = [
-            'post_id'    => $s['post_id']    ?? 0,
-            'star_color' => $s['star_color'] ?? '#222222',
-            'label'      => $s['label']      ?? 'Coup de cœur voyageurs',
-            'subtitle'   => $s['subtitle']   ?? 'Un des logements préférés des voyageurs',
+            'post_id'          => $s['post_id']  ?? 0,
+            'star_color'       => $star_color,
+            'star_empty_color' => $star_empty,
+            'label'            => $s['label']     ?? 'Coup de cœur voyageurs',
+            'subtitle'         => $s['subtitle']  ?? 'Un des logements préférés des voyageurs',
         ];
 
         $sc = new \SJ_Reviews\Front\CoupDeCoeurShortcode();

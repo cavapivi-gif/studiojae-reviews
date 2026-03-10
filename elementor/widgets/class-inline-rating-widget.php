@@ -1,18 +1,43 @@
 <?php
 namespace SJ_Reviews\Elementor\Widgets;
 
-use Elementor\Widget_Base;
 use Elementor\Controls_Manager;
+use SJ_Reviews\Elementor\SjWidgetBase;
+use SJ_Reviews\Elementor\Traits\SharedControls;
 
 defined('ABSPATH') || exit;
 
-class InlineRatingWidget extends Widget_Base {
+/**
+ * Elementor Widget — SJ Inline Rating.
+ *
+ * Refactored to use SjWidgetBase + SharedControls.
+ * Previously: 3 basic style controls. Now: full typography, stars, layout.
+ */
+class InlineRatingWidget extends SjWidgetBase {
 
-    public function get_name():  string { return 'sj_inline_rating'; }
-    public function get_title(): string { return 'SJ — Note inline'; }
-    public function get_icon():  string { return 'eicon-star'; }
-    public function get_categories(): array { return ['sj-reviews']; }
-    public function get_keywords(): array { return ['rating', 'inline', 'note', 'étoiles', 'avis', 'sj']; }
+    use SharedControls;
+
+    protected static function get_sj_config(): array {
+        return [
+            'id'       => 'sj_inline_rating',
+            'title'    => 'SJ — Note inline',
+            'icon'     => 'eicon-star',
+            'keywords' => ['rating', 'inline', 'note', 'étoiles', 'avis', 'sj'],
+        ];
+    }
+
+    public function __construct($data = [], $args = null) {
+        parent::__construct($data, $args);
+
+        $this->selectors = array_merge($this->selectors, [
+            'container' => '{{WRAPPER}} .sj-inline-rating',
+            'score'     => '{{WRAPPER}} .sj-inline-rating__score',
+            'count'     => '{{WRAPPER}} .sj-inline-rating__count',
+            'stars'     => '{{WRAPPER}} .sj-inline-rating .sj-badge__stars',
+            'source'    => '{{WRAPPER}} .sj-inline-rating__source',
+            'text'      => '{{WRAPPER}} .sj-inline-rating__text',
+        ]);
+    }
 
     protected function register_controls(): void {
         $lieux = (array) get_option('sj_lieux', []);
@@ -21,7 +46,8 @@ class InlineRatingWidget extends Widget_Base {
             $opts[$l['id']] = esc_html(($l['name'] ?? $l['id']) . ' (' . ($l['source'] ?? '') . ')');
         }
 
-        // ── Section Données ───────────────────────────────────────────────────
+        // ── CONTENT TAB ─────────────────────────────────────────────────────
+
         $this->start_controls_section('section_data', [
             'label' => 'Données',
             'tab'   => Controls_Manager::TAB_CONTENT,
@@ -70,7 +96,6 @@ class InlineRatingWidget extends Widget_Base {
 
         $this->end_controls_section();
 
-        // ── Section Texte ─────────────────────────────────────────────────────
         $this->start_controls_section('section_text', [
             'label' => 'Texte',
             'tab'   => Controls_Manager::TAB_CONTENT,
@@ -90,36 +115,28 @@ class InlineRatingWidget extends Widget_Base {
 
         $this->end_controls_section();
 
-        // ── Section Style ─────────────────────────────────────────────────────
-        $this->start_controls_section('section_style', [
-            'label' => 'Style',
-            'tab'   => Controls_Manager::TAB_STYLE,
-        ]);
+        // ── STYLE TAB — shared controls ─────────────────────────────────────
 
-        $this->add_responsive_control('font_size', [
-            'label'      => 'Taille de police',
-            'type'       => Controls_Manager::SLIDER,
-            'size_units' => ['px'],
-            'range'      => ['px' => ['min' => 10, 'max' => 30]],
-            'selectors'  => ['{{WRAPPER}} .sj-inline-rating' => 'font-size: {{SIZE}}{{UNIT}};'],
-        ]);
+        // Container typography + color
+        $this->register_typography_controls(
+            'inline', 'Texte général',
+            $this->sel('container'),
+            ['color' => '']
+        );
 
-        $this->add_responsive_control('gap', [
-            'label'      => 'Espacement entre éléments',
-            'type'       => Controls_Manager::SLIDER,
-            'size_units' => ['px'],
-            'range'      => ['px' => ['min' => 2, 'max' => 12]],
-            'selectors'  => ['{{WRAPPER}} .sj-inline-rating' => 'gap: {{SIZE}}{{UNIT}};'],
-        ]);
+        // Layout (gap, alignment)
+        $this->register_layout_controls(
+            'inline', 'Disposition',
+            $this->sel('container'),
+            ['gap' => 6]
+        );
 
-        $this->add_control('color', [
-            'label'     => 'Couleur du texte',
-            'type'      => Controls_Manager::COLOR,
-            'default'   => '',
-            'selectors' => ['{{WRAPPER}} .sj-inline-rating' => 'color: {{VALUE}};'],
-        ]);
-
-        $this->end_controls_section();
+        // Stars
+        $this->register_stars_controls(
+            'inline_stars', 'Étoiles',
+            $this->sel('stars'),
+            ['color' => '#f5a623', 'size' => 14]
+        );
     }
 
     protected function render(): void {
