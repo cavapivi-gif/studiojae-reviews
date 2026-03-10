@@ -269,8 +269,14 @@ class RestApi {
 
     // ── Dashboard ─────────────────────────────────────────────────────────────
 
-    private const DASHBOARD_CACHE_KEY = 'sj_dashboard_cache';
-    private const DASHBOARD_CACHE_TTL = HOUR_IN_SECONDS;
+    private const DASHBOARD_CACHE_PREFIX = 'sj_dash_';
+    private const DASHBOARD_CACHE_TTL = [
+        '7d'  => 5 * MINUTE_IN_SECONDS,
+        '30d' => 15 * MINUTE_IN_SECONDS,
+        '90d' => HOUR_IN_SECONDS,
+        '12m' => HOUR_IN_SECONDS,
+        'all' => HOUR_IN_SECONDS,
+    ];
 
     /**
      * Build reusable WHERE fragments for dashboard queries.
@@ -327,9 +333,10 @@ class RestApi {
         $extra_where = $f['source_where'] . $f['lieu_where'];
         $has_filters = $f['source_where'] || $f['lieu_where'];
 
-        // Use cache only for unfiltered 'all' period
-        if ($period === 'all' && !$has_filters) {
-            $cached = get_transient(self::DASHBOARD_CACHE_KEY);
+        // Per-period cache (only for unfiltered requests)
+        $cache_key = self::DASHBOARD_CACHE_PREFIX . $period;
+        if (!$has_filters) {
+            $cached = get_transient($cache_key);
             if (is_array($cached)) {
                 $cached['recent'] = array_map(
                     fn($p) => sj_normalize_review($p, true),
@@ -475,16 +482,19 @@ class RestApi {
             'recent'        => $recent,
         ];
 
-        if ($period === 'all' && !$has_filters) {
-            set_transient(self::DASHBOARD_CACHE_KEY, $data, self::DASHBOARD_CACHE_TTL);
+        if (!$has_filters) {
+            $ttl = self::DASHBOARD_CACHE_TTL[$period] ?? HOUR_IN_SECONDS;
+            set_transient($cache_key, $data, $ttl);
         }
 
         return rest_ensure_response($data);
     }
 
-    /** Invalidate dashboard cache (call after any review CRUD). */
+    /** Invalidate all dashboard caches (call after any review CRUD). */
     private function invalidate_dashboard_cache(): void {
-        delete_transient(self::DASHBOARD_CACHE_KEY);
+        foreach (array_keys(self::DASHBOARD_CACHE_TTL) as $period) {
+            delete_transient(self::DASHBOARD_CACHE_PREFIX . $period);
+        }
     }
 
     // ── Dashboard trends (time-series) ──────────────────────────────────────
