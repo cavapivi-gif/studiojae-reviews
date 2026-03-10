@@ -367,7 +367,15 @@ if (!empty($a['max_width_mobile'])) {
         <!-- Distribution par étoiles -->
         <div class="sj-summary__distribution">
             <?php
-            $dist_labels = [5=>'Excellent',4=>'Bien',3=>'Moyen',2=>'Médiocre',1=>'Horrible'];
+            $settings    = (array) get_option('sj_reviews_settings', []);
+            $rl          = isset($settings['rating_labels']) && is_array($settings['rating_labels']) ? $settings['rating_labels'] : [];
+            $dist_labels = [
+                5 => $rl['5'] ?? 'Excellent',
+                4 => $rl['4'] ?? 'Bien',
+                3 => $rl['3'] ?? 'Moyen',
+                2 => $rl['2'] ?? 'Médiocre',
+                1 => $rl['1'] ?? 'Horrible',
+            ];
             $max_dist    = max(1, max($stats['distribution']));
             foreach ($dist_labels as $stars => $dlabel):
                 $count = $stats['distribution'][$stars] ?? 0;
@@ -391,7 +399,13 @@ if (!empty($a['max_width_mobile'])) {
 
     <!-- ══ SECTION 2 : SOUS-CRITÈRES (indépendant, masquable) ════════════ -->
     <?php
-    $crit_labels  = ['qualite_prix'=>'Qualité/prix','ambiance'=>'Ambiance','experience'=>'Expérience','paysage'=>'Paysage'];
+    $cl           = isset($settings['criteria_labels']) && is_array($settings['criteria_labels']) ? $settings['criteria_labels'] : [];
+    $crit_labels  = [
+        'qualite_prix' => $cl['qualite_prix'] ?? 'Qualité/prix',
+        'ambiance'     => $cl['ambiance']     ?? 'Ambiance',
+        'experience'   => $cl['experience']   ?? 'Expérience',
+        'paysage'      => $cl['paysage']      ?? 'Paysage',
+    ];
     $has_criteria = $a['show_criteria'] !== '0' && array_filter($stats['criteria_avgs'], fn($v) => $v !== null);
     if ($has_criteria):
     ?>
@@ -718,7 +732,7 @@ if (!empty($a['max_width_mobile'])) {
 
             <?php if ($a['show_card_criteria'] !== '0'): ?>
             <?php
-              $crit_labels_card = ['qualite_prix'=>'Qualité/prix','ambiance'=>'Ambiance','experience'=>'Expérience','paysage'=>'Paysage'];
+              $crit_labels_card = $crit_labels; // uses settings-based labels from above
               $has_crit = array_filter(['qualite_prix'=>$rv['qualite_prix'],'ambiance'=>$rv['ambiance'],'experience'=>$rv['experience'],'paysage'=>$rv['paysage']], fn($v)=>$v!==null);
               if (!empty($has_crit)):
             ?>
@@ -851,12 +865,14 @@ if (!empty($a['max_width_mobile'])) {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private function rating_label(float $avg): string {
-        if ($avg >= 4.5) return 'Excellent';
+        $settings = (array) get_option('sj_reviews_settings', []);
+        $rl = isset($settings['rating_labels']) && is_array($settings['rating_labels']) ? $settings['rating_labels'] : [];
+        if ($avg >= 4.5) return $rl['5'] ?? 'Excellent';
         if ($avg >= 4.0) return 'Très bien';
-        if ($avg >= 3.5) return 'Bien';
-        if ($avg >= 3.0) return 'Moyen';
-        if ($avg >= 2.0) return 'Médiocre';
-        return                   'Mauvais';
+        if ($avg >= 3.5) return $rl['4'] ?? 'Bien';
+        if ($avg >= 3.0) return $rl['3'] ?? 'Moyen';
+        if ($avg >= 2.0) return $rl['2'] ?? 'Médiocre';
+        return                   $rl['1'] ?? 'Mauvais';
     }
 
     private function bubbles_html(float $rating, string $size = ''): string {
