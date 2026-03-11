@@ -19,6 +19,7 @@
     color: #222;
     max-width: 100%;
     box-sizing: border-box;
+    text-decoration: none;
 }
 
 /* ── Badge (col 1) ──────────────────────────────────────────────────────── */

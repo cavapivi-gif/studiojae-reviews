@@ -76,6 +76,16 @@ class CoupDeCoeurWidget extends SjWidgetBase {
             'default' => 'Un des logements préférés des voyageurs',
         ]);
 
+        $this->add_control('link', [
+            'label'       => __('Lien', 'sj-reviews'),
+            'type'        => Controls_Manager::URL,
+            'dynamic'     => ['active' => true],
+            'placeholder' => '#avis',
+            'default'     => ['url' => ''],
+            'separator'   => 'before',
+            'description' => __('URL ou ancre (#avis) pour scroller vers la section avis.', 'sj-reviews'),
+        ]);
+
         $this->end_controls_section();
 
         // ── STYLE TAB — shared controls from trait ──────────────────────────
@@ -168,12 +178,17 @@ class CoupDeCoeurWidget extends SjWidgetBase {
         $star_color = $s['rating_star_color'] ?? '#222222';
         $star_empty = $s['rating_star_empty_color'] ?? '#d1d5db';
 
+        $link = $s['link'] ?? [];
+
         $atts = [
             'post_id'          => $s['post_id']  ?? 0,
             'star_color'       => $star_color,
             'star_empty_color' => $star_empty,
             'label'            => $s['label']     ?? 'Coup de cœur voyageurs',
             'subtitle'         => $s['subtitle']  ?? 'Un des logements préférés des voyageurs',
+            'url'              => $link['url']             ?? '',
+            'url_external'     => $link['is_external']     ?? '',
+            'url_nofollow'     => $link['nofollow']        ?? '',
         ];
 
         $sc = new \SJ_Reviews\Front\CoupDeCoeurShortcode();
