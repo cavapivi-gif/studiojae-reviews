@@ -777,7 +777,8 @@ if (!empty($a['max_width_mobile'])) {
     <?php endif; // show_reviews ?>
 
 </div><!-- /.sj-summary -->
-<?php if ($a['schema_enabled'] !== '0' && !is_admin() && $stats['avg'] > 0): ?>
+<?php if ($a['schema_enabled'] !== '0' && !is_admin() && $stats['avg'] > 0 && empty($GLOBALS['sj_reviews_schema_rendered'])): ?>
+<?php $GLOBALS['sj_reviews_schema_rendered'] = true; ?>
 <script type="application/ld+json"><?php
     $schema_type = $a['schema_type'] ?: 'LocalBusiness';
     $schema_name = $a['schema_name'] ?: (get_the_title() ?: get_bloginfo('name'));

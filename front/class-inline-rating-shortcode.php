@@ -29,24 +29,31 @@ class InlineRatingShortcode {
         $opts = \SJ_Reviews\Includes\Settings::all();
 
         $a = shortcode_atts([
-            'lieu_id'      => '',
-            'show_stars'   => '1',
-            'show_score'   => '1',
-            'show_count'   => '1',
-            'show_sources' => '0',
-            'star_color'   => $opts['star_color'] ?? '#f5a623',
-            'text_before'  => '',
-            'text_after'   => '',
+            'lieu_id'        => '',
+            'show_stars'     => '1',
+            'show_score'     => '1',
+            'show_count'     => '1',
+            'show_sources'   => '0',
+            'star_color'     => $opts['star_color'] ?? '#f5a623',
+            'text_before'    => '',
+            'text_after'     => '',
+            'separator_type' => 'none',
         ], $atts, 'sj_inline_rating');
 
-        $lieu_id      = sanitize_text_field($a['lieu_id']);
-        $show_stars   = (bool)(int) $a['show_stars'];
-        $show_score   = (bool)(int) $a['show_score'];
-        $show_count   = (bool)(int) $a['show_count'];
-        $show_sources = (bool)(int) $a['show_sources'];
-        $star_color   = sanitize_hex_color($a['star_color']) ?: '#f5a623';
-        $text_before  = esc_html($a['text_before']);
-        $text_after   = esc_html($a['text_after']);
+        $lieu_id        = sanitize_text_field($a['lieu_id']);
+        $show_stars     = (bool)(int) $a['show_stars'];
+        $show_score     = (bool)(int) $a['show_score'];
+        $show_count     = (bool)(int) $a['show_count'];
+        $show_sources   = (bool)(int) $a['show_sources'];
+        $star_color     = sanitize_hex_color($a['star_color']) ?: '#f5a623';
+        $text_before    = esc_html($a['text_before']);
+        $text_after     = esc_html($a['text_after']);
+        $separator_type = sanitize_key($a['separator_type']);
+
+        $sep_chars = ['dot' => '·', 'pipe' => '|', 'dash' => '–', 'slash' => '/'];
+        $sep_html  = isset($sep_chars[$separator_type])
+            ? '<span class="sj-inline-rating__sep" aria-hidden="true">' . $sep_chars[$separator_type] . '</span>'
+            : '';
 
         // Récupération des avis CPT
         $query_args = [
@@ -76,7 +83,7 @@ class InlineRatingShortcode {
         foreach ($matched_lieux as $l) {
             $platform_count  = (int) ($l['reviews_count'] ?? 0);
             $platform_rating = (float) ($l['rating'] ?? 0);
-            if ($platform_count <= 0 || $platform_rating <= 0) continue;
+            if ($platform_count <= 0) continue;
 
             // Count CPT reviews for this lieu (already in $count)
             $lieu_cpt_count = 0;
@@ -94,9 +101,11 @@ class InlineRatingShortcode {
             $extra = max(0, $platform_count - $lieu_cpt_count);
             if ($extra > 0) {
                 $combined = $count + $extra;
-                $avg   = ($count > 0)
-                    ? round(($avg * $count + $platform_rating * $extra) / $combined, 1)
-                    : round($platform_rating, 1);
+                if ($platform_rating > 0) {
+                    $avg = ($count > 0)
+                        ? round(($avg * $count + $platform_rating * $extra) / $combined, 1)
+                        : round($platform_rating, 1);
+                }
                 $count = $combined;
             }
         }
@@ -141,28 +150,29 @@ class InlineRatingShortcode {
             }
         }
 
-        // Assemblage HTML
-        $inner = '';
+        // Assemblage HTML — collect parts, join with separator
+        $parts = [];
         if ($text_before !== '') {
-            $inner .= '<span class="sj-inline-rating__before">' . $text_before . '</span>';
+            $parts[] = '<span class="sj-inline-rating__before">' . $text_before . '</span>';
         }
         if ($show_stars && $stars_str !== '') {
-            $inner .= '<span class="sj-inline-rating__stars" style="color:' . esc_attr($star_color) . '" aria-hidden="true">'
-                    . esc_html($stars_str)
-                    . '</span>';
+            $parts[] = '<span class="sj-inline-rating__stars" style="color:' . esc_attr($star_color) . '" aria-hidden="true">'
+                     . esc_html($stars_str)
+                     . '</span>';
         }
         if ($show_score) {
-            $inner .= '<span class="sj-inline-rating__score" data-sj-tpl="{{avg}}/5">' . esc_html($score_str) . '</span>';
+            $parts[] = '<span class="sj-inline-rating__score" data-sj-tpl="{{avg}}/5">' . esc_html($score_str) . '</span>';
         }
         if ($show_count) {
-            $inner .= '<span class="sj-inline-rating__count" data-sj-tpl="sur {{count}} avis">sur ' . esc_html($count_str) . ' avis</span>';
+            $parts[] = '<span class="sj-inline-rating__count" data-sj-tpl="sur {{count}} avis">sur ' . esc_html($count_str) . ' avis</span>';
         }
         if ($show_sources && $sources_html !== '') {
-            $inner .= $sources_html;
+            $parts[] = $sources_html;
         }
         if ($text_after !== '') {
-            $inner .= '<span class="sj-inline-rating__after">' . $text_after . '</span>';
+            $parts[] = '<span class="sj-inline-rating__after">' . $text_after . '</span>';
         }
+        $inner = implode($sep_html, $parts);
 
         $badge_data = esc_attr(wp_json_encode(['lieu_id' => $lieu_id]));
 
