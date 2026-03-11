@@ -49,7 +49,7 @@ class InlineRatingWidget extends SjWidgetBase {
             'tab'   => Controls_Manager::TAB_CONTENT,
         ]);
 
-        $this->register_lieu_control(['default' => '', 'show_all' => true, 'all_label' => 'Tous les lieux']);
+        $this->register_lieu_control(['default' => 'auto', 'show_auto' => true, 'show_all' => true, 'all_label' => 'Tous les lieux']);
         $this->register_source_filter_control();
 
         $this->register_show_control('show_stars', 'Afficher les étoiles', '1');
