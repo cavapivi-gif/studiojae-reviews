@@ -813,68 +813,12 @@ class ReviewsWidget extends SjWidgetBase {
     // ── DATA ─────────────────────────────────────────────────────────────────
 
     /**
-     * Compute enriched aggregate (CPT + platform data) matching dashboard logic.
+     * Compute enriched aggregate matching dashboard logic (shared helper).
      */
     private function compute_enriched_aggregate(array $s): array {
         $lieu_id = sanitize_text_field($s['lieu_id'] ?? 'all');
-
-        // Get ALL CPT reviews for this lieu (not limited by max_reviews)
-        $args = ['posts_per_page' => -1, 'no_found_rows' => true];
-        $meta_query = [];
-        if ($lieu_id && $lieu_id !== 'all') {
-            $meta_query[] = ['key' => 'avis_lieu_id', 'value' => $lieu_id];
-        }
         $sources = array_filter((array) ($s['source_filter'] ?? []));
-        if (!empty($sources)) {
-            $meta_query[] = ['key' => 'avis_source', 'value' => $sources, 'compare' => 'IN'];
-        }
-        if (!empty($meta_query)) {
-            $meta_query['relation'] = 'AND';
-            $args['meta_query'] = $meta_query;
-        }
-        $all_reviews = sj_get_reviews($args);
-        $agg = sj_aggregate($all_reviews);
-        $avg   = $agg['avg'];
-        $total = $agg['count'];
-
-        // Enrich with platform data (same logic as summary/inline shortcodes)
-        $all_lieux = \SJ_Reviews\Includes\Settings::lieux();
-        if ($lieu_id && $lieu_id !== 'all') {
-            $matched_lieux = array_filter($all_lieux, fn($l) => ($l['id'] ?? '') === $lieu_id);
-        } else {
-            $matched_lieux = $all_lieux;
-        }
-
-        global $wpdb;
-        foreach ($matched_lieux as $l) {
-            $platform_count  = (int) ($l['reviews_count'] ?? 0);
-            $platform_rating = (float) ($l['rating'] ?? 0);
-            if ($platform_count <= 0) continue;
-
-            $lieu_cpt_count = 0;
-            if (!empty($l['id'])) {
-                $lieu_cpt_count = (int) $wpdb->get_var($wpdb->prepare(
-                    "SELECT COUNT(*) FROM {$wpdb->posts} p
-                     INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID AND pm.meta_key = 'avis_lieu_id'
-                     WHERE p.post_type = 'sj_avis' AND p.post_status = 'publish'
-                     AND pm.meta_value = %s",
-                    $l['id']
-                ));
-            }
-
-            $extra = max(0, $platform_count - $lieu_cpt_count);
-            if ($extra > 0) {
-                $combined = $total + $extra;
-                if ($platform_rating > 0) {
-                    $avg = ($total > 0)
-                        ? round(($avg * $total + $platform_rating * $extra) / $combined, 1)
-                        : round($platform_rating, 1);
-                }
-                $total = $combined;
-            }
-        }
-
-        return ['avg' => $avg, 'count' => $total];
+        return sj_enriched_stats($lieu_id, $sources);
     }
 
     private function get_reviews(array $s, int $max): array {
