@@ -72,11 +72,12 @@ function SectionHeader({ children, badge }) {
 }
 
 function ApiKeyField({ label, value, onChange, onTest, testStatus, testMsg, badge, tutorial }) {
+  const dot = value?.trim() ? <span className="inline-block w-2 h-2 rounded-full bg-blue-500 ml-1.5 shrink-0" title="Connecté" /> : null
   return (
     <div className="flex flex-col gap-3">
       <div className="flex gap-2 items-end">
         <div className="flex-1">
-          <Input label={label} type="password" value={value} onChange={e => onChange(e.target.value)} placeholder="Clé API…" autoComplete="off" />
+          <Input label={<>{label}{dot}</>} type="password" value={value} onChange={e => onChange(e.target.value)} placeholder="Clé API…" autoComplete="off" />
         </div>
         <Btn type="button" variant="ghost" size="sm" onClick={onTest} loading={testStatus === 'testing'} disabled={!value.trim() || testStatus === 'testing'} style={{ marginBottom: '1px' }}>
           Tester
@@ -307,25 +308,8 @@ export default function Settings() {
 
             <section>
               <SectionHeader badge="Claude">Anthropic API (Résumé IA)</SectionHeader>
-              <ApiKeyField
-                label="Clé API Anthropic"
-                value={form.anthropic_api_key}
-                onChange={set('anthropic_api_key')}
-                onTest={testAnthropicKey}
-                testStatus={anthropicKeyStatus}
-                testMsg={anthropicKeyMsg}
-                tutorial={
-                  <Tutorial title="Obtenir une clé API Anthropic">
-                    <p><strong>1.</strong> Créez un compte sur <strong>console.anthropic.com</strong>.</p>
-                    <p><strong>2.</strong> Dashboard → API Keys → Create Key.</p>
-                    <p><strong>3.</strong> Copiez la clé (commence par <code>sk-ant-</code>).</p>
-                    <p className="text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1">
-                      Coût : ~0.003$ par génération de résumé (~50 avis).
-                    </p>
-                  </Tutorial>
-                }
-              />
-              <div className="mt-3 flex flex-col gap-2">
+              <div className="flex flex-col gap-3">
+                <Input label={<>Clé API Anthropic{form.anthropic_api_key?.trim() ? <span className="inline-block w-2 h-2 rounded-full bg-blue-500 ml-1.5" title="Connecté" /> : null}</>} type="password" value={form.anthropic_api_key} onChange={e => set('anthropic_api_key')(e.target.value)} placeholder="sk-ant-…" autoComplete="off" />
                 <Btn type="button" variant="secondary" size="sm" loading={aiSummaryLoading} disabled={!form.anthropic_api_key.trim() || aiSummaryLoading} onClick={async () => {
                   setAiSummaryLoading(true)
                   try {
