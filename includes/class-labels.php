@@ -60,7 +60,7 @@ class Labels {
     public static function criteria(): array {
         $custom = Settings::get('criteria_labels', []);
         $custom = is_array($custom) ? $custom : [];
-        return array_merge(self::CRITERIA_DEFAULTS, $custom);
+        return array_replace(self::CRITERIA_DEFAULTS, $custom);
     }
 
     /** Criteria labels with 'avis_' prefix keys (for ACF / metabox fields). */
@@ -77,7 +77,8 @@ class Labels {
     public static function ratings(): array {
         $custom = Settings::get('rating_labels', []);
         $custom = is_array($custom) ? $custom : [];
-        return array_merge(self::RATING_DEFAULTS, $custom);
+        // array_replace preserves string keys ('5','4',...) — array_merge re-indexes them as integers
+        return array_replace(self::RATING_DEFAULTS, $custom);
     }
 
     /** Rating labels keyed as int (5=>label, 4=>label…). */

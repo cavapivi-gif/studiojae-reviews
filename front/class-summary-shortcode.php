@@ -272,7 +272,7 @@ class SummaryShortcode {
         foreach ($matched_lieux as $l) {
             $platform_count  = (int) ($l['reviews_count'] ?? 0);
             $platform_rating = (float) ($l['rating'] ?? 0);
-            if ($platform_count <= 0 || $platform_rating <= 0) continue;
+            if ($platform_count <= 0) continue;
 
             // Count how many CPT reviews we have for this lieu (already included in $total)
             $lieu_cpt_count = 0;
@@ -292,7 +292,11 @@ class SummaryShortcode {
             if ($extra > 0) {
                 // Weighted average: combine CPT avg with platform avg for the extra reviews
                 $combined_total = $total + $extra;
-                $avg = round(($avg * $total + $platform_rating * $extra) / $combined_total, 1);
+                if ($platform_rating > 0) {
+                    $avg = ($total > 0)
+                        ? round(($avg * $total + $platform_rating * $extra) / $combined_total, 1)
+                        : round($platform_rating, 1);
+                }
                 $total = $combined_total;
             }
         }
