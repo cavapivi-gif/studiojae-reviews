@@ -223,6 +223,11 @@ class RestApi {
             'callback'            => [$this, 'test_tripadvisor_key'],
             'permission_callback' => [$this, 'is_manager'],
         ]);
+        register_rest_route($this->ns, '/settings/test-anthropic-key', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'test_anthropic_key'],
+            'permission_callback' => [$this, 'is_manager'],
+        ]);
 
         // Export CSV
         register_rest_route($this->ns, '/export', [
@@ -1495,23 +1500,32 @@ class RestApi {
         $g_rating = round((float) ($body['result']['rating']             ?? 0), 1);
         $g_count  = (int)         ($body['result']['user_ratings_total'] ?? 0);
 
-        // Persiste sur le lieu
+        // Persiste sur le lieu — respecte le override manuel si défini
         $all_lieux = $this->get_lieux();
         foreach ($all_lieux as &$l) {
             if ($l['id'] === $lieu_id) {
-                $l['rating']        = $g_rating;
-                $l['reviews_count'] = $g_count;
-                $l['last_sync']     = current_time('Y-m-d H:i:s');
+                $has_manual_rating = isset($l['manual_rating']) && $l['manual_rating'] !== null && $l['manual_rating'] !== '';
+                $has_manual_count  = isset($l['manual_count'])  && $l['manual_count']  !== null && $l['manual_count']  !== '';
+                if (!$has_manual_rating) $l['rating']        = $g_rating;
+                if (!$has_manual_count)  $l['reviews_count'] = $g_count;
+                $l['last_sync'] = current_time('Y-m-d H:i:s');
                 break;
             }
         }
         unset($l);
         update_option('sj_lieux', $all_lieux);
 
+        // Return effective values (manual takes precedence for display)
+        $effective_lieu = null;
+        foreach ($this->get_lieux() as $l) {
+            if ($l['id'] === $lieu_id) { $effective_lieu = $l; break; }
+        }
         return rest_ensure_response([
-            'rating'        => $g_rating,
-            'reviews_count' => $g_count,
-            'last_sync'     => current_time('Y-m-d H:i:s'),
+            'rating'         => $effective_lieu['rating']        ?? $g_rating,
+            'reviews_count'  => $effective_lieu['reviews_count'] ?? $g_count,
+            'last_sync'      => current_time('Y-m-d H:i:s'),
+            'manual_rating'  => $effective_lieu['manual_rating'] ?? null,
+            'manual_count'   => $effective_lieu['manual_count']  ?? null,
         ]);
     }
 
@@ -1575,12 +1589,14 @@ class RestApi {
         $tp_count  = (int) ($body['numberOfReviews']['total'] ?? 0);
         $bu_id     = $body['id'];
 
-        // Persist
+        // Persist — respecte le override manuel si défini
         $all_lieux = $this->get_lieux();
         foreach ($all_lieux as &$l) {
             if ($l['id'] === $lieu_id) {
-                $l['rating']           = $tp_rating;
-                $l['reviews_count']    = $tp_count;
+                $has_manual_rating = isset($l['manual_rating']) && $l['manual_rating'] !== null && $l['manual_rating'] !== '';
+                $has_manual_count  = isset($l['manual_count'])  && $l['manual_count']  !== null && $l['manual_count']  !== '';
+                if (!$has_manual_rating) $l['rating']        = $tp_rating;
+                if (!$has_manual_count)  $l['reviews_count'] = $tp_count;
                 $l['trustpilot_bu_id'] = $bu_id;
                 $l['last_sync']        = current_time('Y-m-d H:i:s');
                 break;
@@ -1589,10 +1605,16 @@ class RestApi {
         unset($l);
         update_option('sj_lieux', $all_lieux);
 
+        $effective_lieu = null;
+        foreach ($this->get_lieux() as $l) {
+            if ($l['id'] === $lieu_id) { $effective_lieu = $l; break; }
+        }
         return rest_ensure_response([
-            'rating'        => $tp_rating,
-            'reviews_count' => $tp_count,
-            'last_sync'     => current_time('Y-m-d H:i:s'),
+            'rating'         => $effective_lieu['rating']        ?? $tp_rating,
+            'reviews_count'  => $effective_lieu['reviews_count'] ?? $tp_count,
+            'last_sync'      => current_time('Y-m-d H:i:s'),
+            'manual_rating'  => $effective_lieu['manual_rating'] ?? null,
+            'manual_count'   => $effective_lieu['manual_count']  ?? null,
         ]);
     }
 
@@ -1659,23 +1681,31 @@ class RestApi {
         $ta_rating = round((float) ($body['rating'] ?? 0), 1);
         $ta_count  = (int) ($body['num_reviews'] ?? 0);
 
-        // Persist
+        // Persist — respecte le override manuel si défini
         $all_lieux = $this->get_lieux();
         foreach ($all_lieux as &$l) {
             if ($l['id'] === $lieu_id) {
-                $l['rating']        = $ta_rating;
-                $l['reviews_count'] = $ta_count;
-                $l['last_sync']     = current_time('Y-m-d H:i:s');
+                $has_manual_rating = isset($l['manual_rating']) && $l['manual_rating'] !== null && $l['manual_rating'] !== '';
+                $has_manual_count  = isset($l['manual_count'])  && $l['manual_count']  !== null && $l['manual_count']  !== '';
+                if (!$has_manual_rating) $l['rating']        = $ta_rating;
+                if (!$has_manual_count)  $l['reviews_count'] = $ta_count;
+                $l['last_sync'] = current_time('Y-m-d H:i:s');
                 break;
             }
         }
         unset($l);
         update_option('sj_lieux', $all_lieux);
 
+        $effective_lieu = null;
+        foreach ($this->get_lieux() as $l) {
+            if ($l['id'] === $lieu_id) { $effective_lieu = $l; break; }
+        }
         return rest_ensure_response([
-            'rating'        => $ta_rating,
-            'reviews_count' => $ta_count,
-            'last_sync'     => current_time('Y-m-d H:i:s'),
+            'rating'         => $effective_lieu['rating']        ?? $ta_rating,
+            'reviews_count'  => $effective_lieu['reviews_count'] ?? $ta_count,
+            'last_sync'      => current_time('Y-m-d H:i:s'),
+            'manual_rating'  => $effective_lieu['manual_rating'] ?? null,
+            'manual_count'   => $effective_lieu['manual_count']  ?? null,
         ]);
     }
 
@@ -1918,6 +1948,46 @@ class RestApi {
 
         $body = json_decode(wp_remote_retrieve_body($response), true);
         return rest_ensure_response(['ok' => false, 'message' => $body['message'] ?? "HTTP {$code}"]);
+    }
+
+    public function test_anthropic_key(\WP_REST_Request $req): \WP_REST_Response {
+        $key = sanitize_text_field($req['key'] ?? '');
+        if (empty($key)) {
+            return rest_ensure_response(['ok' => false, 'message' => 'Clé API manquante.']);
+        }
+
+        $body = wp_json_encode([
+            'model'      => 'claude-haiku-4-5-20251001',
+            'max_tokens' => 80,
+            'messages'   => [
+                ['role' => 'user', 'content' => 'Réponds avec une blague très courte (1 ligne max) en français pour confirmer que tu es bien connecté. Commence directement par la blague, sans introduction.'],
+            ],
+        ]);
+
+        $response = wp_remote_post('https://api.anthropic.com/v1/messages', [
+            'timeout' => 15,
+            'headers' => [
+                'Content-Type'      => 'application/json',
+                'x-api-key'         => $key,
+                'anthropic-version' => '2023-06-01',
+            ],
+            'body' => $body,
+        ]);
+
+        if (is_wp_error($response)) {
+            return rest_ensure_response(['ok' => false, 'message' => $response->get_error_message()]);
+        }
+
+        $code = wp_remote_retrieve_response_code($response);
+        $data = json_decode(wp_remote_retrieve_body($response), true);
+
+        if ($code !== 200) {
+            $msg = $data['error']['message'] ?? "Erreur API (HTTP {$code})";
+            return rest_ensure_response(['ok' => false, 'message' => $msg]);
+        }
+
+        $joke = sanitize_text_field($data['content'][0]['text'] ?? '');
+        return rest_ensure_response(['ok' => true, 'message' => $joke]);
     }
 
     public function save_settings(\WP_REST_Request $req): \WP_REST_Response {
@@ -2277,6 +2347,19 @@ class RestApi {
             return new \WP_Error('missing_name', 'Le nom du lieu est requis.', ['status' => 422]);
         }
         $allowed_sources = ['google', 'tripadvisor', 'facebook', 'trustpilot', 'regiondo', 'direct', 'autre'];
+
+        // Manual rating override: null = not set, float 1.0–5.0 = active override
+        $manual_rating = null;
+        if (isset($body['manual_rating']) && $body['manual_rating'] !== '' && $body['manual_rating'] !== null) {
+            $r = round((float) $body['manual_rating'], 1);
+            if ($r >= 1.0 && $r <= 5.0) $manual_rating = $r;
+        }
+        $manual_count = null;
+        if (isset($body['manual_count']) && $body['manual_count'] !== '' && $body['manual_count'] !== null) {
+            $c = (int) $body['manual_count'];
+            if ($c >= 0) $manual_count = $c;
+        }
+
         return [
             'name'                     => sanitize_text_field($body['name']),
             'place_id'                 => sanitize_text_field($body['place_id'] ?? ''),
@@ -2285,6 +2368,8 @@ class RestApi {
             'active'                   => (bool) ($body['active'] ?? true),
             'trustpilot_domain'        => sanitize_text_field($body['trustpilot_domain'] ?? ''),
             'tripadvisor_location_id'  => sanitize_text_field($body['tripadvisor_location_id'] ?? ''),
+            'manual_rating'            => $manual_rating,
+            'manual_count'             => $manual_count,
         ];
     }
 
@@ -2387,6 +2472,11 @@ class RestApi {
 
         $lieu_id = $req->get_param('lieu_id') ?: 'all';
         $cached = \SJ_Reviews\Includes\AiSummary::get_cached($lieu_id);
+
+        // Fallback: if no cache for specific lieu, try 'all'
+        if (!$cached && $lieu_id !== 'all') {
+            $cached = \SJ_Reviews\Includes\AiSummary::get_cached('all');
+        }
 
         if (!$cached) {
             return new \WP_REST_Response(['summary' => null], 200);

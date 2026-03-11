@@ -84,11 +84,16 @@ class Cron {
         foreach ($lieux as &$lieu) {
             if (empty($lieu['active'])) continue;
 
+            $has_manual_rating = isset($lieu['manual_rating']) && $lieu['manual_rating'] !== null && $lieu['manual_rating'] !== '';
+            $has_manual_count  = isset($lieu['manual_count'])  && $lieu['manual_count']  !== null && $lieu['manual_count']  !== '';
+
             // Google sync
             if ($lieu['source'] === 'google' && !empty($lieu['place_id'])) {
                 $result = $this->sync_google_lieu($lieu, $settings);
                 if ($result) {
-                    $lieu = array_merge($lieu, $result);
+                    if ($has_manual_rating) unset($result['rating']);
+                    if ($has_manual_count)  unset($result['reviews_count']);
+                    $lieu    = array_merge($lieu, $result);
                     $updated = true;
                 }
             }
@@ -97,7 +102,9 @@ class Cron {
             if ($lieu['source'] === 'trustpilot' && !empty($lieu['trustpilot_domain'])) {
                 $result = $this->sync_trustpilot_lieu($lieu, $settings);
                 if ($result) {
-                    $lieu = array_merge($lieu, $result);
+                    if ($has_manual_rating) unset($result['rating']);
+                    if ($has_manual_count)  unset($result['reviews_count']);
+                    $lieu    = array_merge($lieu, $result);
                     $updated = true;
                 }
             }
@@ -106,7 +113,9 @@ class Cron {
             if ($lieu['source'] === 'tripadvisor' && !empty($lieu['tripadvisor_location_id'])) {
                 $result = $this->sync_tripadvisor_lieu($lieu, $settings);
                 if ($result) {
-                    $lieu = array_merge($lieu, $result);
+                    if ($has_manual_rating) unset($result['rating']);
+                    if ($has_manual_count)  unset($result['reviews_count']);
+                    $lieu    = array_merge($lieu, $result);
                     $updated = true;
                 }
             }

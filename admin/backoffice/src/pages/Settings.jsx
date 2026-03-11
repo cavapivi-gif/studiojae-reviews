@@ -109,6 +109,8 @@ export default function Settings() {
   const [trustpilotKeyMsg, setTrustpilotKeyMsg]       = useState('')
   const [tripadvisorKeyStatus, setTripadvisorKeyStatus] = useState(null)
   const [tripadvisorKeyMsg, setTripadvisorKeyMsg]       = useState('')
+  const [anthropicKeyStatus, setAnthropicKeyStatus]     = useState(null)
+  const [anthropicKeyMsg, setAnthropicKeyMsg]           = useState('')
   const [aiSummaryLoading, setAiSummaryLoading]         = useState(false)
   const [digestTestLoading, setDigestTestLoading]       = useState(false)
 
@@ -133,7 +135,7 @@ export default function Settings() {
     if (key === 'google_api_key') setGoogleKeyStatus(null)
     if (key === 'trustpilot_api_key') setTrustpilotKeyStatus(null)
     if (key === 'tripadvisor_api_key') setTripadvisorKeyStatus(null)
-    if (key === 'anthropic_api_key') setAiSummaryLoading(false)
+    if (key === 'anthropic_api_key') { setAnthropicKeyStatus(null); setAiSummaryLoading(false) }
   }
 
   const setCriteriaLabel = key => e => {
@@ -185,6 +187,16 @@ export default function Settings() {
       setTripadvisorKeyStatus(res.ok ? 'ok' : 'error')
       setTripadvisorKeyMsg(res.message ?? '')
     } catch (e) { setTripadvisorKeyStatus('error'); setTripadvisorKeyMsg(e.message) }
+  }
+
+  async function testAnthropicKey() {
+    if (!form.anthropic_api_key.trim()) return
+    setAnthropicKeyStatus('testing')
+    try {
+      const res = await api.testAnthropicKey(form.anthropic_api_key)
+      setAnthropicKeyStatus(res.ok ? 'ok' : 'error')
+      setAnthropicKeyMsg(res.message ?? '')
+    } catch (e) { setAnthropicKeyStatus('error'); setAnthropicKeyMsg(e.message) }
   }
 
   if (loading) return (
@@ -302,10 +314,7 @@ export default function Settings() {
                   setAiSummaryLoading(true)
                   try {
                     await handleSave()
-                    const res = await (await fetch(`${window.sjReviews?.rest_url ?? '/wp-json/sj-reviews/v1'}ai/generate-summary`, {
-                      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': window.sjReviews?.nonce ?? '' },
-                      body: JSON.stringify({ lieu_id: 'all' })
-                    })).json()
+                    const res = await api.aiGenerateSummary('all')
                     if (res.ok) toast.success(`Résumé généré (${res.data.review_count} avis analysés).`)
                     else toast.error(res.message || 'Erreur de génération.')
                   } catch (e) { toast.error(e.message) }
@@ -317,14 +326,6 @@ export default function Settings() {
                 <p className="text-xs text-gray-400">
                   Génère un résumé automatique des avis via Claude. Le résumé est mis en cache 24h par lieu.
                 </p>
-                <Tutorial title="Obtenir une clé API Anthropic">
-                  <p><strong>1.</strong> Créez un compte sur <strong>console.anthropic.com</strong>.</p>
-                  <p><strong>2.</strong> Dashboard → API Keys → Create Key.</p>
-                  <p><strong>3.</strong> Copiez la clé (commence par <code>sk-ant-</code>).</p>
-                  <p className="text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1">
-                    Coût : ~0.003$ par génération de résumé (~50 avis).
-                  </p>
-                </Tutorial>
               </div>
             </section>
 
