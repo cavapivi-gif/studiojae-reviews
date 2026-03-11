@@ -76,16 +76,18 @@ class RatingShortcode {
     }
 
     private function render_badge(array $l, string $design, string $color, bool $src, bool $link, string $label): void {
-        $rating  = (float) ($l['rating']        ?? 0);
-        $count   = (int)   ($l['reviews_count'] ?? 0);
-        $name    = esc_html($l['name'] ?? '');
-        $source  = $l['source'] ?? 'google';
-        $pid     = $l['place_id'] ?? '';
-        $gmb_url = $pid ? 'https://www.google.com/maps/place/?q=place_id:' . urlencode($pid) : '';
+        // Use sj_enriched_stats() for consistent count — same formula as dashboard + JS hydration
+        $enriched = sj_enriched_stats($l['id'] ?? '');
+        $rating   = $enriched['avg'] ?: (float) ($l['rating'] ?? 0);
+        $count    = $enriched['count'] ?: (int) ($l['reviews_count'] ?? 0);
+        $name     = esc_html($l['name'] ?? '');
+        $source   = $l['source'] ?? 'google';
+        $pid      = $l['place_id'] ?? '';
+        $gmb_url  = $pid ? 'https://www.google.com/maps/place/?q=place_id:' . urlencode($pid) : '';
 
         $stars_html = $this->stars_html($rating, $color);
-        $rating_fmt = number_format($rating, 1, '.', '');
-        $count_fmt  = number_format($count, 0, ',', ' ');
+        $rating_fmt = sj_format_rating($rating);
+        $count_fmt  = sj_format_count($count);
         $src_label  = $src ? $this->source_name($source) : '';
         $src_icon   = $src ? $this->source_icon_html($source) : '';
 
@@ -146,19 +148,9 @@ class RatingShortcode {
         }
     }
 
-    /** Génère des étoiles SVG partielles */
+    /** Génère des étoiles SVG partielles (délègue au helper global) */
     private function stars_html(float $rating, string $color): string {
-        $html = '<span class="sj-badge__stars" aria-label="' . esc_attr(number_format($rating, 1)) . ' sur 5">';
-        for ($i = 1; $i <= 5; $i++) {
-            $fill = min(1.0, max(0.0, $rating - ($i - 1)));
-            $pct  = round($fill * 100);
-            $id   = 'sbg-' . uniqid();
-            $html .= '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">';
-            $html .= '<defs><linearGradient id="' . $id . '"><stop offset="' . $pct . '%" stop-color="' . esc_attr($color) . '"/><stop offset="' . $pct . '%" stop-color="#d1d5db"/></linearGradient></defs>';
-            $html .= '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="url(#' . $id . ')"/>';
-            $html .= '</svg>';
-        }
-        return $html . '</span>';
+        return sj_stars_svg($rating, $color, '#d1d5db', 14, '', '0 0 24 24', 'sj-badge__stars');
     }
 
     private function source_name(string $source): string {

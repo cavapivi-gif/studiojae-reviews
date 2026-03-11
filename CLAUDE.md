@@ -29,6 +29,7 @@ studiojae-reviews/
 │   │   ├── trait-box-controls.php           # Box, hover-box, layout controls
 │   │   ├── trait-interactive-controls.php   # Button + pill/tag controls
 │   │   ├── trait-media-controls.php         # Avatar, stars, progress bar controls
+│   │   ├── trait-data-controls.php         # Lieu & source filter controls (shared)
 │   │   ├── trait-reviews-style-controls.php # Style controls for ReviewsWidget
 │   │   └── trait-summary-style-controls.php # Style controls for SummaryWidget
 │   └── widgets/
@@ -46,7 +47,7 @@ studiojae-reviews/
 │   ├── class-avis-cpt.php           # CPT + ACF field registration
 │   └── class-lieu-metabox.php       # Location meta box
 ├── includes/
-│   ├── helpers.php                   # sj_get_reviews(), sj_aggregate(), sj_stars_html()
+│   ├── helpers.php                   # sj_get_reviews(), sj_aggregate(), sj_enriched_stats(), sj_stars_html()
 │   ├── class-widget.php             # Classic WP_Widget
 │   └── class-cron.php               # Auto-sync scheduling
 └── admin/
@@ -195,8 +196,13 @@ Call them in `register_controls()` with one line each.
 | `register_layout_controls($prefix, $label, $selector)` | Flex layout section | Gap, justify-content, align-items |
 | `register_bar_controls($prefix, $label, $fill_sel, $track_sel)` | Progress bar section | Fill color, track color, height, border-radius |
 | `register_pill_controls($prefix, $label, $selector, $active_sel)` | Pill/tag with **3-state tabs** | Typography, padding, radius, then Normal/Hover/Active tabs: color, bg, border |
+| `register_lieu_control($opts)` | Lieu selector (DataControls) | SELECT with all lieux from settings. Options: `default`, `show_auto`, `show_all`, `all_key`, `all_label`, `condition` |
+| `register_source_filter_control($opts)` | Source filter (DataControls) | SELECT2 multi with Labels::SOURCES. Options: `condition` |
+| `register_lieu_ids_control()` | Multi-lieu filter (DataControls) | SELECT2 multi with all lieux |
+| `register_show_control($id, $label, $default, $extras)` | SWITCHER toggle (DataControls) | Single on/off toggle. `$extras`: `condition`, `separator`, `description`, `return_value` |
+| `register_toggle_text_control($prefix, ...)` | SWITCHER + TEXT (DataControls) | Toggle `show_{prefix}` + conditional text `{prefix}_{suffix}`. Args: `$toggle_label`, `$text_label`, `$text_default`, `$toggle_default`, `$extras`, `$text_suffix` |
 
-**All methods accept an optional `$defaults` array for initial values.**
+**All style methods accept an optional `$defaults` array for initial values.**
 
 ### Defaults examples:
 ```php
@@ -252,8 +258,16 @@ $this->register_avatar_controls('author', 'Photo auteur', $sel, [
 
 ### Data Flow
 ```
-ACF field (best_seller) → Shortcode checks field → Queries sj_avis CPT
-    → sj_get_reviews() → sj_aggregate() → render HTML
+Platform APIs (Google, Regiondo, TripAdvisor)
+    → Cron sync → sj_avis CPT (with avis_lieu_id, avis_source)
+    → reviews_count + rating stored on lieu settings
+
+Widget render:
+    sj_enriched_stats(lieu_id, sources)
+        → CPT count per source (SQL)
+        → Platform count per source (lieu settings)
+        → max(CPT, platform) per source → total + weighted avg
+    sj_get_reviews() → actual review posts for display
 ```
 
 Reviews are linked to posts via `avis_linked_post` meta key on `sj_avis` posts.
@@ -262,9 +276,106 @@ Reviews are linked to posts via `avis_linked_post` meta key on `sj_avis` posts.
 - `sj_get_reviews(array $args)` — WP_Query wrapper for sj_avis
 - `sj_normalize_review(WP_Post)` — Normalize to array (ACF or post_meta)
 - `sj_aggregate(array $reviews)` — Returns `['avg' => float, 'count' => int]`
-- `sj_stars_html(int $rating, int $max, string $color)` — SVG stars
+- `sj_enriched_stats(string|array $lieu_id, array $sources)` — **Enriched stats matching dashboard** (see below)
+- `sj_stars_html(int $rating, int $max, string $color)` — SVG stars (filled/empty, integer ratings)
+- `sj_stars_svg(float $rating, string $color, string $empty, int $size, string $path, string $viewbox, string $class)` — **Partial-fill gradient SVG stars** (decimal ratings, customizable path/size)
+- `sj_format_rating(float $rating, int $decimals, string $dec_sep)` — Format rating number (e.g. `4.8`)
+- `sj_format_count(int $count)` — Format count with non-breaking space separator (e.g. `1 340`)
+- `sj_output_schema(array $schema)` — Output JSON-LD `<script>` with duplicate prevention
 - `sj_relative_date(string|int)` — French relative date
 - `sj_source_icon(string)` — Source SVG icon
+
+---
+
+## Review Count Enrichment — `sj_enriched_stats()`
+
+**Problem:** CPT (`sj_avis`) only contains synced reviews. Platforms (Google, Regiondo, TripAdvisor) report higher totals via `reviews_count` in lieu settings. Widgets must show the real total, not just the CPT count.
+
+**Formula (shared by dashboard + all widgets):**
+```
+For each source: count = max(CPT_count_for_source, platform_total_for_source)
+Total = sum of all source counts
+```
+
+**Usage:**
+```php
+// All lieux, all sources
+$stats = sj_enriched_stats();
+
+// Single lieu
+$stats = sj_enriched_stats('lieu_abc123');
+
+// Multiple lieu IDs (summary widget)
+$stats = sj_enriched_stats(['lieu_abc', 'lieu_def']);
+
+// With source filter
+$stats = sj_enriched_stats('', ['google', 'regiondo']);
+```
+
+**Returns:** `['avg' => float, 'count' => int, 'sources' => string[]]`
+
+**Rules:**
+- ALL widgets displaying a review count MUST use `sj_enriched_stats()`, never raw `sj_aggregate()`
+- The dashboard REST API (`class-rest-api.php` line 644) uses the same formula
+- `sj_aggregate()` is only for internal per-review-list computation (e.g. sorting)
+
+---
+
+## Data Model
+
+### CPT: `sj_avis` (Review)
+
+| Meta key | Type | Description |
+|----------|------|-------------|
+| `avis_author` | text | Author name (required) |
+| `avis_title` | text | Review title |
+| `avis_rating` | number 1-5 | Star rating (required) |
+| `avis_text` | textarea | Review body |
+| `avis_source` | select | `google\|tripadvisor\|facebook\|trustpilot\|regiondo\|direct\|autre` |
+| `avis_lieu_id` | select | Links to a lieu in `sj_lieux` option |
+| `avis_linked_post` | post_object | Links review to a post/CPT |
+| `avis_certified` | true_false | Verified badge |
+| `avis_avatar` | image | Author photo |
+| `avis_qualite_prix` | number 0-5 | Sub-criterion (configurable) |
+| `avis_ambiance` | number 0-5 | Sub-criterion |
+| `avis_experience` | number 0-5 | Sub-criterion |
+| `avis_paysage` | number 0-5 | Sub-criterion |
+| `avis_visit_date` | date | Visit date |
+| `avis_language` | select | `fr\|en\|it\|de\|es` |
+| `avis_travel_type` | select | `couple\|solo\|famille\|amis\|affaires` |
+| `avis_order_id` | text | Regiondo dedup key |
+| `avis_customer_email` | text | Private PII |
+| `avis_place_id` | text | Platform place ID |
+
+### Lieu Object (`Settings::lieux()` → `get_option('sj_lieux')`)
+
+```php
+[
+    'id'                      => 'lieu_a1b2c3d4',  // Auto-generated
+    'name'                    => 'Mon Lieu',
+    'source'                  => 'google',          // google|tripadvisor|regiondo|...
+    'place_id'                => 'ChIJ...',         // Google Place ID
+    'address'                 => '...',
+    'active'                  => true,
+    'rating'                  => 4.8,               // Platform avg (synced)
+    'reviews_count'           => 389,               // Platform total (synced)
+    'last_sync'               => '2026-03-10T...',
+    'trustpilot_domain'       => '',
+    'tripadvisor_location_id' => '',
+]
+```
+
+### Sources (`Labels::SOURCES`)
+
+| Key | Label | Sync |
+|-----|-------|------|
+| `google` | Google | API |
+| `tripadvisor` | TripAdvisor | API |
+| `trustpilot` | Trustpilot | API |
+| `regiondo` | Regiondo | API |
+| `facebook` | Facebook | Manual |
+| `direct` | Direct | Manual |
+| `autre` | Autre | Manual |
 
 ---
 

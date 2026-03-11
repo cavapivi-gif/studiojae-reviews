@@ -241,61 +241,17 @@ class SummaryShortcode {
             $criteria_avgs[$crit] = ($crit_row && $crit_row->cnt > 0) ? round((float) $crit_row->cavg, 1) : null;
         }
 
-        // Include platform reviews_count from lieu data (Google, TripAdvisor, etc.)
-        // The lieux store the total review count from the platform (e.g. Google says 84 avis)
-        // but only some are synced as CPT. We add the difference to the total and compute
-        // a weighted average.
-        $all_lieux = \SJ_Reviews\Includes\Settings::lieux();
-        $matched_lieux = [];
-
-        if (!empty($a['lieu_ids'])) {
-            $target_ids = array_filter(array_map('trim', explode(',', $a['lieu_ids'])));
-            foreach ($all_lieux as $l) {
-                if (in_array($l['id'] ?? '', $target_ids, true)) {
-                    $matched_lieux[] = $l;
-                }
-            }
-        } elseif ($lieu_id && $lieu_id !== 'all') {
-            foreach ($all_lieux as $l) {
-                if (($l['id'] ?? '') === $lieu_id) {
-                    $matched_lieux[] = $l;
-                }
-            }
-        } else {
-            // "all" — include all lieux
-            $matched_lieux = $all_lieux;
-        }
-
-        // Add platform review counts (the non-synced portion)
-        $cpt_total = $total;
-        $cpt_avg   = $avg;
-        foreach ($matched_lieux as $l) {
-            $platform_count  = (int) ($l['reviews_count'] ?? 0);
-            $platform_rating = (float) ($l['rating'] ?? 0);
-            if ($platform_count <= 0 || $platform_rating <= 0) continue;
-
-            // Count how many CPT reviews we have for this lieu (already included in $total)
-            $lieu_cpt_count = 0;
-            if (!empty($l['id'])) {
-                $lieu_cpt_count = (int) $wpdb->get_var($wpdb->prepare(
-                    "SELECT COUNT(*) FROM {$wpdb->posts} p
-                     INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID AND pm.meta_key = 'avis_lieu_id'
-                     INNER JOIN {$wpdb->postmeta} pr ON pr.post_id = p.ID AND pr.meta_key = 'avis_rating'
-                     WHERE p.post_type = 'sj_avis' AND p.post_status = 'publish'
-                     AND pm.meta_value = %s",
-                    $l['id']
-                ));
-            }
-
-            // Extra reviews = platform total minus what we already have as CPT
-            $extra = max(0, $platform_count - $lieu_cpt_count);
-            if ($extra > 0) {
-                // Weighted average: combine CPT avg with platform avg for the extra reviews
-                $combined_total = $total + $extra;
-                $avg = round(($avg * $total + $platform_rating * $extra) / $combined_total, 1);
-                $total = $combined_total;
-            }
-        }
+        // Enriched total & avg — uses shared helper matching dashboard formula exactly
+        // (per-source max of CPT vs platform, then sum)
+        $source_filter = !empty($a['source_filter'])
+            ? array_filter(array_map('trim', explode(',', $a['source_filter'])))
+            : [];
+        $enriched_lieu = !empty($a['lieu_ids'])
+            ? array_filter(array_map('trim', explode(',', $a['lieu_ids'])))
+            : $lieu_id;
+        $enriched = sj_enriched_stats($enriched_lieu, $source_filter);
+        $total    = $enriched['count'];
+        $avg      = $enriched['avg'];
 
         if ($total === 0) return [];
 
@@ -773,8 +729,7 @@ if (!empty($a['max_width_mobile'])) {
     <?php endif; // show_reviews ?>
 
 </div><!-- /.sj-summary -->
-<?php if ($a['schema_enabled'] !== '0' && !is_admin() && $stats['avg'] > 0): ?>
-<script type="application/ld+json"><?php
+<?php if ($a['schema_enabled'] !== '0' && !is_admin() && $stats['avg'] > 0):
     $schema_type = $a['schema_type'] ?: 'LocalBusiness';
     $schema_name = $a['schema_name'] ?: (get_the_title() ?: get_bloginfo('name'));
     $schema = [
@@ -817,7 +772,6 @@ if (!empty($a['max_width_mobile'])) {
     // Inject a few individual reviews for Google rich results (max 5)
     $schema_reviews = [];
     $candidates = array_filter($reviews, fn($r) => $r['rating'] >= 1 && $r['rating'] <= 5 && !empty($r['text']));
-    // Sort by rating DESC then date DESC to pick the best/most recent
     usort($candidates, function($a, $b) {
         if ($b['rating'] !== $a['rating']) return $b['rating'] - $a['rating'];
         return strcmp($b['date'], $a['date']);
@@ -848,9 +802,8 @@ if (!empty($a['max_width_mobile'])) {
         $schema['review'] = $schema_reviews;
     }
 
-    echo wp_json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-?></script>
-<?php endif; ?>
+    sj_output_schema($schema);
+endif; ?>
         <?php
         return ob_get_clean();
     }

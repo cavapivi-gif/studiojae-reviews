@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { PageHeader, Btn, Input, Select, Notice, Spinner, Toggle } from '../components/ui'
-import { IconCheck, IconPlus, IconTrash, IconKey, IconMapPin, IconUpload, IconRocket, IconChevronRight } from '../components/Icons'
+import { IconCheck, IconPlus, IconTrash, IconKey, IconMapPin, IconUpload, IconRocket, IconChevronRight, IconRefresh } from '../components/Icons'
 import { useToast } from '../components/Toast'
 import { SOURCE_LABELS } from '../lib/constants'
 
@@ -395,6 +395,7 @@ function StepLieux({ onNext, onBack }) {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [syncing, setSyncing] = useState(null)
   const [form, setForm] = useState({ ...EMPTY_LIEU })
 
   useEffect(() => {
@@ -405,6 +406,50 @@ function StepLieux({ onNext, onBack }) {
   }, [])
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const canSync = (lieu) => {
+    if (lieu.source === 'google' && lieu.place_id) return true
+    if (lieu.source === 'trustpilot' && lieu.trustpilot_domain) return true
+    if (lieu.source === 'tripadvisor' && lieu.tripadvisor_location_id) return true
+    return false
+  }
+
+  const handleSync = async (lieu) => {
+    if (syncing) return
+    setSyncing(lieu.id)
+    try {
+      let res
+      if (lieu.source === 'trustpilot' && lieu.trustpilot_domain) {
+        res = await api.syncTrustpilot(lieu.id)
+      } else if (lieu.source === 'tripadvisor' && lieu.tripadvisor_location_id) {
+        res = await api.syncTripadvisor(lieu.id)
+      } else if (lieu.source === 'google' && lieu.place_id) {
+        res = await api.syncGoogle(lieu.id)
+      } else {
+        toast.warn('Identifiants manquants pour la sync.')
+        setSyncing(null)
+        return
+      }
+      setLieux(prev => prev.map(l =>
+        l.id === lieu.id
+          ? { ...l, rating: res.rating, reviews_count: res.reviews_count, last_sync: res.last_sync }
+          : l
+      ))
+      toast.success(`${lieu.name} : ${Number(res.rating).toFixed(1)}/5 · ${res.reviews_count?.toLocaleString()} avis`)
+    } catch (e) {
+      toast.error(e.message)
+    } finally {
+      setSyncing(null)
+    }
+  }
+
+  const handleSyncAll = async () => {
+    const syncable = lieux.filter(canSync)
+    if (!syncable.length) { toast.warn('Aucun lieu synchronisable.'); return }
+    for (const lieu of syncable) {
+      await handleSync(lieu)
+    }
+  }
 
   const handleCreate = async (e) => {
     e.preventDefault()
@@ -435,12 +480,14 @@ function StepLieux({ onNext, onBack }) {
 
   if (loading) return <div className="flex items-center justify-center py-12"><Spinner size={20} /></div>
 
+  const syncableCount = lieux.filter(canSync).length
+
   return (
     <div className="max-w-xl">
       <div className="mb-6">
         <h2 className="text-base font-semibold mb-1">Configurer vos lieux</h2>
         <p className="text-sm text-gray-500">
-          Créez les établissements auxquels seront rattachés vos avis (restaurants, hôtels, excursions...).
+          Créez vos établissements et synchronisez les avis depuis vos plateformes.
         </p>
       </div>
 
@@ -452,15 +499,48 @@ function StepLieux({ onNext, onBack }) {
               <div className="flex items-center gap-3 min-w-0">
                 <div className={`w-2 h-2 rounded-full flex-shrink-0 ${l.active ? 'bg-emerald-500' : 'bg-gray-300'}`} />
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{l.name}</p>
-                  <p className="text-xs text-gray-400">{l.source} {l.address ? `· ${l.address}` : ''}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-gray-900 truncate">{l.name}</p>
+                    <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{l.source}</span>
+                  </div>
+                  <p className="text-xs text-gray-400">
+                    {l.rating ? `${Number(l.rating).toFixed(1)}/5 · ${l.reviews_count ?? 0} avis` : l.address || 'Pas encore synchronisé'}
+                    {l.last_sync && <span className="ml-1 text-gray-300">· sync {l.last_sync}</span>}
+                  </p>
                 </div>
               </div>
-              <button type="button" onClick={() => handleDelete(l.id)} className="text-gray-400 hover:text-red-500 transition-colors p-1">
-                <IconTrash size={14} />
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                {canSync(l) && (
+                  <button
+                    type="button"
+                    onClick={() => handleSync(l)}
+                    disabled={!!syncing}
+                    className="text-gray-400 hover:text-black transition-colors p-1.5 rounded hover:bg-gray-100"
+                    title="Synchroniser les avis"
+                  >
+                    <IconRefresh size={14} strokeWidth={1.5} className={syncing === l.id ? 'animate-spin' : ''} />
+                  </button>
+                )}
+                <button type="button" onClick={() => handleDelete(l.id)} className="text-gray-400 hover:text-red-500 transition-colors p-1.5 rounded hover:bg-gray-100">
+                  <IconTrash size={14} />
+                </button>
+              </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Sync all button */}
+      {syncableCount > 0 && (
+        <div className="flex items-center gap-3 mb-4 p-3 border border-gray-200 rounded-lg bg-gray-50/50">
+          <IconRefresh size={16} className="text-gray-400 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-700">Synchroniser les avis</p>
+            <p className="text-xs text-gray-400">{syncableCount} lieu{syncableCount > 1 ? 'x' : ''} synchronisable{syncableCount > 1 ? 's' : ''} (Google, Trustpilot, TripAdvisor)</p>
+          </div>
+          <Btn size="sm" variant="secondary" onClick={handleSyncAll} loading={!!syncing}>
+            Sync tout
+          </Btn>
         </div>
       )}
 
@@ -539,9 +619,10 @@ function StepImport({ onNext, onBack }) {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-base font-semibold mb-1">Importer vos avis</h2>
+        <h2 className="text-base font-semibold mb-1">Importer des avis CSV</h2>
         <p className="text-sm text-gray-500">
-          Importez des avis existants depuis un fichier CSV (Regiondo, export perso...) ou passez cette étape.
+          Si vous avez des avis dans un fichier CSV (export Regiondo, tableur...), importez-les ici.
+          Les avis Google, Trustpilot et TripAdvisor se synchronisent automatiquement via l'étape précédente.
         </p>
       </div>
 

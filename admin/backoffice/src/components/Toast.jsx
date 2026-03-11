@@ -62,10 +62,10 @@ function ToastItem({ toast, onDismiss }) {
   }, [])
 
   const styles = {
-    success: 'bg-primary text-primary-foreground',
-    error:   'bg-destructive text-white',
-    info:    'bg-primary text-primary-foreground',
-    warn:    'bg-amber-500 text-black',
+    success: 'bg-gray-900 text-white',
+    error:   'bg-red-600 text-white',
+    info:    'bg-gray-900 text-white',
+    warn:    'bg-amber-500 text-white',
   }
 
   const icons = {
@@ -98,8 +98,8 @@ function ToastItem({ toast, onDismiss }) {
 
   return (
     <div
-      className={`pointer-events-auto flex items-center gap-2.5 px-4 py-3 text-sm font-medium shadow-lg rounded-md
-        transition-all duration-300 max-w-sm cursor-pointer
+      className={`pointer-events-auto flex items-center gap-3 px-5 py-3.5 text-sm font-medium shadow-xl rounded-lg
+        transition-all duration-300 max-w-md cursor-pointer
         ${styles[toast.type] ?? styles.info}
         ${visible ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'}`}
       onClick={onDismiss}

@@ -200,6 +200,213 @@ function sj_aggregate(array $reviews): array {
 }
 
 /**
+ * Compute enriched aggregate stats matching the dashboard logic exactly.
+ *
+ * For each source, takes max(CPT count, platform count) then sums all sources.
+ * This is the same formula used by the REST API dashboard endpoint (line 644).
+ *
+ * @param string|array $lieu_id  '' or 'all' = all lieux, string = single lieu, array = multiple lieu IDs.
+ * @param array        $sources  Optional source filter (e.g. ['google', 'regiondo']).
+ * @return array{avg: float, count: int, sources: string[]}
+ */
+function sj_enriched_stats(string|array $lieu_id = '', array $sources = []): array {
+    global $wpdb;
+
+    $lieu_ids = is_array($lieu_id) ? array_filter($lieu_id) : [];
+    $lieu_str = is_string($lieu_id) ? $lieu_id : '';
+
+    // 1. Count CPT reviews per source (SQL, fast)
+    $joins  = '';
+    $wheres = "AND p.post_type = 'sj_avis' AND p.post_status = 'publish'";
+
+    if (!empty($lieu_ids)) {
+        $joins  .= " INNER JOIN {$wpdb->postmeta} pm_lieu ON pm_lieu.post_id = p.ID AND pm_lieu.meta_key = 'avis_lieu_id'";
+        $in = implode(',', array_map(fn($l) => $wpdb->prepare('%s', $l), $lieu_ids));
+        $wheres .= " AND pm_lieu.meta_value IN ({$in})";
+    } elseif ($lieu_str !== '' && $lieu_str !== 'all') {
+        $joins  .= " INNER JOIN {$wpdb->postmeta} pm_lieu ON pm_lieu.post_id = p.ID AND pm_lieu.meta_key = 'avis_lieu_id'";
+        $wheres .= $wpdb->prepare(" AND pm_lieu.meta_value = %s", $lieu_str);
+    }
+    if (!empty($sources)) {
+        $joins  .= " INNER JOIN {$wpdb->postmeta} pm_src ON pm_src.post_id = p.ID AND pm_src.meta_key = 'avis_source'";
+        $in = implode(',', array_map(fn($s) => $wpdb->prepare('%s', $s), $sources));
+        $wheres .= " AND pm_src.meta_value IN ({$in})";
+    }
+
+    // Global CPT avg (needed for weighted average)
+    $cpt_row = $wpdb->get_row(
+        "SELECT COUNT(*) AS total, AVG(CAST(pm_r.meta_value AS DECIMAL(3,1))) AS avg_r
+         FROM {$wpdb->posts} p
+         INNER JOIN {$wpdb->postmeta} pm_r ON pm_r.post_id = p.ID AND pm_r.meta_key = 'avis_rating'
+         {$joins}
+         WHERE 1=1 {$wheres}"
+    );
+    $cpt_total = (int) ($cpt_row->total ?? 0);
+    $avg       = round((float) ($cpt_row->avg_r ?? 0), 1);
+
+    // CPT count per source
+    $src_rows = $wpdb->get_results(
+        "SELECT pm_s.meta_value AS source, COUNT(*) AS cnt
+         FROM {$wpdb->posts} p
+         INNER JOIN {$wpdb->postmeta} pm_s ON pm_s.post_id = p.ID AND pm_s.meta_key = 'avis_source'
+         INNER JOIN {$wpdb->postmeta} pm_r ON pm_r.post_id = p.ID AND pm_r.meta_key = 'avis_rating'
+         {$joins}
+         WHERE 1=1 {$wheres}
+         GROUP BY pm_s.meta_value"
+    );
+    $by_source = [];
+    foreach ($src_rows as $row) {
+        $by_source[$row->source] = (int) $row->cnt;
+    }
+
+    // 2. Platform data per source (from lieux settings)
+    $all_lieux = \SJ_Reviews\Includes\Settings::lieux();
+    if (!empty($lieu_ids)) {
+        $matched_lieux = array_filter($all_lieux, fn($l) => in_array($l['id'] ?? '', $lieu_ids, true));
+    } elseif ($lieu_str !== '' && $lieu_str !== 'all') {
+        $matched_lieux = array_filter($all_lieux, fn($l) => ($l['id'] ?? '') === $lieu_str);
+    } else {
+        $matched_lieux = $all_lieux;
+    }
+
+    $platform_by_source = []; // source => ['total' => int, 'sum' => float]
+    foreach ($matched_lieux as $l) {
+        $p_count  = (int) ($l['reviews_count'] ?? 0);
+        $p_rating = (float) ($l['rating'] ?? 0);
+        $src      = $l['source'] ?? '';
+        if ($p_count <= 0 || !$src) continue;
+        if (!isset($platform_by_source[$src])) {
+            $platform_by_source[$src] = ['total' => 0, 'sum' => 0.0];
+        }
+        $platform_by_source[$src]['total'] += $p_count;
+        $platform_by_source[$src]['sum']   += $p_count * $p_rating;
+    }
+
+    // 3. Merge: for each source, take max(CPT, platform) — same as dashboard
+    $all_sources = array_unique(array_merge(array_keys($by_source), array_keys($platform_by_source)));
+    $total = 0;
+    $weighted_sum = 0.0;
+    $source_names = [];
+
+    foreach ($all_sources as $src) {
+        $cpt_cnt      = $by_source[$src] ?? 0;
+        $platform_cnt = $platform_by_source[$src]['total'] ?? 0;
+        $platform_avg = ($platform_cnt > 0)
+            ? ($platform_by_source[$src]['sum'] / $platform_cnt)
+            : 0;
+
+        $count_for_source = max($cpt_cnt, $platform_cnt);
+        $total += $count_for_source;
+
+        // For weighted average: use platform avg if platform has more reviews, otherwise CPT avg
+        if ($platform_cnt > $cpt_cnt && $platform_avg > 0) {
+            $weighted_sum += $platform_avg * $count_for_source;
+        } elseif ($cpt_cnt > 0) {
+            // Get CPT avg for this source
+            $src_avg_row = $wpdb->get_var($wpdb->prepare(
+                "SELECT AVG(CAST(pm_r.meta_value AS DECIMAL(3,1)))
+                 FROM {$wpdb->posts} p
+                 INNER JOIN {$wpdb->postmeta} pm_r ON pm_r.post_id = p.ID AND pm_r.meta_key = 'avis_rating'
+                 INNER JOIN {$wpdb->postmeta} pm_s ON pm_s.post_id = p.ID AND pm_s.meta_key = 'avis_source'
+                 {$joins}
+                 WHERE 1=1 {$wheres} AND pm_s.meta_value = %s",
+                $src
+            ));
+            $weighted_sum += (float) $src_avg_row * $count_for_source;
+        }
+
+        if ($count_for_source > 0) {
+            $source_names[] = $src;
+        }
+    }
+
+    $final_avg = ($total > 0) ? round($weighted_sum / $total, 1) : 0.0;
+
+    return [
+        'avg'     => $final_avg,
+        'count'   => $total,
+        'sources' => $source_names,
+    ];
+}
+
+/**
+ * Génère des étoiles SVG avec remplissage partiel (gradient).
+ *
+ * @param float  $rating      Note (0-5, supporte les décimales).
+ * @param string $color       Couleur des étoiles remplies.
+ * @param string $empty_color Couleur des étoiles vides.
+ * @param int    $size        Largeur/hauteur en px.
+ * @param string $path        Path SVG (doit contenir {{ID}} pour le gradient). Vide = polygon par défaut.
+ * @param string $viewbox     viewBox SVG (ex: "0 0 24 24").
+ * @param string $class       Classe CSS du wrapper.
+ * @return string
+ */
+function sj_stars_svg(
+    float  $rating,
+    string $color       = '#f5a623',
+    string $empty_color = '#d1d5db',
+    int    $size        = 14,
+    string $path        = '',
+    string $viewbox     = '0 0 24 24',
+    string $class       = 'sj-stars-svg'
+): string {
+    if ($path === '') {
+        $path = '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="url(#{{ID}})"/>';
+    }
+
+    $html = '<span class="' . esc_attr($class) . '" aria-label="' . esc_attr(number_format($rating, 1)) . ' sur 5">';
+    for ($i = 1; $i <= 5; $i++) {
+        $fill = min(1.0, max(0.0, $rating - ($i - 1)));
+        $pct  = round($fill * 100);
+        $id   = 'ssg-' . uniqid();
+        $html .= '<svg xmlns="http://www.w3.org/2000/svg" width="' . $size . '" height="' . $size . '" viewBox="' . esc_attr($viewbox) . '" aria-hidden="true">';
+        $html .= '<defs><linearGradient id="' . $id . '">'
+               . '<stop offset="' . $pct . '%" stop-color="' . esc_attr($color) . '"/>'
+               . '<stop offset="' . $pct . '%" stop-color="' . esc_attr($empty_color) . '"/>'
+               . '</linearGradient></defs>';
+        $html .= str_replace('{{ID}}', $id, $path);
+        $html .= '</svg>';
+    }
+    return $html . '</span>';
+}
+
+/**
+ * Format rating for display (ex: 4.8 → "4.8").
+ *
+ * @param float  $rating   Note.
+ * @param int    $decimals Décimales (défaut: 1).
+ * @param string $dec_sep  Séparateur décimal (défaut: '.').
+ * @return string
+ */
+function sj_format_rating(float $rating, int $decimals = 1, string $dec_sep = '.'): string {
+    return number_format($rating, $decimals, $dec_sep, '');
+}
+
+/**
+ * Format review count with non-breaking space thousands separator.
+ *
+ * @param int $count Nombre d'avis.
+ * @return string
+ */
+function sj_format_count(int $count): string {
+    return number_format($count, 0, ',', "\xc2\xa0"); // U+00A0 NBSP
+}
+
+/**
+ * Output Schema.org JSON-LD with duplicate prevention.
+ *
+ * @param array $schema Schema.org data array.
+ */
+function sj_output_schema(array $schema): void {
+    if (!empty($GLOBALS['sj_reviews_schema_rendered'])) return;
+    $GLOBALS['sj_reviews_schema_rendered'] = true;
+
+    echo '<script type="application/ld+json">'
+       . wp_json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+       . '</script>';
+}
+
+/**
  * Icône SVG source (Google G, TripAdvisor, etc.)
  */
 function sj_source_icon(string $source): string {

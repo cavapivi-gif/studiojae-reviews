@@ -79,19 +79,7 @@ class ReviewsWidget extends SjWidgetBase {
             'default' => 'cpt',
         ]);
 
-        // Lieu filter
-        $lieux = \SJ_Reviews\Includes\Settings::lieux();
-        $lieu_opts = ['all' => __('Tous les lieux', 'sj-reviews')];
-        foreach ($lieux as $l) {
-            $lieu_opts[$l['id']] = esc_html(($l['name'] ?? $l['id']) . ' (' . ($l['source'] ?? '') . ')');
-        }
-        $this->add_control('lieu_id', [
-            'label'     => __('Lieu', 'sj-reviews'),
-            'type'      => \Elementor\Controls_Manager::SELECT,
-            'options'   => $lieu_opts,
-            'default'   => 'all',
-            'condition' => ['source_type' => 'cpt'],
-        ]);
+        $this->register_lieu_control(['default' => 'all', 'condition' => ['source_type' => 'cpt']]);
 
         $this->add_control('max_reviews', [
             'label'   => __('Nombre max d\'avis', 'sj-reviews'),
@@ -108,15 +96,7 @@ class ReviewsWidget extends SjWidgetBase {
             'default' => 0,
         ]);
 
-        $this->add_control('source_filter', [
-            'label'       => __('Filtrer par source(s)', 'sj-reviews'),
-            'type'        => \Elementor\Controls_Manager::SELECT2,
-            'multiple'    => true,
-            'options'     => \SJ_Reviews\Includes\Labels::SOURCES,
-            'default'     => [],
-            'description' => __('Laisser vide = toutes les sources', 'sj-reviews'),
-            'condition'   => ['source_type' => 'cpt'],
-        ]);
+        $this->register_source_filter_control(['condition' => ['source_type' => 'cpt']]);
 
         $this->add_control('orderby', [
             'label'   => __('Tri des avis', 'sj-reviews'),
@@ -178,12 +158,7 @@ class ReviewsWidget extends SjWidgetBase {
             'condition'      => ['layout' => 'grid'],
         ]);
 
-        $this->add_control('show_section_title', [
-            'label'        => __('Afficher un titre de section', 'sj-reviews'),
-            'type'         => \Elementor\Controls_Manager::SWITCHER,
-            'return_value' => 'yes',
-            'default'      => '',
-        ]);
+        $this->register_show_control('show_section_title', 'Afficher un titre de section', '');
 
         $this->add_control('section_title', [
             'label'     => __('Titre', 'sj-reviews'),
@@ -202,21 +177,8 @@ class ReviewsWidget extends SjWidgetBase {
         ]);
 
         // ── Header badge/slider-ii ──────────────────────────────────────
-        $this->add_control('badge_show_logo', [
-            'label'        => __('Afficher logo source (Google…)', 'sj-reviews'),
-            'type'         => \Elementor\Controls_Manager::SWITCHER,
-            'return_value' => 'yes',
-            'default'      => 'yes',
-            'condition'    => ['layout' => ['badge', 'slider-ii']],
-        ]);
-
-        $this->add_control('badge_show_score', [
-            'label'        => __('Afficher note globale + count', 'sj-reviews'),
-            'type'         => \Elementor\Controls_Manager::SWITCHER,
-            'return_value' => 'yes',
-            'default'      => 'yes',
-            'condition'    => ['layout' => ['badge', 'slider-ii']],
-        ]);
+        $this->register_show_control('badge_show_logo', 'Afficher logo source (Google…)', 'yes', ['condition' => ['layout' => ['badge', 'slider-ii']]]);
+        $this->register_show_control('badge_show_score', 'Afficher note globale + count', 'yes', ['condition' => ['layout' => ['badge', 'slider-ii']]]);
 
         $this->add_control('badge_score_override', [
             'label'       => __('Note à afficher (ex: 4.9)', 'sj-reviews'),
@@ -248,19 +210,8 @@ class ReviewsWidget extends SjWidgetBase {
             'tab'   => \Elementor\Controls_Manager::TAB_CONTENT,
         ]);
 
-        $this->add_control('show_stars', [
-            'label'        => __('Étoiles', 'sj-reviews'),
-            'type'         => \Elementor\Controls_Manager::SWITCHER,
-            'return_value' => 'yes',
-            'default'      => 'yes',
-        ]);
-
-        $this->add_control('show_text', [
-            'label'        => __('Texte de l\'avis', 'sj-reviews'),
-            'type'         => \Elementor\Controls_Manager::SWITCHER,
-            'return_value' => 'yes',
-            'default'      => 'yes',
-        ]);
+        $this->register_show_control('show_stars', 'Étoiles');
+        $this->register_show_control('show_text', 'Texte de l\'avis');
 
         $this->add_control('text_max_chars', [
             'label'     => __('Tronquer à X caractères (0 = désactivé)', 'sj-reviews'),
@@ -271,71 +222,16 @@ class ReviewsWidget extends SjWidgetBase {
             'condition' => ['show_text' => 'yes'],
         ]);
 
-        $this->add_control('show_author', [
-            'label'        => __('Auteur', 'sj-reviews'),
-            'type'         => \Elementor\Controls_Manager::SWITCHER,
-            'return_value' => 'yes',
-            'default'      => 'yes',
-        ]);
+        $this->register_show_control('show_author', 'Auteur');
+        $this->register_show_control('show_avatar', 'Avatar', 'yes', ['condition' => ['show_author' => 'yes']]);
+        $this->register_show_control('show_date', 'Date relative');
 
-        $this->add_control('show_avatar', [
-            'label'        => __('Avatar', 'sj-reviews'),
-            'type'         => \Elementor\Controls_Manager::SWITCHER,
-            'return_value' => 'yes',
-            'default'      => 'yes',
-            'condition'    => ['show_author' => 'yes'],
-        ]);
+        $this->register_toggle_text_control('certified', 'Badge "Certifié"', 'Texte badge certifié', 'Certifié');
 
-        $this->add_control('show_date', [
-            'label'        => __('Date relative', 'sj-reviews'),
-            'type'         => \Elementor\Controls_Manager::SWITCHER,
-            'return_value' => 'yes',
-            'default'      => 'yes',
-        ]);
+        $this->register_show_control('show_source_icon', 'Icône de source (Google, etc.)');
+        $this->register_show_control('show_title', 'Titre de l\'avis', '', ['separator' => 'before', 'description' => __('Affiche le titre/résumé de l\'avis s\'il existe.', 'sj-reviews')]);
 
-        $this->add_control('show_certified', [
-            'label'        => __('Badge "Certifié"', 'sj-reviews'),
-            'type'         => \Elementor\Controls_Manager::SWITCHER,
-            'return_value' => 'yes',
-            'default'      => 'yes',
-        ]);
-
-        $this->add_control('certified_label', [
-            'label'     => __('Texte badge certifié', 'sj-reviews'),
-            'type'      => \Elementor\Controls_Manager::TEXT,
-            'default'   => 'Certifié',
-            'condition' => ['show_certified' => 'yes'],
-        ]);
-
-        $this->add_control('show_source_icon', [
-            'label'        => __('Icône de source (Google, etc.)', 'sj-reviews'),
-            'type'         => \Elementor\Controls_Manager::SWITCHER,
-            'return_value' => 'yes',
-            'default'      => 'yes',
-        ]);
-
-        $this->add_control('show_title', [
-            'label'        => __('Titre de l\'avis', 'sj-reviews'),
-            'type'         => \Elementor\Controls_Manager::SWITCHER,
-            'return_value' => 'yes',
-            'default'      => '',
-            'separator'    => 'before',
-            'description'  => __('Affiche le titre/résumé de l\'avis s\'il existe.', 'sj-reviews'),
-        ]);
-
-        $this->add_control('show_verified_banner', [
-            'label'        => __('Bandeau "avis vérifiés"', 'sj-reviews'),
-            'type'         => \Elementor\Controls_Manager::SWITCHER,
-            'return_value' => 'yes',
-            'default'      => '',
-        ]);
-
-        $this->add_control('verified_banner_text', [
-            'label'     => __('Texte du bandeau', 'sj-reviews'),
-            'type'      => \Elementor\Controls_Manager::TEXT,
-            'default'   => 'Tous les avis proviennent de client·es vérifié·es',
-            'condition' => ['show_verified_banner' => 'yes'],
-        ]);
+        $this->register_toggle_text_control('verified_banner', 'Bandeau "avis vérifiés"', 'Texte du bandeau', 'Tous les avis proviennent de client·es vérifié·es', '', [], 'text');
 
         $this->end_controls_section();
 
@@ -346,12 +242,7 @@ class ReviewsWidget extends SjWidgetBase {
             'condition' => ['layout' => ['slider-i', 'slider-ii']],
         ]);
 
-        $this->add_control('slider_autoplay', [
-            'label'        => __('Autoplay', 'sj-reviews'),
-            'type'         => \Elementor\Controls_Manager::SWITCHER,
-            'return_value' => 'yes',
-            'default'      => '',
-        ]);
+        $this->register_show_control('slider_autoplay', 'Autoplay', '');
 
         $this->add_control('slider_autoplay_delay', [
             'label'     => __('Délai autoplay (ms)', 'sj-reviews'),
@@ -363,12 +254,7 @@ class ReviewsWidget extends SjWidgetBase {
             'condition' => ['slider_autoplay' => 'yes'],
         ]);
 
-        $this->add_control('slider_loop', [
-            'label'        => __('Boucle infinie', 'sj-reviews'),
-            'type'         => \Elementor\Controls_Manager::SWITCHER,
-            'return_value' => 'yes',
-            'default'      => 'yes',
-        ]);
+        $this->register_show_control('slider_loop', 'Boucle infinie');
 
         $this->add_control('slider_speed', [
             'label'   => __('Vitesse de transition (ms)', 'sj-reviews'),
@@ -397,13 +283,7 @@ class ReviewsWidget extends SjWidgetBase {
         ]);
 
         // Flèches
-        $this->add_control('show_arrows', [
-            'label'        => __('Flèches de navigation', 'sj-reviews'),
-            'type'         => \Elementor\Controls_Manager::SWITCHER,
-            'return_value' => 'yes',
-            'default'      => 'yes',
-            'separator'    => 'before',
-        ]);
+        $this->register_show_control('show_arrows', 'Flèches de navigation', 'yes', ['separator' => 'before']);
 
         $this->add_control('arrow_style', [
             'label'     => __('Style flèches', 'sj-reviews'),
@@ -439,13 +319,7 @@ class ReviewsWidget extends SjWidgetBase {
         ]);
 
         // Dots
-        $this->add_control('show_dots', [
-            'label'        => __('Points de pagination (dots)', 'sj-reviews'),
-            'type'         => \Elementor\Controls_Manager::SWITCHER,
-            'return_value' => 'yes',
-            'default'      => 'yes',
-            'separator'    => 'before',
-        ]);
+        $this->register_show_control('show_dots', 'Points de pagination (dots)', 'yes', ['separator' => 'before']);
 
         $this->add_control('dots_style', [
             'label'     => __('Style dots', 'sj-reviews'),
@@ -492,12 +366,7 @@ class ReviewsWidget extends SjWidgetBase {
             'tab'   => \Elementor\Controls_Manager::TAB_CONTENT,
         ]);
 
-        $this->add_control('schema_enabled', [
-            'label'        => __('Injecter AggregateRating JSON-LD', 'sj-reviews'),
-            'type'         => \Elementor\Controls_Manager::SWITCHER,
-            'return_value' => 'yes',
-            'default'      => 'yes',
-        ]);
+        $this->register_show_control('schema_enabled', 'Injecter AggregateRating JSON-LD');
 
         $this->add_control('schema_type', [
             'label'     => __('@type entité', 'sj-reviews'),
@@ -544,8 +413,8 @@ class ReviewsWidget extends SjWidgetBase {
             return;
         }
 
-        // Agrégat
-        $agg = sj_aggregate($reviews);
+        // Agrégat — enriched with platform data for badge/slider-ii header
+        $agg = $this->compute_enriched_aggregate($s);
 
         // ID unique pour le swiper
         $uid = 'sj-swiper-' . $this->get_id();
@@ -812,6 +681,15 @@ class ReviewsWidget extends SjWidgetBase {
 
     // ── DATA ─────────────────────────────────────────────────────────────────
 
+    /**
+     * Compute enriched aggregate matching dashboard logic (shared helper).
+     */
+    private function compute_enriched_aggregate(array $s): array {
+        $lieu_id = sanitize_text_field($s['lieu_id'] ?? 'all');
+        $sources = array_filter((array) ($s['source_filter'] ?? []));
+        return sj_enriched_stats($lieu_id, $sources);
+    }
+
     private function get_reviews(array $s, int $max): array {
         if ($s['source_type'] === 'acf_field') {
             return $this->get_acf_reviews($s, $max);
@@ -917,8 +795,6 @@ class ReviewsWidget extends SjWidgetBase {
 
         if (empty($schema['review'])) unset($schema['review']);
 
-        echo '<script type="application/ld+json">'
-           . wp_json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
-           . '</script>';
+        sj_output_schema($schema);
     }
 }

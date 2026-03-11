@@ -240,6 +240,30 @@ trait SummaryStyleControls {
             ['fill' => '#22c55e', 'track' => '#f3f4f6', 'height' => 4]
         );
 
+        // ── 14b. Sub-criteria dot color (widget-specific) ─────────────
+        $this->start_controls_section('style_card_crit_dot', [
+            'label' => __('Card — Dot sous-critères', 'sj-reviews'),
+            'tab'   => Controls_Manager::TAB_STYLE,
+        ]);
+
+        $this->add_control('crit_dot_color', [
+            'label'       => __('Couleur du dot', 'sj-reviews'),
+            'type'        => Controls_Manager::COLOR,
+            'default'     => '',
+            'description' => __('Par défaut, la couleur varie selon la note (vert→rouge).', 'sj-reviews'),
+            'selectors'   => ['{{WRAPPER}} .sj-card__crit-dot' => '--sj-crit-color: {{VALUE}}; background: {{VALUE}};'],
+        ]);
+
+        $this->add_responsive_control('crit_dot_size', [
+            'label'      => __('Taille du dot', 'sj-reviews'),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => ['px'],
+            'range'      => ['px' => ['min' => 4, 'max' => 20]],
+            'selectors'  => ['{{WRAPPER}} .sj-card__crit-dot' => 'width: {{SIZE}}{{UNIT}}; height: {{SIZE}}{{UNIT}};'],
+        ]);
+
+        $this->end_controls_section();
+
         // ── 15. Search input (widget-specific) ─────────────────────────
         $this->start_controls_section('style_search', [
             'label'     => __('Barre de recherche', 'sj-reviews'),
