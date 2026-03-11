@@ -72,11 +72,12 @@ function SectionHeader({ children, badge }) {
 }
 
 function ApiKeyField({ label, value, onChange, onTest, testStatus, testMsg, badge, tutorial }) {
+  const dot = value?.trim() ? <span className="inline-block w-2 h-2 rounded-full bg-blue-500 ml-1.5 shrink-0" title="Connecté" /> : null
   return (
     <div className="flex flex-col gap-3">
       <div className="flex gap-2 items-end">
         <div className="flex-1">
-          <Input label={label} type="password" value={value} onChange={e => onChange(e.target.value)} placeholder="Clé API…" autoComplete="off" />
+          <Input label={<>{label}{dot}</>} type="password" value={value} onChange={e => onChange(e.target.value)} placeholder="Clé API…" autoComplete="off" />
         </div>
         <Btn type="button" variant="ghost" size="sm" onClick={onTest} loading={testStatus === 'testing'} disabled={!value.trim() || testStatus === 'testing'} style={{ marginBottom: '1px' }}>
           Tester
@@ -296,7 +297,7 @@ export default function Settings() {
             <section>
               <SectionHeader badge="Claude">Anthropic API (Résumé IA)</SectionHeader>
               <div className="flex flex-col gap-3">
-                <Input label="Clé API Anthropic" type="password" value={form.anthropic_api_key} onChange={e => set('anthropic_api_key')(e.target.value)} placeholder="sk-ant-…" autoComplete="off" />
+                <Input label={<>Clé API Anthropic{form.anthropic_api_key?.trim() ? <span className="inline-block w-2 h-2 rounded-full bg-blue-500 ml-1.5" title="Connecté" /> : null}</>} type="password" value={form.anthropic_api_key} onChange={e => set('anthropic_api_key')(e.target.value)} placeholder="sk-ant-…" autoComplete="off" />
                 <Btn type="button" variant="secondary" size="sm" loading={aiSummaryLoading} disabled={!form.anthropic_api_key.trim() || aiSummaryLoading} onClick={async () => {
                   setAiSummaryLoading(true)
                   try {
