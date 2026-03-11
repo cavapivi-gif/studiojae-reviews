@@ -264,7 +264,79 @@ trait SummaryStyleControls {
 
         $this->end_controls_section();
 
-        // ── 15. Search input (widget-specific) ─────────────────────────
+        // ── 15. AI Summary block (widget-specific) ─────────────────────
+        $this->start_controls_section('style_ai_summary', [
+            'label'     => __('Résumé IA', 'sj-reviews'),
+            'tab'       => Controls_Manager::TAB_STYLE,
+            'condition' => ['show_ai_summary' => '1'],
+        ]);
+
+        $this->add_control('ai_bg', [
+            'label'     => __('Fond', 'sj-reviews'),
+            'type'      => Controls_Manager::COLOR,
+            'default'   => '',
+            'selectors' => [$this->sel('ai_summary') => 'background: {{VALUE}};'],
+        ]);
+
+        $this->add_control('ai_border_color', [
+            'label'     => __('Couleur bordure', 'sj-reviews'),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => [$this->sel('ai_summary') => 'border-color: {{VALUE}};'],
+        ]);
+
+        $this->add_responsive_control('ai_border_radius', [
+            'label'      => __('Rayon des coins', 'sj-reviews'),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => ['px', '%'],
+            'range'      => ['px' => ['min' => 0, 'max' => 40]],
+            'selectors'  => [$this->sel('ai_summary') => 'border-radius: {{SIZE}}{{UNIT}};'],
+        ]);
+
+        $this->add_control('ai_header_color', [
+            'label'     => __('Couleur en-tête & label', 'sj-reviews'),
+            'type'      => Controls_Manager::COLOR,
+            'separator' => 'before',
+            'selectors' => [
+                '{{WRAPPER}} .sj-summary__ai-header' => 'color: {{VALUE}};',
+                '{{WRAPPER}} .sj-summary__ai-label'  => 'color: {{VALUE}};',
+            ],
+        ]);
+
+        $this->add_control('ai_badge_bg', [
+            'label'     => __('Fond badge "IA"', 'sj-reviews'),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => ['{{WRAPPER}} .sj-summary__ai-badge' => 'background: {{VALUE}};'],
+        ]);
+
+        $this->add_control('ai_badge_color', [
+            'label'     => __('Couleur texte badge', 'sj-reviews'),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => ['{{WRAPPER}} .sj-summary__ai-badge' => 'color: {{VALUE}};'],
+        ]);
+
+        $this->add_control('ai_text_color', [
+            'label'     => __('Couleur du texte', 'sj-reviews'),
+            'type'      => Controls_Manager::COLOR,
+            'separator' => 'before',
+            'selectors' => ['{{WRAPPER}} .sj-summary__ai-text' => 'color: {{VALUE}};'],
+        ]);
+
+        $this->add_group_control(Group_Control_Typography::get_type(), [
+            'name'     => 'ai_text_typography',
+            'label'    => __('Typographie', 'sj-reviews'),
+            'selector' => '{{WRAPPER}} .sj-summary__ai-text',
+        ]);
+
+        $this->add_control('ai_meta_color', [
+            'label'     => __('Couleur méta (date sync)', 'sj-reviews'),
+            'type'      => Controls_Manager::COLOR,
+            'separator' => 'before',
+            'selectors' => ['{{WRAPPER}} .sj-summary__ai-meta' => 'color: {{VALUE}};'],
+        ]);
+
+        $this->end_controls_section();
+
+        // ── 16. Search input (widget-specific) ─────────────────────────
         $this->start_controls_section('style_search', [
             'label'     => __('Barre de recherche', 'sj-reviews'),
             'tab'       => Controls_Manager::TAB_STYLE,
