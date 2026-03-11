@@ -147,4 +147,12 @@ export const api = {
   /** Exécuter import CSV */
   importExecute: async (body) =>
     (await req('/import/execute', { method: 'POST', body: JSON.stringify(body) })).json(),
+
+  /** AI — generate summary for a lieu */
+  aiGenerateSummary: async (lieuId = 'all') =>
+    (await req('/ai/generate-summary', { method: 'POST', body: JSON.stringify({ lieu_id: lieuId }) })).json(),
+
+  /** Email digest — send test */
+  emailDigestTest: async () =>
+    (await req('/email-digest/test', { method: 'POST' })).json(),
 }

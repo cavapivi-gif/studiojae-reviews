@@ -299,6 +299,31 @@ class RestApi {
             'callback'            => [$this, 'import_execute'],
             'permission_callback' => [$this, 'is_manager'],
         ]);
+
+        // AI Summary — generate (admin) / read (public)
+        register_rest_route($this->ns, '/ai/generate-summary', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'ai_generate_summary'],
+            'permission_callback' => [$this, 'is_manager'],
+            'args'                => [
+                'lieu_id' => ['default' => 'all', 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field'],
+            ],
+        ]);
+        register_rest_route($this->ns, '/front/ai-summary', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'front_ai_summary'],
+            'permission_callback' => '__return_true',
+            'args'                => [
+                'lieu_id' => ['default' => 'all', 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field'],
+            ],
+        ]);
+
+        // Email digest — send test
+        register_rest_route($this->ns, '/email-digest/test', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'email_digest_test'],
+            'permission_callback' => [$this, 'is_manager'],
+        ]);
     }
 
     // ── Permissions ───────────────────────────────────────────────────────────
@@ -1944,8 +1969,11 @@ class RestApi {
         $allowed = [
             'default_layout', 'default_preset', 'star_color', 'certified_label',
             'max_front', 'google_api_key', 'trustpilot_api_key', 'tripadvisor_api_key',
+            'anthropic_api_key',
             'linked_post_types', 'sync_frequency', 'criteria_labels', 'rating_labels',
             'bubble_color', 'text_words', 'autoplay_delay',
+            'email_digest_enabled', 'email_digest_email',
+            'toast_enabled', 'toast_position', 'toast_delay', 'toast_reviews_url',
         ];
         // Merge with existing to avoid losing keys not sent
         $existing = \SJ_Reviews\Includes\Settings::all();
@@ -1957,7 +1985,7 @@ class RestApi {
             } elseif ($key === 'criteria_labels' || $key === 'rating_labels') {
                 $labels = (array) $body[$key];
                 $clean[$key] = array_map('sanitize_text_field', $labels);
-            } elseif (in_array($key, ['text_words', 'autoplay_delay', 'max_front'], true)) {
+            } elseif (in_array($key, ['text_words', 'autoplay_delay', 'max_front', 'toast_delay'], true)) {
                 $clean[$key] = max(1, (int) $body[$key]);
             } else {
                 $clean[$key] = sanitize_text_field((string) $body[$key]);
@@ -1970,6 +1998,14 @@ class RestApi {
         if ($old_freq !== $new_freq) {
             require_once SJ_REVIEWS_DIR . 'includes/class-cron.php';
             \SJ_Reviews\Includes\Cron::reschedule($new_freq);
+        }
+
+        // Reschedule email digest cron if setting changed
+        $old_digest = $existing['email_digest_enabled'] ?? '0';
+        $new_digest = $clean['email_digest_enabled'] ?? '0';
+        if ($old_digest !== $new_digest) {
+            require_once SJ_REVIEWS_DIR . 'includes/class-email-digest.php';
+            \SJ_Reviews\Includes\EmailDigest::reschedule($new_digest === '1');
         }
 
         update_option('sj_reviews_settings', $clean);
@@ -2367,5 +2403,52 @@ class RestApi {
                 }
             }
         }
+    }
+
+    // ── AI Summary ────────────────────────────────────────────────────────────
+
+    public function ai_generate_summary(\WP_REST_Request $req): \WP_REST_Response {
+        require_once SJ_REVIEWS_DIR . 'includes/class-ai-summary.php';
+
+        $lieu_id = $req->get_param('lieu_id') ?: 'all';
+        $result = \SJ_Reviews\Includes\AiSummary::generate($lieu_id);
+
+        if (is_wp_error($result)) {
+            return new \WP_REST_Response([
+                'ok'      => false,
+                'message' => $result->get_error_message(),
+            ], $result->get_error_data()['status'] ?? 500);
+        }
+
+        return new \WP_REST_Response([
+            'ok'   => true,
+            'data' => $result,
+        ]);
+    }
+
+    public function front_ai_summary(\WP_REST_Request $req): \WP_REST_Response {
+        require_once SJ_REVIEWS_DIR . 'includes/class-ai-summary.php';
+
+        $lieu_id = $req->get_param('lieu_id') ?: 'all';
+        $cached = \SJ_Reviews\Includes\AiSummary::get_cached($lieu_id);
+
+        if (!$cached) {
+            return new \WP_REST_Response(['summary' => null], 200);
+        }
+
+        return new \WP_REST_Response([
+            'summary'      => $cached['summary'],
+            'generated_at' => $cached['generated_at'],
+            'review_count' => $cached['review_count'] ?? 0,
+        ]);
+    }
+
+    // ── Email Digest Test ─────────────────────────────────────────────────────
+
+    public function email_digest_test(\WP_REST_Request $req): \WP_REST_Response {
+        require_once SJ_REVIEWS_DIR . 'includes/class-email-digest.php';
+        $digest = new \SJ_Reviews\Includes\EmailDigest();
+        $digest->send();
+        return new \WP_REST_Response(['ok' => true, 'message' => 'Email de test envoyé.']);
     }
 }

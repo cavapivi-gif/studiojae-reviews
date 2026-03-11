@@ -21,6 +21,14 @@ class Plugin {
         require_once SJ_REVIEWS_DIR . 'includes/class-cron.php';
         (new \SJ_Reviews\Includes\Cron())->init();
 
+        // Email digest (cron)
+        require_once SJ_REVIEWS_DIR . 'includes/class-email-digest.php';
+        (new \SJ_Reviews\Includes\EmailDigest())->init();
+
+        // Social proof toast (front-end)
+        require_once SJ_REVIEWS_DIR . 'includes/class-social-proof.php';
+        (new \SJ_Reviews\Includes\SocialProof())->init();
+
         // Classic WP Widget
         require_once SJ_REVIEWS_DIR . 'includes/class-widget.php';
         add_action('widgets_init', function () {

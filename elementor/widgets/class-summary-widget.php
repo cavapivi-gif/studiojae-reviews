@@ -57,6 +57,7 @@ class SummaryWidget extends SjWidgetBase {
             'load_btn'     => '{{WRAPPER}} .sj-summary__load-btn',
             'search_input' => '{{WRAPPER}} .sj-search__input',
             'certified'    => '{{WRAPPER}} .sj-card__certified',
+            'ai_summary'   => '{{WRAPPER}} .sj-summary__ai',
         ]);
     }
 
@@ -146,6 +147,14 @@ class SummaryWidget extends SjWidgetBase {
         $this->start_controls_section('section_stats', [
             'label' => __('Statistiques', 'sj-reviews'),
             'tab'   => Controls_Manager::TAB_CONTENT,
+        ]);
+
+        $this->add_control('show_ai_summary', [
+            'label'        => __('Résumé IA (généré par Claude)', 'sj-reviews'),
+            'type'         => Controls_Manager::SWITCHER,
+            'return_value' => '1',
+            'default'      => '',
+            'description'  => __('Affiche un résumé auto-généré des avis. Nécessite une clé API Anthropic dans les réglages.', 'sj-reviews'),
         ]);
 
         $this->add_control('show_distribution', [
@@ -326,6 +335,7 @@ class SummaryWidget extends SjWidgetBase {
         // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
         echo $sc->render([
             'lieu_id'              => $s['lieu_id']              ?? 'auto',
+            'show_ai_summary'      => ($s['show_ai_summary']      ?? '') === '1' ? '1' : '0',
             'show_distribution'    => ($s['show_distribution']    ?? '') === '1' ? '1' : '0',
             'show_criteria'        => ($s['show_criteria']        ?? '') === '1' ? '1' : '0',
             'show_reviews'         => ($s['show_reviews']         ?? '') === '1' ? '1' : '0',
