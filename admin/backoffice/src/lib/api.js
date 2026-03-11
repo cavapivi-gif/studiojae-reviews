@@ -104,6 +104,10 @@ export const api = {
   testTripadvisorKey: async (key) =>
     (await req('/settings/test-tripadvisor-key', { method: 'POST', body: JSON.stringify({ key }) })).json(),
 
+  /** Tester clé API Anthropic (ping avec blague) */
+  testAnthropicKey: async (key) =>
+    (await req('/settings/test-anthropic-key', { method: 'POST', body: JSON.stringify({ key }) })).json(),
+
   /** Flush all dashboard caches */
   flushCache: async () =>
     (await req('/flush-cache', { method: 'POST' })).json(),
