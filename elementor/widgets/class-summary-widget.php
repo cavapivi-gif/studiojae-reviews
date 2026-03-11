@@ -73,16 +73,7 @@ class SummaryWidget extends SjWidgetBase {
         $this->register_source_filter_control();
         $this->register_lieu_ids_control();
 
-        $this->add_control(
-            'schema_enabled',
-            [
-                'label'        => __('Données structurées (JSON-LD)', 'sj-reviews'),
-                'type'         => Controls_Manager::SWITCHER,
-                'return_value' => '1',
-                'default'      => '1',
-                'separator'    => 'before',
-            ]
-        );
+        $this->register_show_control('schema_enabled', 'Données structurées (JSON-LD)', '1', ['separator' => 'before']);
 
         $this->add_control('schema_type', [
             'label'     => __('@type entité', 'sj-reviews'),
@@ -113,27 +104,9 @@ class SummaryWidget extends SjWidgetBase {
             'tab'   => Controls_Manager::TAB_CONTENT,
         ]);
 
-        $this->add_control('show_ai_summary', [
-            'label'        => __('Résumé IA (généré par Claude)', 'sj-reviews'),
-            'type'         => Controls_Manager::SWITCHER,
-            'return_value' => '1',
-            'default'      => '',
-            'description'  => __('Affiche un résumé auto-généré des avis. Nécessite une clé API Anthropic dans les réglages.', 'sj-reviews'),
-        ]);
-
-        $this->add_control('show_distribution', [
-            'label'        => __('Barres de répartition (★)', 'sj-reviews'),
-            'type'         => Controls_Manager::SWITCHER,
-            'return_value' => '1',
-            'default'      => '1',
-        ]);
-
-        $this->add_control('show_criteria', [
-            'label'        => __('Sous-critères (2 colonnes)', 'sj-reviews'),
-            'type'         => Controls_Manager::SWITCHER,
-            'return_value' => '1',
-            'default'      => '1',
-        ]);
+        $this->register_show_control('show_ai_summary', 'Résumé IA (généré par Claude)', '', ['return_value' => '1', 'description' => __('Affiche un résumé auto-généré des avis. Nécessite une clé API Anthropic dans les réglages.', 'sj-reviews')]);
+        $this->register_show_control('show_distribution', 'Barres de répartition (★)', '1');
+        $this->register_show_control('show_criteria', 'Sous-critères (2 colonnes)', '1');
 
         $this->add_control('score_layout', [
             'label'   => __('Layout du score', 'sj-reviews'),
@@ -155,12 +128,7 @@ class SummaryWidget extends SjWidgetBase {
             'tab'   => Controls_Manager::TAB_CONTENT,
         ]);
 
-        $this->add_control('show_reviews', [
-            'label'        => __('Afficher les avis clients', 'sj-reviews'),
-            'type'         => Controls_Manager::SWITCHER,
-            'return_value' => '1',
-            'default'      => '1',
-        ]);
+        $this->register_show_control('show_reviews', 'Afficher les avis clients', '1');
 
         $this->add_control('reviews_initial', [
             'label'      => __('Nb d\'avis avant "Voir plus"', 'sj-reviews'),
@@ -184,36 +152,9 @@ class SummaryWidget extends SjWidgetBase {
             'condition' => ['show_reviews' => '1'],
         ]);
 
-        $this->add_control('show_card_criteria', [
-            'label'        => __('Afficher sous-critères sur chaque card', 'sj-reviews'),
-            'type'         => \Elementor\Controls_Manager::SWITCHER,
-            'return_value' => '1',
-            'default'      => '',
-            'condition'    => ['show_reviews' => '1'],
-        ]);
-
-        $this->add_control('show_certified', [
-            'label'        => __('Afficher badge "Certifié"', 'sj-reviews'),
-            'type'         => \Elementor\Controls_Manager::SWITCHER,
-            'return_value' => '1',
-            'default'      => '1',
-            'condition'    => ['show_reviews' => '1'],
-        ]);
-
-        $this->add_control('show_verified_banner', [
-            'label'        => __('Bandeau "avis vérifiés"', 'sj-reviews'),
-            'type'         => \Elementor\Controls_Manager::SWITCHER,
-            'return_value' => '1',
-            'default'      => '',
-            'condition'    => ['show_reviews' => '1'],
-        ]);
-
-        $this->add_control('verified_banner_text', [
-            'label'     => __('Texte du bandeau', 'sj-reviews'),
-            'type'      => \Elementor\Controls_Manager::TEXT,
-            'default'   => 'Tous les avis proviennent de client·es vérifié·es',
-            'condition' => ['show_verified_banner' => '1', 'show_reviews' => '1'],
-        ]);
+        $this->register_show_control('show_card_criteria', 'Afficher sous-critères sur chaque card', '', ['return_value' => '1', 'condition' => ['show_reviews' => '1']]);
+        $this->register_show_control('show_certified', 'Afficher badge "Certifié"', '1', ['condition' => ['show_reviews' => '1']]);
+        $this->register_toggle_text_control('verified_banner', 'Bandeau "avis vérifiés"', 'Texte du bandeau', 'Tous les avis proviennent de client·es vérifié·es', '', ['return_value' => '1', 'condition' => ['show_reviews' => '1']], 'text');
 
         $this->add_control('text_words', [
             'label'       => __('Mots avant "Voir plus"', 'sj-reviews'),
@@ -234,53 +175,12 @@ class SummaryWidget extends SjWidgetBase {
             'condition' => ['show_reviews' => '1'],
         ]);
 
-        $this->add_control('show_filters', [
-            'label'        => __('Afficher la barre de filtres', 'sj-reviews'),
-            'type'         => Controls_Manager::SWITCHER,
-            'return_value' => '1',
-            'default'      => '1',
-        ]);
-
-        $this->add_control('show_sort', [
-            'label'        => __('Tri (Plus récent / Meilleure note)', 'sj-reviews'),
-            'type'         => Controls_Manager::SWITCHER,
-            'return_value' => '1',
-            'default'      => '1',
-            'condition'    => ['show_filters' => '1'],
-        ]);
-
-        $this->add_control('show_rating_filter', [
-            'label'        => __('Filtre par note (★)', 'sj-reviews'),
-            'type'         => Controls_Manager::SWITCHER,
-            'return_value' => '1',
-            'default'      => '1',
-            'condition'    => ['show_filters' => '1'],
-        ]);
-
-        $this->add_control('show_period_filter', [
-            'label'        => __('Filtre par période (saison)', 'sj-reviews'),
-            'type'         => Controls_Manager::SWITCHER,
-            'return_value' => '1',
-            'default'      => '1',
-            'condition'    => ['show_filters' => '1'],
-        ]);
-
-        $this->add_control('show_language_filter', [
-            'label'        => __('Filtre par langue', 'sj-reviews'),
-            'type'         => Controls_Manager::SWITCHER,
-            'return_value' => '1',
-            'default'      => '1',
-            'condition'    => ['show_filters' => '1'],
-        ]);
-
-        $this->add_control('show_search', [
-            'label'        => __('Barre de recherche (titre, texte, auteur)', 'sj-reviews'),
-            'type'         => Controls_Manager::SWITCHER,
-            'return_value' => '1',
-            'default'      => '',
-            'condition'    => ['show_reviews' => '1'],
-            'separator'    => 'before',
-        ]);
+        $this->register_show_control('show_filters', 'Afficher la barre de filtres', '1');
+        $this->register_show_control('show_sort', 'Tri (Plus récent / Meilleure note)', '1', ['condition' => ['show_filters' => '1']]);
+        $this->register_show_control('show_rating_filter', 'Filtre par note (★)', '1', ['condition' => ['show_filters' => '1']]);
+        $this->register_show_control('show_period_filter', 'Filtre par période (saison)', '1', ['condition' => ['show_filters' => '1']]);
+        $this->register_show_control('show_language_filter', 'Filtre par langue', '1', ['condition' => ['show_filters' => '1']]);
+        $this->register_show_control('show_search', 'Barre de recherche (titre, texte, auteur)', '', ['return_value' => '1', 'condition' => ['show_reviews' => '1'], 'separator' => 'before']);
 
         $this->end_controls_section();
 

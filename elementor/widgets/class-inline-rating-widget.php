@@ -52,33 +52,10 @@ class InlineRatingWidget extends SjWidgetBase {
         $this->register_lieu_control(['default' => '', 'show_all' => true, 'all_label' => 'Tous les lieux']);
         $this->register_source_filter_control();
 
-        $this->add_control('show_stars', [
-            'label'        => 'Afficher les étoiles',
-            'type'         => Controls_Manager::SWITCHER,
-            'return_value' => '1',
-            'default'      => '1',
-        ]);
-
-        $this->add_control('show_score', [
-            'label'        => 'Afficher le score (4.8/5)',
-            'type'         => Controls_Manager::SWITCHER,
-            'return_value' => '1',
-            'default'      => '1',
-        ]);
-
-        $this->add_control('show_count', [
-            'label'        => 'Afficher le nombre d\'avis',
-            'type'         => Controls_Manager::SWITCHER,
-            'return_value' => '1',
-            'default'      => '1',
-        ]);
-
-        $this->add_control('show_sources', [
-            'label'        => 'Afficher les sources (Google, …)',
-            'type'         => Controls_Manager::SWITCHER,
-            'return_value' => '1',
-            'default'      => '',
-        ]);
+        $this->register_show_control('show_stars', 'Afficher les étoiles', '1');
+        $this->register_show_control('show_score', 'Afficher le score (4.8/5)', '1');
+        $this->register_show_control('show_count', 'Afficher le nombre d\'avis', '1');
+        $this->register_show_control('show_sources', 'Afficher les sources (Google, …)', '', ['return_value' => '1']);
 
         $this->add_control('star_color', [
             'label'   => 'Couleur des étoiles',
