@@ -29,6 +29,7 @@ studiojae-reviews/
 │   │   ├── trait-box-controls.php           # Box, hover-box, layout controls
 │   │   ├── trait-interactive-controls.php   # Button + pill/tag controls
 │   │   ├── trait-media-controls.php         # Avatar, stars, progress bar controls
+│   │   ├── trait-data-controls.php         # Lieu & source filter controls (shared)
 │   │   ├── trait-reviews-style-controls.php # Style controls for ReviewsWidget
 │   │   └── trait-summary-style-controls.php # Style controls for SummaryWidget
 │   └── widgets/
@@ -195,8 +196,11 @@ Call them in `register_controls()` with one line each.
 | `register_layout_controls($prefix, $label, $selector)` | Flex layout section | Gap, justify-content, align-items |
 | `register_bar_controls($prefix, $label, $fill_sel, $track_sel)` | Progress bar section | Fill color, track color, height, border-radius |
 | `register_pill_controls($prefix, $label, $selector, $active_sel)` | Pill/tag with **3-state tabs** | Typography, padding, radius, then Normal/Hover/Active tabs: color, bg, border |
+| `register_lieu_control($opts)` | Lieu selector (DataControls) | SELECT with all lieux from settings. Options: `default`, `show_auto`, `show_all`, `all_key`, `all_label`, `condition` |
+| `register_source_filter_control($opts)` | Source filter (DataControls) | SELECT2 multi with Labels::SOURCES. Options: `condition` |
+| `register_lieu_ids_control()` | Multi-lieu filter (DataControls) | SELECT2 multi with all lieux |
 
-**All methods accept an optional `$defaults` array for initial values.**
+**All style methods accept an optional `$defaults` array for initial values.**
 
 ### Defaults examples:
 ```php
