@@ -31,6 +31,9 @@ class CoupDeCoeurShortcode {
             'star_empty_color' => '#d1d5db',
             'label'            => 'Coup de cœur voyageurs',
             'subtitle'         => 'Un des logements préférés des voyageurs',
+            'url'              => '',
+            'url_external'     => '',
+            'url_nofollow'     => '',
         ], $atts, 'sj_coup_de_coeur');
 
         $post_id          = (int) $a['post_id'] ?: get_the_ID();
@@ -38,6 +41,9 @@ class CoupDeCoeurShortcode {
         $star_empty_color = sanitize_hex_color($a['star_empty_color']) ?: '#d1d5db';
         $label            = esc_html($a['label']);
         $subtitle         = esc_html($a['subtitle']);
+        $url              = esc_url($a['url']);
+        $url_external     = !empty($a['url_external']);
+        $url_nofollow     = !empty($a['url_nofollow']);
 
         if (!$post_id) return '';
 
@@ -71,8 +77,20 @@ class CoupDeCoeurShortcode {
         $count_fmt = sj_format_count($count);
 
         ob_start();
+
+        $has_link = !empty($url);
+        $tag      = $has_link ? 'a' : 'div';
+        $link_attrs = '';
+        if ($has_link) {
+            $link_attrs .= ' href="' . $url . '"';
+            if ($url_external) $link_attrs .= ' target="_blank"';
+            $rel = [];
+            if ($url_external) $rel[] = 'noopener';
+            if ($url_nofollow) $rel[] = 'nofollow';
+            if ($rel) $link_attrs .= ' rel="' . implode(' ', $rel) . '"';
+        }
         ?>
-        <div class="sj-cdc" role="banner" aria-label="<?php echo $label; ?>">
+        <<?php echo $tag; ?> class="sj-cdc" role="banner" aria-label="<?php echo $label; ?>"<?php echo $link_attrs; ?>>
 
             <!-- Colonne 1 : Badge décoratif -->
             <div class="sj-cdc__badge">
@@ -111,7 +129,7 @@ class CoupDeCoeurShortcode {
                 </div>
             </div>
 
-        </div>
+        </<?php echo $tag; ?>>
         <?php
         return ob_get_clean();
     }
