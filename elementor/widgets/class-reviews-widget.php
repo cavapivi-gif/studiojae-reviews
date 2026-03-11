@@ -52,6 +52,8 @@ class ReviewsWidget extends SjWidgetBase {
             'card_date'  => '{{WRAPPER}} .sj-review__date',
             'card_avatar'=> '{{WRAPPER}} .sj-review__avatar img',
             'stars'      => '{{WRAPPER}} .sj-stars',
+            'card_title' => '{{WRAPPER}} .sj-review__title',
+            'verified'   => '{{WRAPPER}} .sj-reviews__verified-banner',
             'arrow'      => '{{WRAPPER}} .sj-arrow',
             'dots'       => '{{WRAPPER}} .swiper-pagination-bullet',
         ]);
@@ -104,6 +106,28 @@ class ReviewsWidget extends SjWidgetBase {
             'type'    => \Elementor\Controls_Manager::SELECT,
             'options' => [0 => 'Toutes', 3 => '3+', 4 => '4+', 5 => '5 uniquement'],
             'default' => 0,
+        ]);
+
+        $this->add_control('source_filter', [
+            'label'       => __('Filtrer par source(s)', 'sj-reviews'),
+            'type'        => \Elementor\Controls_Manager::SELECT2,
+            'multiple'    => true,
+            'options'     => \SJ_Reviews\Includes\Labels::SOURCES,
+            'default'     => [],
+            'description' => __('Laisser vide = toutes les sources', 'sj-reviews'),
+            'condition'   => ['source_type' => 'cpt'],
+        ]);
+
+        $this->add_control('orderby', [
+            'label'   => __('Tri des avis', 'sj-reviews'),
+            'type'    => \Elementor\Controls_Manager::SELECT,
+            'options' => [
+                'date'   => __('Plus récent', 'sj-reviews'),
+                'rating' => __('Meilleure note', 'sj-reviews'),
+                'rand'   => __('Aléatoire', 'sj-reviews'),
+            ],
+            'default'   => 'date',
+            'condition' => ['source_type' => 'cpt'],
         ]);
 
         // Legacy ACF
@@ -288,6 +312,29 @@ class ReviewsWidget extends SjWidgetBase {
             'type'         => \Elementor\Controls_Manager::SWITCHER,
             'return_value' => 'yes',
             'default'      => 'yes',
+        ]);
+
+        $this->add_control('show_title', [
+            'label'        => __('Titre de l\'avis', 'sj-reviews'),
+            'type'         => \Elementor\Controls_Manager::SWITCHER,
+            'return_value' => 'yes',
+            'default'      => '',
+            'separator'    => 'before',
+            'description'  => __('Affiche le titre/résumé de l\'avis s\'il existe.', 'sj-reviews'),
+        ]);
+
+        $this->add_control('show_verified_banner', [
+            'label'        => __('Bandeau "avis vérifiés"', 'sj-reviews'),
+            'type'         => \Elementor\Controls_Manager::SWITCHER,
+            'return_value' => 'yes',
+            'default'      => '',
+        ]);
+
+        $this->add_control('verified_banner_text', [
+            'label'     => __('Texte du bandeau', 'sj-reviews'),
+            'type'      => \Elementor\Controls_Manager::TEXT,
+            'default'   => 'Tous les avis proviennent de client·es vérifié·es',
+            'condition' => ['show_verified_banner' => 'yes'],
         ]);
 
         $this->end_controls_section();
@@ -546,6 +593,14 @@ class ReviewsWidget extends SjWidgetBase {
             default     => $this->render_grid($reviews, $s),
         };
 
+        // Verified banner
+        if (($s['show_verified_banner'] ?? '') === 'yes' && !empty($s['verified_banner_text'])) {
+            echo '<div class="sj-reviews__verified-banner">'
+               . '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg> '
+               . esc_html($s['verified_banner_text'])
+               . '</div>';
+        }
+
         echo '</div>';
 
         // Schema.org
@@ -646,13 +701,18 @@ class ReviewsWidget extends SjWidgetBase {
         // Header carte : stars + source icon
         echo '<header class="sj-review-card__header">';
         if ($s['show_stars'] === 'yes') {
-            $color = $s['star_color'] ?: '#f5a623';
+            $color = $s['review_stars_star_color'] ?? ($s['star_color'] ?? '#f5a623');
             echo sj_stars_html($r['rating'], 5, $color);
         }
         if ($s['show_source_icon'] === 'yes') {
             echo '<span class="sj-review-card__source">' . sj_source_icon($r['source']) . '</span>';
         }
         echo '</header>';
+
+        // Title
+        if (($s['show_title'] ?? '') === 'yes' && !empty($r['title'])) {
+            echo '<h4 class="sj-review__title">' . esc_html($r['title']) . '</h4>';
+        }
 
         // Texte
         if ($s['show_text'] === 'yes' && $r['text']) {
@@ -704,7 +764,7 @@ class ReviewsWidget extends SjWidgetBase {
         if ($s['badge_show_score'] === 'yes') {
             echo '<div class="sj-aggregate__score">';
             echo '<span class="sj-aggregate__number">' . esc_html($score) . '</span>';
-            echo sj_stars_html((int) round((float) $score), 5, $s['star_color'] ?? '#f5a623');
+            echo sj_stars_html((int) round((float) $score), 5, $s['review_stars_star_color'] ?? ($s['star_color'] ?? '#f5a623'));
             echo '<span class="sj-aggregate__count">' . esc_html($count) . ' avis</span>';
             echo '</div>';
         }
@@ -775,9 +835,27 @@ class ReviewsWidget extends SjWidgetBase {
                 'value' => $lieu_id,
             ];
         }
+        // Source filter
+        $sources = array_filter((array) ($s['source_filter'] ?? []));
+        if (!empty($sources)) {
+            $meta_query[] = [
+                'key'     => 'avis_source',
+                'value'   => $sources,
+                'compare' => 'IN',
+            ];
+        }
         if (!empty($meta_query)) {
             $meta_query['relation'] = 'AND';
             $args['meta_query'] = $meta_query;
+        }
+        // Orderby
+        $orderby = $s['orderby'] ?? 'date';
+        if ($orderby === 'rating') {
+            $args['meta_key'] = 'avis_rating';
+            $args['orderby']  = 'meta_value_num';
+            $args['order']    = 'DESC';
+        } elseif ($orderby === 'rand') {
+            $args['orderby'] = 'rand';
         }
         return sj_get_reviews($args);
     }

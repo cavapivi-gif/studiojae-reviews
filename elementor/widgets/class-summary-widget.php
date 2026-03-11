@@ -57,6 +57,7 @@ class SummaryWidget extends SjWidgetBase {
             'load_btn'     => '{{WRAPPER}} .sj-summary__load-btn',
             'search_input' => '{{WRAPPER}} .sj-search__input',
             'certified'    => '{{WRAPPER}} .sj-card__certified',
+            'ai_summary'   => '{{WRAPPER}} .sj-summary__ai',
         ]);
     }
 
@@ -115,8 +116,30 @@ class SummaryWidget extends SjWidgetBase {
                 'type'         => Controls_Manager::SWITCHER,
                 'return_value' => '1',
                 'default'      => '1',
+                'separator'    => 'before',
             ]
         );
+
+        $this->add_control('schema_type', [
+            'label'     => __('@type entité', 'sj-reviews'),
+            'type'      => Controls_Manager::SELECT,
+            'options'   => [
+                'LocalBusiness' => 'LocalBusiness',
+                'Product'       => 'Product',
+                'Service'       => 'Service',
+                'TouristTrip'   => 'TouristTrip',
+            ],
+            'default'   => 'LocalBusiness',
+            'condition' => ['schema_enabled' => '1'],
+        ]);
+
+        $this->add_control('schema_name', [
+            'label'       => __('Nom de l\'entité (vide = titre du post)', 'sj-reviews'),
+            'type'        => Controls_Manager::TEXT,
+            'default'     => '',
+            'dynamic'     => ['active' => true],
+            'condition'   => ['schema_enabled' => '1'],
+        ]);
 
         $this->end_controls_section();
 
@@ -124,6 +147,14 @@ class SummaryWidget extends SjWidgetBase {
         $this->start_controls_section('section_stats', [
             'label' => __('Statistiques', 'sj-reviews'),
             'tab'   => Controls_Manager::TAB_CONTENT,
+        ]);
+
+        $this->add_control('show_ai_summary', [
+            'label'        => __('Résumé IA (généré par Claude)', 'sj-reviews'),
+            'type'         => Controls_Manager::SWITCHER,
+            'return_value' => '1',
+            'default'      => '',
+            'description'  => __('Affiche un résumé auto-généré des avis. Nécessite une clé API Anthropic dans les réglages.', 'sj-reviews'),
         ]);
 
         $this->add_control('show_distribution', [
@@ -304,6 +335,7 @@ class SummaryWidget extends SjWidgetBase {
         // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
         echo $sc->render([
             'lieu_id'              => $s['lieu_id']              ?? 'auto',
+            'show_ai_summary'      => ($s['show_ai_summary']      ?? '') === '1' ? '1' : '0',
             'show_distribution'    => ($s['show_distribution']    ?? '') === '1' ? '1' : '0',
             'show_criteria'        => ($s['show_criteria']        ?? '') === '1' ? '1' : '0',
             'show_reviews'         => ($s['show_reviews']         ?? '') === '1' ? '1' : '0',
@@ -320,6 +352,8 @@ class SummaryWidget extends SjWidgetBase {
             'show_verified_banner' => ($s['show_verified_banner'] ?? '') === '1' ? '1' : '0',
             'verified_banner_text' => $s['verified_banner_text'] ?? 'Tous les avis proviennent de client·es vérifié·es',
             'schema_enabled'       => ($s['schema_enabled']       ?? '') === '1' ? '1' : '0',
+            'schema_type'          => $s['schema_type']          ?? 'LocalBusiness',
+            'schema_name'          => $s['schema_name']          ?? '',
             'source_filter'        => implode(',', (array) ($s['source_filter'] ?? [])),
             'lieu_ids'             => implode(',', (array) ($s['lieu_ids'] ?? [])),
             'score_layout'         => $s['score_layout']  ?? 'default',

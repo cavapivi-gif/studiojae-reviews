@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { PageHeader, Input, Select, Btn, Spinner, Toggle } from '../components/ui'
 import { IconCheck } from '../components/Icons'
@@ -13,6 +14,7 @@ const DEFAULTS = {
   google_api_key:      '',
   trustpilot_api_key:  '',
   tripadvisor_api_key: '',
+  anthropic_api_key:   '',
   linked_post_types:   [],
   sync_frequency:      'off',
   criteria_labels:     { qualite_prix: 'Qualité/prix', ambiance: 'Ambiance', experience: 'Expérience', paysage: 'Paysage' },
@@ -20,6 +22,12 @@ const DEFAULTS = {
   bubble_color:        '#34d399',
   text_words:          '40',
   autoplay_delay:      '4000',
+  email_digest_enabled: '0',
+  email_digest_email:  '',
+  toast_enabled:       '0',
+  toast_position:      'bottom-left',
+  toast_delay:         '5000',
+  toast_reviews_url:   '',
 }
 
 const TABS = [
@@ -83,10 +91,14 @@ function ApiKeyField({ label, value, onChange, onTest, testStatus, testMsg, badg
 
 export default function Settings() {
   const toast = useToast()
+  const { tab: urlTab } = useParams()
+  const navigate = useNavigate()
   const [form, setForm]             = useState(DEFAULTS)
   const [loading, setLoading]       = useState(true)
   const [saving, setSaving]         = useState(false)
-  const [activeTab, setActiveTab]   = useState('api')
+  const validTabs = TABS.map(t => t.id)
+  const activeTab = validTabs.includes(urlTab) ? urlTab : 'api'
+  const setActiveTab = (id) => navigate(`/settings/${id}`, { replace: true })
   const [availablePostTypes, setAvailablePostTypes] = useState([])
 
   // API key test states
@@ -96,6 +108,8 @@ export default function Settings() {
   const [trustpilotKeyMsg, setTrustpilotKeyMsg]       = useState('')
   const [tripadvisorKeyStatus, setTripadvisorKeyStatus] = useState(null)
   const [tripadvisorKeyMsg, setTripadvisorKeyMsg]       = useState('')
+  const [aiSummaryLoading, setAiSummaryLoading]         = useState(false)
+  const [digestTestLoading, setDigestTestLoading]       = useState(false)
 
   useEffect(() => {
     Promise.all([api.settings(), api.postTypes()])
@@ -118,6 +132,7 @@ export default function Settings() {
     if (key === 'google_api_key') setGoogleKeyStatus(null)
     if (key === 'trustpilot_api_key') setTrustpilotKeyStatus(null)
     if (key === 'tripadvisor_api_key') setTripadvisorKeyStatus(null)
+    if (key === 'anthropic_api_key') setAiSummaryLoading(false)
   }
 
   const setCriteriaLabel = key => e => {
@@ -279,6 +294,40 @@ export default function Settings() {
             </section>
 
             <section>
+              <SectionHeader badge="Claude">Anthropic API (Résumé IA)</SectionHeader>
+              <div className="flex flex-col gap-3">
+                <Input label="Clé API Anthropic" type="password" value={form.anthropic_api_key} onChange={e => set('anthropic_api_key')(e.target.value)} placeholder="sk-ant-…" autoComplete="off" />
+                <Btn type="button" variant="secondary" size="sm" loading={aiSummaryLoading} disabled={!form.anthropic_api_key.trim() || aiSummaryLoading} onClick={async () => {
+                  setAiSummaryLoading(true)
+                  try {
+                    await handleSave()
+                    const res = await (await fetch(`${window.sjReviews?.rest_url ?? '/wp-json/sj-reviews/v1'}ai/generate-summary`, {
+                      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': window.sjReviews?.nonce ?? '' },
+                      body: JSON.stringify({ lieu_id: 'all' })
+                    })).json()
+                    if (res.ok) toast.success(`Résumé généré (${res.data.review_count} avis analysés).`)
+                    else toast.error(res.message || 'Erreur de génération.')
+                  } catch (e) { toast.error(e.message) }
+                  finally { setAiSummaryLoading(false) }
+                }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a4 4 0 014 4v1a2 2 0 012 2v1a2 2 0 01-2 2H8a2 2 0 01-2-2V9a2 2 0 012-2V6a4 4 0 014-4z"/><path d="M8 14v4a4 4 0 008 0v-4"/></svg>
+                  Générer le résumé IA
+                </Btn>
+                <p className="text-xs text-gray-400">
+                  Génère un résumé automatique des avis via Claude. Le résumé est mis en cache 24h par lieu.
+                </p>
+                <Tutorial title="Obtenir une clé API Anthropic">
+                  <p><strong>1.</strong> Créez un compte sur <strong>console.anthropic.com</strong>.</p>
+                  <p><strong>2.</strong> Dashboard → API Keys → Create Key.</p>
+                  <p><strong>3.</strong> Copiez la clé (commence par <code>sk-ant-</code>).</p>
+                  <p className="text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1">
+                    Coût : ~0.003$ par génération de résumé (~50 avis).
+                  </p>
+                </Tutorial>
+              </div>
+            </section>
+
+            <section>
               <SectionHeader>Cache</SectionHeader>
               <p className="text-xs text-gray-500 mb-3">
                 Vide le cache du dashboard (stats, tendances, répartitions). Utile après un import ou une sync manuelle.
@@ -317,6 +366,47 @@ export default function Settings() {
                   Dernière sync : <strong>{form.last_sync}</strong>
                 </p>
               )}
+            </section>
+            <section>
+              <SectionHeader>Email digest hebdomadaire</SectionHeader>
+              <div className="flex flex-col gap-3">
+                <Toggle label="Activer le digest hebdomadaire" checked={form.email_digest_enabled === '1'} onChange={e => set('email_digest_enabled')(e.target.checked ? '1' : '0')} />
+                <Input label="Email(s) destinataire(s)" value={form.email_digest_email} onChange={e => set('email_digest_email')(e.target.value)} placeholder="admin@example.com" />
+                <p className="text-xs text-gray-400">Séparés par des virgules. Vide = email admin du site.</p>
+                <Btn type="button" variant="ghost" size="sm" loading={digestTestLoading} onClick={async () => {
+                  setDigestTestLoading(true)
+                  try {
+                    await handleSave()
+                    await (await fetch(`${window.sjReviews?.rest_url ?? '/wp-json/sj-reviews/v1'}email-digest/test`, {
+                      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': window.sjReviews?.nonce ?? '' }
+                    })).json()
+                    toast.success('Email de test envoyé.')
+                  } catch (e) { toast.error(e.message) }
+                  finally { setDigestTestLoading(false) }
+                }}>
+                  Envoyer un email de test
+                </Btn>
+              </div>
+            </section>
+
+            <section>
+              <SectionHeader>Social proof (toast)</SectionHeader>
+              <div className="flex flex-col gap-3">
+                <Toggle label="Activer le toast social proof" checked={form.toast_enabled === '1'} onChange={e => set('toast_enabled')(e.target.checked ? '1' : '0')} />
+                <div className="grid grid-cols-2 gap-4">
+                  <Select label="Position" value={form.toast_position} onChange={e => set('toast_position')(e.target.value)}>
+                    <option value="bottom-left">Bas gauche</option>
+                    <option value="bottom-right">Bas droite</option>
+                    <option value="top-left">Haut gauche</option>
+                    <option value="top-right">Haut droite</option>
+                  </Select>
+                  <Input label="Délai d'apparition (ms)" type="number" min="1000" max="30000" step="1000" value={form.toast_delay} onChange={e => set('toast_delay')(e.target.value)} />
+                </div>
+                <Input label="URL page avis (clic sur toast)" value={form.toast_reviews_url} onChange={e => set('toast_reviews_url')(e.target.value)} placeholder="https://monsite.fr/avis" />
+                <p className="text-xs text-gray-400">
+                  Affiche un toast discret quand un avis récent (&lt;48h) existe. 1 fois par session, auto-masqué après 8s.
+                </p>
+              </div>
             </section>
           </div>
         )}

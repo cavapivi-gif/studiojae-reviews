@@ -40,6 +40,33 @@
     }
     var showCertified = widget.dataset.showCertified === '1'
 
+    // ── AI Summary (lazy load from cache) ──────────────────────────────────
+    var aiBlock = document.getElementById(uid + '-ai')
+    if (aiBlock) {
+      var aiLieuId = aiBlock.dataset.lieuId || 'all'
+      var aiTextEl = document.getElementById(uid + '-ai-text')
+      fetch(restUrl + 'front/ai-summary?lieu_id=' + encodeURIComponent(aiLieuId), {
+        headers: { 'X-WP-Nonce': nonce }
+      })
+        .then(function (r) { return r.json() })
+        .then(function (data) {
+          if (data.summary && aiTextEl) {
+            aiTextEl.textContent = data.summary
+            if (data.generated_at) {
+              var meta = document.createElement('p')
+              meta.className = 'sj-summary__ai-meta'
+              meta.textContent = 'Basé sur ' + (data.review_count || '') + ' avis · Généré le ' + data.generated_at
+              aiBlock.appendChild(meta)
+            }
+          } else if (aiTextEl) {
+            aiTextEl.innerHTML = '<span class="sj-summary__ai-loading">Aucun résumé disponible. Générez-le depuis les réglages du plugin.</span>'
+          }
+        })
+        .catch(function () {
+          if (aiTextEl) aiTextEl.innerHTML = '<span class="sj-summary__ai-loading">Résumé indisponible.</span>'
+        })
+    }
+
     // État des filtres (en cours d'édition dans modal)
     var pending = { rating: null, period: null, language: null, travel: null }
     // État appliqué

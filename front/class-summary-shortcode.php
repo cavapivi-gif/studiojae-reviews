@@ -57,10 +57,13 @@ class SummaryShortcode {
             'show_card_criteria'   => '0',
             'show_certified'       => '1',
             'schema_enabled'       => '1',
+            'schema_type'          => 'LocalBusiness',
+            'schema_name'          => '',
             'source_filter'        => '',
             'lieu_ids'             => '',
             'score_layout'         => 'default',
             'show_search'          => '0',
+            'show_ai_summary'      => '0',
             'show_verified_banner' => '0',
             'verified_banner_text' => 'Tous les avis proviennent de client·es vérifié·es',
             'max_width'            => '',
@@ -402,6 +405,20 @@ if (!empty($a['max_width_mobile'])) {
             </div>
             <?php endforeach; ?>
         </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($a['show_ai_summary'] !== '0'): ?>
+    <!-- ══ AI SUMMARY ═════════════════════════════════════════════════════════ -->
+    <div class="sj-summary__ai" id="<?php echo esc_attr($uid); ?>-ai" data-lieu-id="<?php echo esc_attr($lieu_id); ?>">
+        <div class="sj-summary__ai-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2a4 4 0 014 4v1a2 2 0 012 2v1a2 2 0 01-2 2H8a2 2 0 01-2-2V9a2 2 0 012-2V6a4 4 0 014-4z"/><path d="M8 14v4a4 4 0 008 0v-4"/></svg>
+            <span class="sj-summary__ai-label">Résumé IA</span>
+            <span class="sj-summary__ai-badge">Généré par IA</span>
+        </div>
+        <p class="sj-summary__ai-text" id="<?php echo esc_attr($uid); ?>-ai-text">
+            <span class="sj-summary__ai-loading">Chargement du résumé…</span>
+        </p>
     </div>
     <?php endif; ?>
 
@@ -758,10 +775,12 @@ if (!empty($a['max_width_mobile'])) {
 </div><!-- /.sj-summary -->
 <?php if ($a['schema_enabled'] !== '0' && !is_admin() && $stats['avg'] > 0): ?>
 <script type="application/ld+json"><?php
+    $schema_type = $a['schema_type'] ?: 'LocalBusiness';
+    $schema_name = $a['schema_name'] ?: (get_the_title() ?: get_bloginfo('name'));
     $schema = [
         '@context'        => 'https://schema.org',
-        '@type'           => 'LocalBusiness',
-        'name'            => get_the_title() ?: get_bloginfo('name'),
+        '@type'           => $schema_type,
+        'name'            => $schema_name,
         'url'             => get_permalink() ?: home_url('/'),
         'aggregateRating' => [
             '@type'       => 'AggregateRating',
