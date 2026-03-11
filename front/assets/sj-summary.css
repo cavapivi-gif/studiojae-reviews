@@ -843,6 +843,12 @@ body.sj-modal-open { overflow: hidden; }
   background: var(--sj-crit-color, #22c55e);
   flex-shrink: 0;
 }
+/* Color scale based on rating value */
+.sj-card__crit-dot[data-val="5"] { background: #22c55e; }
+.sj-card__crit-dot[data-val="4"] { background: #84cc16; }
+.sj-card__crit-dot[data-val="3"] { background: #eab308; }
+.sj-card__crit-dot[data-val="2"] { background: #f97316; }
+.sj-card__crit-dot[data-val="1"] { background: #ef4444; }
 .sj-card__crit-label {
   font-size: 12px;
   color: #555;
