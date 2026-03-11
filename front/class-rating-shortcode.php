@@ -76,12 +76,14 @@ class RatingShortcode {
     }
 
     private function render_badge(array $l, string $design, string $color, bool $src, bool $link, string $label): void {
-        $rating  = (float) ($l['rating']        ?? 0);
-        $count   = (int)   ($l['reviews_count'] ?? 0);
-        $name    = esc_html($l['name'] ?? '');
-        $source  = $l['source'] ?? 'google';
-        $pid     = $l['place_id'] ?? '';
-        $gmb_url = $pid ? 'https://www.google.com/maps/place/?q=place_id:' . urlencode($pid) : '';
+        // Use sj_enriched_stats() for consistent count — same formula as dashboard + JS hydration
+        $enriched = sj_enriched_stats($l['id'] ?? '');
+        $rating   = $enriched['avg'] ?: (float) ($l['rating'] ?? 0);
+        $count    = $enriched['count'] ?: (int) ($l['reviews_count'] ?? 0);
+        $name     = esc_html($l['name'] ?? '');
+        $source   = $l['source'] ?? 'google';
+        $pid      = $l['place_id'] ?? '';
+        $gmb_url  = $pid ? 'https://www.google.com/maps/place/?q=place_id:' . urlencode($pid) : '';
 
         $stars_html = $this->stars_html($rating, $color);
         $rating_fmt = sj_format_rating($rating);
