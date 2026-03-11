@@ -200,6 +200,136 @@ function sj_aggregate(array $reviews): array {
 }
 
 /**
+ * Compute enriched aggregate stats matching the dashboard logic exactly.
+ *
+ * For each source, takes max(CPT count, platform count) then sums all sources.
+ * This is the same formula used by the REST API dashboard endpoint (line 644).
+ *
+ * @param string|array $lieu_id  '' or 'all' = all lieux, string = single lieu, array = multiple lieu IDs.
+ * @param array        $sources  Optional source filter (e.g. ['google', 'regiondo']).
+ * @return array{avg: float, count: int, sources: string[]}
+ */
+function sj_enriched_stats(string|array $lieu_id = '', array $sources = []): array {
+    global $wpdb;
+
+    $lieu_ids = is_array($lieu_id) ? array_filter($lieu_id) : [];
+    $lieu_str = is_string($lieu_id) ? $lieu_id : '';
+
+    // 1. Count CPT reviews per source (SQL, fast)
+    $joins  = '';
+    $wheres = "AND p.post_type = 'sj_avis' AND p.post_status = 'publish'";
+
+    if (!empty($lieu_ids)) {
+        $joins  .= " INNER JOIN {$wpdb->postmeta} pm_lieu ON pm_lieu.post_id = p.ID AND pm_lieu.meta_key = 'avis_lieu_id'";
+        $in = implode(',', array_map(fn($l) => $wpdb->prepare('%s', $l), $lieu_ids));
+        $wheres .= " AND pm_lieu.meta_value IN ({$in})";
+    } elseif ($lieu_str !== '' && $lieu_str !== 'all') {
+        $joins  .= " INNER JOIN {$wpdb->postmeta} pm_lieu ON pm_lieu.post_id = p.ID AND pm_lieu.meta_key = 'avis_lieu_id'";
+        $wheres .= $wpdb->prepare(" AND pm_lieu.meta_value = %s", $lieu_str);
+    }
+    if (!empty($sources)) {
+        $joins  .= " INNER JOIN {$wpdb->postmeta} pm_src ON pm_src.post_id = p.ID AND pm_src.meta_key = 'avis_source'";
+        $in = implode(',', array_map(fn($s) => $wpdb->prepare('%s', $s), $sources));
+        $wheres .= " AND pm_src.meta_value IN ({$in})";
+    }
+
+    // Global CPT avg (needed for weighted average)
+    $cpt_row = $wpdb->get_row(
+        "SELECT COUNT(*) AS total, AVG(CAST(pm_r.meta_value AS DECIMAL(3,1))) AS avg_r
+         FROM {$wpdb->posts} p
+         INNER JOIN {$wpdb->postmeta} pm_r ON pm_r.post_id = p.ID AND pm_r.meta_key = 'avis_rating'
+         {$joins}
+         WHERE 1=1 {$wheres}"
+    );
+    $cpt_total = (int) ($cpt_row->total ?? 0);
+    $avg       = round((float) ($cpt_row->avg_r ?? 0), 1);
+
+    // CPT count per source
+    $src_rows = $wpdb->get_results(
+        "SELECT pm_s.meta_value AS source, COUNT(*) AS cnt
+         FROM {$wpdb->posts} p
+         INNER JOIN {$wpdb->postmeta} pm_s ON pm_s.post_id = p.ID AND pm_s.meta_key = 'avis_source'
+         INNER JOIN {$wpdb->postmeta} pm_r ON pm_r.post_id = p.ID AND pm_r.meta_key = 'avis_rating'
+         {$joins}
+         WHERE 1=1 {$wheres}
+         GROUP BY pm_s.meta_value"
+    );
+    $by_source = [];
+    foreach ($src_rows as $row) {
+        $by_source[$row->source] = (int) $row->cnt;
+    }
+
+    // 2. Platform data per source (from lieux settings)
+    $all_lieux = \SJ_Reviews\Includes\Settings::lieux();
+    if (!empty($lieu_ids)) {
+        $matched_lieux = array_filter($all_lieux, fn($l) => in_array($l['id'] ?? '', $lieu_ids, true));
+    } elseif ($lieu_str !== '' && $lieu_str !== 'all') {
+        $matched_lieux = array_filter($all_lieux, fn($l) => ($l['id'] ?? '') === $lieu_str);
+    } else {
+        $matched_lieux = $all_lieux;
+    }
+
+    $platform_by_source = []; // source => ['total' => int, 'sum' => float]
+    foreach ($matched_lieux as $l) {
+        $p_count  = (int) ($l['reviews_count'] ?? 0);
+        $p_rating = (float) ($l['rating'] ?? 0);
+        $src      = $l['source'] ?? '';
+        if ($p_count <= 0 || !$src) continue;
+        if (!isset($platform_by_source[$src])) {
+            $platform_by_source[$src] = ['total' => 0, 'sum' => 0.0];
+        }
+        $platform_by_source[$src]['total'] += $p_count;
+        $platform_by_source[$src]['sum']   += $p_count * $p_rating;
+    }
+
+    // 3. Merge: for each source, take max(CPT, platform) — same as dashboard
+    $all_sources = array_unique(array_merge(array_keys($by_source), array_keys($platform_by_source)));
+    $total = 0;
+    $weighted_sum = 0.0;
+    $source_names = [];
+
+    foreach ($all_sources as $src) {
+        $cpt_cnt      = $by_source[$src] ?? 0;
+        $platform_cnt = $platform_by_source[$src]['total'] ?? 0;
+        $platform_avg = ($platform_cnt > 0)
+            ? ($platform_by_source[$src]['sum'] / $platform_cnt)
+            : 0;
+
+        $count_for_source = max($cpt_cnt, $platform_cnt);
+        $total += $count_for_source;
+
+        // For weighted average: use platform avg if platform has more reviews, otherwise CPT avg
+        if ($platform_cnt > $cpt_cnt && $platform_avg > 0) {
+            $weighted_sum += $platform_avg * $count_for_source;
+        } elseif ($cpt_cnt > 0) {
+            // Get CPT avg for this source
+            $src_avg_row = $wpdb->get_var($wpdb->prepare(
+                "SELECT AVG(CAST(pm_r.meta_value AS DECIMAL(3,1)))
+                 FROM {$wpdb->posts} p
+                 INNER JOIN {$wpdb->postmeta} pm_r ON pm_r.post_id = p.ID AND pm_r.meta_key = 'avis_rating'
+                 INNER JOIN {$wpdb->postmeta} pm_s ON pm_s.post_id = p.ID AND pm_s.meta_key = 'avis_source'
+                 {$joins}
+                 WHERE 1=1 {$wheres} AND pm_s.meta_value = %s",
+                $src
+            ));
+            $weighted_sum += (float) $src_avg_row * $count_for_source;
+        }
+
+        if ($count_for_source > 0) {
+            $source_names[] = $src;
+        }
+    }
+
+    $final_avg = ($total > 0) ? round($weighted_sum / $total, 1) : 0.0;
+
+    return [
+        'avg'     => $final_avg,
+        'count'   => $total,
+        'sources' => $source_names,
+    ];
+}
+
+/**
  * Icône SVG source (Google G, TripAdvisor, etc.)
  */
 function sj_source_icon(string $source): string {

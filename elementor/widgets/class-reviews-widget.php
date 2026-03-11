@@ -544,8 +544,8 @@ class ReviewsWidget extends SjWidgetBase {
             return;
         }
 
-        // Agrégat
-        $agg = sj_aggregate($reviews);
+        // Agrégat — enriched with platform data for badge/slider-ii header
+        $agg = $this->compute_enriched_aggregate($s);
 
         // ID unique pour le swiper
         $uid = 'sj-swiper-' . $this->get_id();
@@ -812,6 +812,15 @@ class ReviewsWidget extends SjWidgetBase {
 
     // ── DATA ─────────────────────────────────────────────────────────────────
 
+    /**
+     * Compute enriched aggregate matching dashboard logic (shared helper).
+     */
+    private function compute_enriched_aggregate(array $s): array {
+        $lieu_id = sanitize_text_field($s['lieu_id'] ?? 'all');
+        $sources = array_filter((array) ($s['source_filter'] ?? []));
+        return sj_enriched_stats($lieu_id, $sources);
+    }
+
     private function get_reviews(array $s, int $max): array {
         if ($s['source_type'] === 'acf_field') {
             return $this->get_acf_reviews($s, $max);
@@ -887,6 +896,10 @@ class ReviewsWidget extends SjWidgetBase {
 
     private function render_schema(array $reviews, array $s, array $agg): void {
         if (empty($reviews) || $agg['avg'] <= 0) return;
+
+        // Prevent duplicate JSON-LD when multiple SJ widgets are on the same page
+        if (!empty($GLOBALS['sj_reviews_schema_rendered'])) return;
+        $GLOBALS['sj_reviews_schema_rendered'] = true;
 
         $name = !empty($s['schema_name']) ? $s['schema_name'] : get_the_title();
         $type = $s['schema_type'] ?: 'LocalBusiness';
