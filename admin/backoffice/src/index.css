@@ -69,6 +69,11 @@
   padding: 0;
 }
 
+#sj-reviews-root :where(a) {
+  color: inherit;
+  text-decoration: inherit;
+}
+
 #sj-reviews-root :where(button) {
   cursor: pointer;
   font-family: inherit;
