@@ -17,7 +17,7 @@ const SOURCE_OPTIONS = [
   { value: 'autre',       label: 'Autre' },
 ]
 
-const EMPTY_FORM = { name: '', place_id: '', source: 'google', address: '', active: true, trustpilot_domain: '', tripadvisor_location_id: '' }
+const EMPTY_FORM = { name: '', place_id: '', source: 'google', address: '', active: true, trustpilot_domain: '', tripadvisor_location_id: '', manual_rating: '', manual_count: '' }
 
 function LieuForm({ initial = EMPTY_FORM, onSave, onCancel, saving }) {
   const [form, setForm] = useState({ ...EMPTY_FORM, ...initial })
@@ -41,6 +41,42 @@ function LieuForm({ initial = EMPTY_FORM, onSave, onCancel, saving }) {
       {form.source === 'tripadvisor' && (
         <Input label="Location ID TripAdvisor" value={form.tripadvisor_location_id} onChange={e => set('tripadvisor_location_id', e.target.value)} placeholder="188757" className="font-mono text-xs" />
       )}
+
+      {/* Manual rating override */}
+      <div className="sm:col-span-2 border border-dashed border-gray-300 rounded p-3 space-y-3">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Note manuelle (override)</p>
+        <p className="text-xs text-gray-400">Si renseigné, la synchronisation API ne remplacera pas ces valeurs.</p>
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            label="Note (ex: 4.8)"
+            value={form.manual_rating ?? ''}
+            onChange={e => set('manual_rating', e.target.value)}
+            placeholder="4.8"
+            type="number"
+            min="1"
+            max="5"
+            step="0.1"
+          />
+          <Input
+            label="Nombre d'avis (ex: 251)"
+            value={form.manual_count ?? ''}
+            onChange={e => set('manual_count', e.target.value)}
+            placeholder="251"
+            type="number"
+            min="0"
+            step="1"
+          />
+        </div>
+        {(form.manual_rating || form.manual_count) && (
+          <button
+            type="button"
+            onClick={() => { set('manual_rating', ''); set('manual_count', '') }}
+            className="text-xs text-red-500 hover:underline"
+          >
+            Effacer l'override
+          </button>
+        )}
+      </div>
 
       <div className="flex items-center gap-3 sm:col-span-2">
         <Toggle checked={form.active} onChange={v => set('active', v)} id="lieu-active" />
@@ -134,10 +170,11 @@ export default function Lieux() {
       }
       setLieux(prev => prev.map(l =>
         l.id === lieu.id
-          ? { ...l, rating: res.rating, reviews_count: res.reviews_count, last_sync: res.last_sync }
+          ? { ...l, rating: res.rating, reviews_count: res.reviews_count, last_sync: res.last_sync, manual_rating: res.manual_rating ?? l.manual_rating, manual_count: res.manual_count ?? l.manual_count }
           : l
       ))
-      toast.success(`${Number(res.rating).toFixed(1)}/5 · ${res.reviews_count?.toLocaleString()} avis`)
+      const note = `${Number(res.rating).toFixed(1)}/5 · ${res.reviews_count?.toLocaleString()} avis`
+      toast.success(res.manual_rating ? `Note manuelle conservée — ${note}` : note)
     } catch (e) {
       toast.error(e.message)
     } finally {
@@ -194,9 +231,13 @@ export default function Lieux() {
                     <Badge variant={lieu.source}>{SOURCE_OPTIONS.find(s => s.value === lieu.source)?.label ?? lieu.source}</Badge>
                     {!lieu.active && <Badge variant="warn">Inactif</Badge>}
                     {lieu.rating > 0 && (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5">
+                      <span
+                        title={lieu.manual_rating ? 'Note manuelle (override actif)' : 'Note synchronisée'}
+                        className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 border ${lieu.manual_rating ? 'text-violet-700 bg-violet-50 border-violet-200' : 'text-amber-700 bg-amber-50 border-amber-200'}`}
+                      >
                         <IconStar size={10} strokeWidth={1.5} />
                         {Number(lieu.rating).toFixed(1)} · {lieu.reviews_count?.toLocaleString()} avis
+                        {lieu.manual_rating && <span className="ml-0.5 text-[9px] font-bold uppercase tracking-wide opacity-60">manuel</span>}
                       </span>
                     )}
                     {!lieu.rating && lieu.avis_count > 0 && (
