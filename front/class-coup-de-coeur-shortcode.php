@@ -67,8 +67,8 @@ class CoupDeCoeurShortcode {
         // Ne rien afficher si aucun avis
         if ($count === 0) return '';
 
-        $avg_fmt   = number_format($avg, 2, ',', '');
-        $count_fmt = number_format($count, 0, ',', ' ');
+        $avg_fmt   = sj_format_rating($avg, 2, ',');
+        $count_fmt = sj_format_count($count);
 
         ob_start();
         ?>
@@ -116,24 +116,10 @@ class CoupDeCoeurShortcode {
         return ob_get_clean();
     }
 
-    /**
-     * Génère des étoiles SVG partielles.
-     *
-     * Star color and empty color are passed as defaults here, but can be
-     * overridden via Elementor's `selectors` system (SharedControls trait).
-     */
+    /** Génère des étoiles SVG partielles (délègue au helper global) */
     public static function stars_html(float $rating, string $color = '#222222', string $empty_color = '#d1d5db'): string {
-        $html = '<span class="sj-cdc__stars-wrap" aria-label="' . esc_attr(number_format($rating, 1)) . ' sur 5">';
-        for ($i = 1; $i <= 5; $i++) {
-            $fill = min(1.0, max(0.0, $rating - ($i - 1)));
-            $pct  = round($fill * 100);
-            $id   = 'cdc-' . uniqid();
-            $html .= '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 32 32" aria-hidden="true">';
-            $html .= '<defs><linearGradient id="' . $id . '"><stop offset="' . $pct . '%" stop-color="' . esc_attr($color) . '"/><stop offset="' . $pct . '%" stop-color="' . esc_attr($empty_color) . '"/></linearGradient></defs>';
-            $html .= '<path fill-rule="evenodd" d="m15.1 1.58-4.13 8.88-9.86 1.27a1 1 0 0 0-.54 1.74l7.3 6.57-1.97 9.85a1 1 0 0 0 1.48 1.06l8.62-5 8.63 5a1 1 0 0 0 1.48-1.06l-1.97-9.85 7.3-6.57a1 1 0 0 0-.55-1.73l-9.86-1.28-4.12-8.88a1 1 0 0 0-1.82 0z" fill="url(#' . $id . ')"/>';
-            $html .= '</svg>';
-        }
-        return $html . '</span>';
+        $star_path = '<path fill-rule="evenodd" d="m15.1 1.58-4.13 8.88-9.86 1.27a1 1 0 0 0-.54 1.74l7.3 6.57-1.97 9.85a1 1 0 0 0 1.48 1.06l8.62-5 8.63 5a1 1 0 0 0 1.48-1.06l-1.97-9.85 7.3-6.57a1 1 0 0 0-.55-1.73l-9.86-1.28-4.12-8.88a1 1 0 0 0-1.82 0z" fill="url(#{{ID}})"/>';
+        return sj_stars_svg($rating, $color, $empty_color, 10, $star_path, '0 0 32 32', 'sj-cdc__stars-wrap');
     }
 
     /** SVG feuille gauche (Airbnb-inspired) */

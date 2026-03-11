@@ -71,10 +71,9 @@ class InlineRatingShortcode {
         // Format du score : "4.8/5" ou "5/5" si entier
         $score_str = (fmod($avg, 1.0) === 0.0)
             ? intval($avg) . '/5'
-            : number_format($avg, 1, '.', '') . '/5';
+            : sj_format_rating($avg) . '/5';
 
-        // Format du count avec espace insécable comme séparateur des milliers
-        $count_str = number_format($count, 0, ',', "\xc2\xa0"); // U+00A0 NBSP
+        $count_str = sj_format_count($count);
 
         // Étoiles : Unicode remplies/vides selon round($avg)
         $stars_str = '';

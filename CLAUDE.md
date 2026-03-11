@@ -199,6 +199,8 @@ Call them in `register_controls()` with one line each.
 | `register_lieu_control($opts)` | Lieu selector (DataControls) | SELECT with all lieux from settings. Options: `default`, `show_auto`, `show_all`, `all_key`, `all_label`, `condition` |
 | `register_source_filter_control($opts)` | Source filter (DataControls) | SELECT2 multi with Labels::SOURCES. Options: `condition` |
 | `register_lieu_ids_control()` | Multi-lieu filter (DataControls) | SELECT2 multi with all lieux |
+| `register_show_control($id, $label, $default, $extras)` | SWITCHER toggle (DataControls) | Single on/off toggle. `$extras`: `condition`, `separator`, `description`, `return_value` |
+| `register_toggle_text_control($prefix, ...)` | SWITCHER + TEXT (DataControls) | Toggle `show_{prefix}` + conditional text `{prefix}_{suffix}`. Args: `$toggle_label`, `$text_label`, `$text_default`, `$toggle_default`, `$extras`, `$text_suffix` |
 
 **All style methods accept an optional `$defaults` array for initial values.**
 
@@ -275,7 +277,11 @@ Reviews are linked to posts via `avis_linked_post` meta key on `sj_avis` posts.
 - `sj_normalize_review(WP_Post)` — Normalize to array (ACF or post_meta)
 - `sj_aggregate(array $reviews)` — Returns `['avg' => float, 'count' => int]`
 - `sj_enriched_stats(string|array $lieu_id, array $sources)` — **Enriched stats matching dashboard** (see below)
-- `sj_stars_html(int $rating, int $max, string $color)` — SVG stars
+- `sj_stars_html(int $rating, int $max, string $color)` — SVG stars (filled/empty, integer ratings)
+- `sj_stars_svg(float $rating, string $color, string $empty, int $size, string $path, string $viewbox, string $class)` — **Partial-fill gradient SVG stars** (decimal ratings, customizable path/size)
+- `sj_format_rating(float $rating, int $decimals, string $dec_sep)` — Format rating number (e.g. `4.8`)
+- `sj_format_count(int $count)` — Format count with non-breaking space separator (e.g. `1 340`)
+- `sj_output_schema(array $schema)` — Output JSON-LD `<script>` with duplicate prevention
 - `sj_relative_date(string|int)` — French relative date
 - `sj_source_icon(string)` — Source SVG icon
 

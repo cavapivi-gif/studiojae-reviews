@@ -729,9 +729,7 @@ if (!empty($a['max_width_mobile'])) {
     <?php endif; // show_reviews ?>
 
 </div><!-- /.sj-summary -->
-<?php if ($a['schema_enabled'] !== '0' && !is_admin() && $stats['avg'] > 0 && empty($GLOBALS['sj_reviews_schema_rendered'])): ?>
-<?php $GLOBALS['sj_reviews_schema_rendered'] = true; ?>
-<script type="application/ld+json"><?php
+<?php if ($a['schema_enabled'] !== '0' && !is_admin() && $stats['avg'] > 0):
     $schema_type = $a['schema_type'] ?: 'LocalBusiness';
     $schema_name = $a['schema_name'] ?: (get_the_title() ?: get_bloginfo('name'));
     $schema = [
@@ -774,7 +772,6 @@ if (!empty($a['max_width_mobile'])) {
     // Inject a few individual reviews for Google rich results (max 5)
     $schema_reviews = [];
     $candidates = array_filter($reviews, fn($r) => $r['rating'] >= 1 && $r['rating'] <= 5 && !empty($r['text']));
-    // Sort by rating DESC then date DESC to pick the best/most recent
     usort($candidates, function($a, $b) {
         if ($b['rating'] !== $a['rating']) return $b['rating'] - $a['rating'];
         return strcmp($b['date'], $a['date']);
@@ -805,9 +802,8 @@ if (!empty($a['max_width_mobile'])) {
         $schema['review'] = $schema_reviews;
     }
 
-    echo wp_json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-?></script>
-<?php endif; ?>
+    sj_output_schema($schema);
+endif; ?>
         <?php
         return ob_get_clean();
     }
