@@ -223,6 +223,11 @@ class RestApi {
             'callback'            => [$this, 'test_tripadvisor_key'],
             'permission_callback' => [$this, 'is_manager'],
         ]);
+        register_rest_route($this->ns, '/settings/test-anthropic-key', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'test_anthropic_key'],
+            'permission_callback' => [$this, 'is_manager'],
+        ]);
 
         // Export CSV
         register_rest_route($this->ns, '/export', [
@@ -1945,6 +1950,46 @@ class RestApi {
         return rest_ensure_response(['ok' => false, 'message' => $body['message'] ?? "HTTP {$code}"]);
     }
 
+    public function test_anthropic_key(\WP_REST_Request $req): \WP_REST_Response {
+        $key = sanitize_text_field($req['key'] ?? '');
+        if (empty($key)) {
+            return rest_ensure_response(['ok' => false, 'message' => 'Clé API manquante.']);
+        }
+
+        $body = wp_json_encode([
+            'model'      => 'claude-haiku-4-5-20251001',
+            'max_tokens' => 80,
+            'messages'   => [
+                ['role' => 'user', 'content' => 'Réponds avec une blague très courte (1 ligne max) en français pour confirmer que tu es bien connecté. Commence directement par la blague, sans introduction.'],
+            ],
+        ]);
+
+        $response = wp_remote_post('https://api.anthropic.com/v1/messages', [
+            'timeout' => 15,
+            'headers' => [
+                'Content-Type'      => 'application/json',
+                'x-api-key'         => $key,
+                'anthropic-version' => '2023-06-01',
+            ],
+            'body' => $body,
+        ]);
+
+        if (is_wp_error($response)) {
+            return rest_ensure_response(['ok' => false, 'message' => $response->get_error_message()]);
+        }
+
+        $code = wp_remote_retrieve_response_code($response);
+        $data = json_decode(wp_remote_retrieve_body($response), true);
+
+        if ($code !== 200) {
+            $msg = $data['error']['message'] ?? "Erreur API (HTTP {$code})";
+            return rest_ensure_response(['ok' => false, 'message' => $msg]);
+        }
+
+        $joke = sanitize_text_field($data['content'][0]['text'] ?? '');
+        return rest_ensure_response(['ok' => true, 'message' => $joke]);
+    }
+
     public function save_settings(\WP_REST_Request $req): \WP_REST_Response {
         $body    = $req->get_json_params();
         $allowed = [
@@ -2427,6 +2472,11 @@ class RestApi {
 
         $lieu_id = $req->get_param('lieu_id') ?: 'all';
         $cached = \SJ_Reviews\Includes\AiSummary::get_cached($lieu_id);
+
+        // Fallback: if no cache for specific lieu, try 'all'
+        if (!$cached && $lieu_id !== 'all') {
+            $cached = \SJ_Reviews\Includes\AiSummary::get_cached('all');
+        }
 
         if (!$cached) {
             return new \WP_REST_Response(['summary' => null], 200);
