@@ -42,7 +42,7 @@ class InlineRatingShortcode {
             'separator_type' => 'none',
         ], $atts, 'sj_inline_rating');
 
-        $lieu_id        = sanitize_text_field($a['lieu_id']);
+        $lieu_id        = sj_resolve_lieu($a['lieu_id']);
         $show_stars     = (bool)(int) $a['show_stars'];
         $show_score     = (bool)(int) $a['show_score'];
         $show_count     = (bool)(int) $a['show_count'];

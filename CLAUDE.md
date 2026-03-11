@@ -263,6 +263,8 @@ Platform APIs (Google, Regiondo, TripAdvisor)
     → reviews_count + rating stored on lieu settings
 
 Widget render:
+    sj_resolve_lieu('auto')
+        → post meta sj_lieu_id (direct) → or reverse-lookup via avis_linked_post → or 'all'
     sj_enriched_stats(lieu_id, sources)
         → CPT count per source (SQL)
         → Platform count per source (lieu settings)
@@ -276,6 +278,7 @@ Reviews are linked to posts via `avis_linked_post` meta key on `sj_avis` posts.
 - `sj_get_reviews(array $args)` — WP_Query wrapper for sj_avis
 - `sj_normalize_review(WP_Post)` — Normalize to array (ACF or post_meta)
 - `sj_aggregate(array $reviews)` — Returns `['avg' => float, 'count' => int]`
+- `sj_resolve_lieu(string $lieu_id)` — **Resolve 'auto' lieu** to actual lieu_id (checks `sj_lieu_id` meta, then reverse-lookups linked reviews). Used by all widgets/shortcodes.
 - `sj_enriched_stats(string|array $lieu_id, array $sources)` — **Enriched stats matching dashboard** (see below)
 - `sj_stars_html(int $rating, int $max, string $color)` — SVG stars (filled/empty, integer ratings)
 - `sj_stars_svg(float $rating, string $color, string $empty, int $size, string $path, string $viewbox, string $class)` — **Partial-fill gradient SVG stars** (decimal ratings, customizable path/size)
@@ -318,6 +321,8 @@ $stats = sj_enriched_stats('', ['google', 'regiondo']);
 - ALL widgets displaying a review count MUST use `sj_enriched_stats()`, never raw `sj_aggregate()`
 - The dashboard REST API (`class-rest-api.php` line 644) uses the same formula
 - `sj_aggregate()` is only for internal per-review-list computation (e.g. sorting)
+- ALL widgets with a lieu selector MUST use `sj_resolve_lieu()` to handle `'auto'` before passing to `sj_enriched_stats()` or `sj_get_reviews()`
+- ALL widgets SHOULD use `register_lieu_control(['show_auto' => true])` to offer the "Auto (lieu de la page)" option
 
 ---
 

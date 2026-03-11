@@ -200,6 +200,47 @@ function sj_aggregate(array $reviews): array {
 }
 
 /**
+ * Resolve a lieu_id value, handling the 'auto' case.
+ *
+ * When 'auto': detects the current post's sj_lieu_id meta, or looks up
+ * the lieu_id from reviews linked to the current post. Falls back to 'all'.
+ *
+ * Shared by all widgets/shortcodes that support auto-lieu detection.
+ *
+ * @param string $lieu_id  'auto' | 'all' | '' | 'lieu_xxxx'
+ * @return string Resolved lieu_id (never 'auto').
+ */
+function sj_resolve_lieu(string $lieu_id): string {
+    if ($lieu_id !== 'auto') {
+        return sanitize_key($lieu_id);
+    }
+
+    $post_id = get_the_ID();
+    if (!$post_id) return 'all';
+
+    // Direct meta on the post (set via lieu metabox)
+    $direct = get_post_meta($post_id, 'sj_lieu_id', true);
+    if ($direct) return sanitize_key($direct);
+
+    // Reverse lookup: find lieu_id from reviews linked to this post
+    global $wpdb;
+    $found = $wpdb->get_var($wpdb->prepare(
+        "SELECT pm2.meta_value
+         FROM {$wpdb->postmeta} pm1
+         INNER JOIN {$wpdb->postmeta} pm2 ON pm1.post_id = pm2.post_id
+         INNER JOIN {$wpdb->posts} p ON p.ID = pm1.post_id
+         WHERE pm1.meta_key  = 'avis_linked_post' AND pm1.meta_value = %s
+           AND pm2.meta_key  = 'avis_lieu_id'     AND pm2.meta_value != ''
+           AND p.post_type   = 'sj_avis'
+           AND p.post_status = 'publish'
+         LIMIT 1",
+        (string) $post_id
+    ));
+
+    return $found ? sanitize_key($found) : 'all';
+}
+
+/**
  * Compute enriched aggregate stats matching the dashboard logic exactly.
  *
  * For each source, takes max(CPT count, platform count) then sums all sources.

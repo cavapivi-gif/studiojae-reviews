@@ -79,7 +79,7 @@ class ReviewsWidget extends SjWidgetBase {
             'default' => 'cpt',
         ]);
 
-        $this->register_lieu_control(['default' => 'all', 'condition' => ['source_type' => 'cpt']]);
+        $this->register_lieu_control(['default' => 'auto', 'show_auto' => true, 'condition' => ['source_type' => 'cpt']]);
 
         $this->add_control('max_reviews', [
             'label'   => __('Nombre max d\'avis', 'sj-reviews'),
@@ -685,7 +685,7 @@ class ReviewsWidget extends SjWidgetBase {
      * Compute enriched aggregate matching dashboard logic (shared helper).
      */
     private function compute_enriched_aggregate(array $s): array {
-        $lieu_id = sanitize_text_field($s['lieu_id'] ?? 'all');
+        $lieu_id = sj_resolve_lieu($s['lieu_id'] ?? 'auto');
         $sources = array_filter((array) ($s['source_filter'] ?? []));
         return sj_enriched_stats($lieu_id, $sources);
     }
@@ -706,7 +706,7 @@ class ReviewsWidget extends SjWidgetBase {
                 'type'    => 'NUMERIC',
             ];
         }
-        $lieu_id = sanitize_text_field($s['lieu_id'] ?? 'all');
+        $lieu_id = sj_resolve_lieu($s['lieu_id'] ?? 'auto');
         if ($lieu_id && $lieu_id !== 'all') {
             $meta_query[] = [
                 'key'   => 'avis_lieu_id',

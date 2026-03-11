@@ -92,29 +92,7 @@ class SummaryShortcode {
     // ── Résolution du lieu ────────────────────────────────────────────────────
 
     private function resolve_lieu(string $req): string {
-        if ($req !== 'auto') return sanitize_key($req);
-
-        $post_id = get_the_ID();
-        if (!$post_id) return 'all';
-
-        $direct = get_post_meta($post_id, 'sj_lieu_id', true);
-        if ($direct) return sanitize_key($direct);
-
-        global $wpdb;
-        $found = $wpdb->get_var($wpdb->prepare(
-            "SELECT pm2.meta_value
-             FROM {$wpdb->postmeta} pm1
-             INNER JOIN {$wpdb->postmeta} pm2 ON pm1.post_id = pm2.post_id
-             INNER JOIN {$wpdb->posts} p ON p.ID = pm1.post_id
-             WHERE pm1.meta_key  = 'avis_linked_post' AND pm1.meta_value = %s
-               AND pm2.meta_key  = 'avis_lieu_id'     AND pm2.meta_value != ''
-               AND p.post_type   = 'sj_avis'
-               AND p.post_status = 'publish'
-             LIMIT 1",
-            (string) $post_id
-        ));
-
-        return $found ? sanitize_key($found) : 'all';
+        return sj_resolve_lieu($req);
     }
 
     // ── Récupération des avis ─────────────────────────────────────────────────
