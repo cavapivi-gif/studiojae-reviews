@@ -79,19 +79,7 @@ class ReviewsWidget extends SjWidgetBase {
             'default' => 'cpt',
         ]);
 
-        // Lieu filter
-        $lieux = \SJ_Reviews\Includes\Settings::lieux();
-        $lieu_opts = ['all' => __('Tous les lieux', 'sj-reviews')];
-        foreach ($lieux as $l) {
-            $lieu_opts[$l['id']] = esc_html(($l['name'] ?? $l['id']) . ' (' . ($l['source'] ?? '') . ')');
-        }
-        $this->add_control('lieu_id', [
-            'label'     => __('Lieu', 'sj-reviews'),
-            'type'      => \Elementor\Controls_Manager::SELECT,
-            'options'   => $lieu_opts,
-            'default'   => 'all',
-            'condition' => ['source_type' => 'cpt'],
-        ]);
+        $this->register_lieu_control(['default' => 'all', 'condition' => ['source_type' => 'cpt']]);
 
         $this->add_control('max_reviews', [
             'label'   => __('Nombre max d\'avis', 'sj-reviews'),
@@ -108,15 +96,7 @@ class ReviewsWidget extends SjWidgetBase {
             'default' => 0,
         ]);
 
-        $this->add_control('source_filter', [
-            'label'       => __('Filtrer par source(s)', 'sj-reviews'),
-            'type'        => \Elementor\Controls_Manager::SELECT2,
-            'multiple'    => true,
-            'options'     => \SJ_Reviews\Includes\Labels::SOURCES,
-            'default'     => [],
-            'description' => __('Laisser vide = toutes les sources', 'sj-reviews'),
-            'condition'   => ['source_type' => 'cpt'],
-        ]);
+        $this->register_source_filter_control(['condition' => ['source_type' => 'cpt']]);
 
         $this->add_control('orderby', [
             'label'   => __('Tri des avis', 'sj-reviews'),

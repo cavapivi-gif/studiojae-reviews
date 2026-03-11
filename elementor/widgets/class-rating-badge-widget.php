@@ -43,12 +43,6 @@ class RatingBadgeWidget extends SjWidgetBase {
     }
 
     protected function register_controls(): void {
-        $lieux  = \SJ_Reviews\Includes\Settings::lieux();
-        $opts   = ['all' => 'Tous les lieux actifs'];
-        foreach ($lieux as $l) {
-            $opts[$l['id']] = esc_html($l['name'] . ' (' . ($l['source'] ?? '') . ')');
-        }
-
         // ── CONTENT TAB ─────────────────────────────────────────────────────
 
         $this->start_controls_section('section_content', [
@@ -56,12 +50,7 @@ class RatingBadgeWidget extends SjWidgetBase {
             'tab'   => Controls_Manager::TAB_CONTENT,
         ]);
 
-        $this->add_control('lieu_id', [
-            'label'   => 'Lieu',
-            'type'    => Controls_Manager::SELECT,
-            'options' => $opts,
-            'default' => 'all',
-        ]);
+        $this->register_lieu_control(['default' => 'all', 'all_label' => 'Tous les lieux actifs']);
 
         $this->add_control('design', [
             'label'   => 'Design',

@@ -69,45 +69,9 @@ class SummaryWidget extends SjWidgetBase {
             'tab'   => Controls_Manager::TAB_CONTENT,
         ]);
 
-        $lieux     = \SJ_Reviews\Includes\Settings::lieux();
-        $lieu_opts = [
-            'auto' => __('Auto (lieu de la page)', 'sj-reviews'),
-            'all'  => __('Tous les avis',          'sj-reviews'),
-        ];
-        foreach ($lieux as $l) {
-            $lieu_opts[$l['id']] = esc_html($l['name'] . ($l['active'] ? '' : ' (inactif)'));
-        }
-
-        $this->add_control('lieu_id', [
-            'label'   => __('Lieu affiché', 'sj-reviews'),
-            'type'    => Controls_Manager::SELECT,
-            'options' => $lieu_opts,
-            'default' => 'auto',
-        ]);
-
-        $this->add_control(
-            'source_filter',
-            [
-                'label'    => __('Filtrer par source(s)', 'sj-reviews'),
-                'type'     => Controls_Manager::SELECT2,
-                'multiple' => true,
-                'options'  => \SJ_Reviews\Includes\Labels::SOURCES,
-                'default'  => [],
-                'description' => __('Laisser vide = toutes les sources', 'sj-reviews'),
-            ]
-        );
-
-        $this->add_control(
-            'lieu_ids',
-            [
-                'label'    => __('Filtrer par lieu(x)', 'sj-reviews'),
-                'type'     => Controls_Manager::SELECT2,
-                'multiple' => true,
-                'options'  => $lieu_opts,
-                'default'  => [],
-                'description' => __('Laisser vide = tous les lieux', 'sj-reviews'),
-            ]
-        );
+        $this->register_lieu_control(['default' => 'auto', 'show_auto' => true, 'all_key' => 'all', 'all_label' => 'Tous les avis']);
+        $this->register_source_filter_control();
+        $this->register_lieu_ids_control();
 
         $this->add_control(
             'schema_enabled',

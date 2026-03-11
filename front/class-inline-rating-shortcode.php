@@ -7,8 +7,9 @@ defined('ABSPATH') || exit;
  * Shortcode [sj_inline_rating] — badge inline minimaliste
  *
  * Attributs :
- *   lieu_id      string  '' = tous | identifiant de lieu
- *   show_stars   1|0     Afficher les étoiles Unicode (défaut : 1)
+ *   lieu_id       string  '' = tous | identifiant de lieu
+ *   source_filter string  '' = toutes | sources séparées par virgule (google,regiondo)
+ *   show_stars    1|0     Afficher les étoiles Unicode (défaut : 1)
  *   show_score   1|0     Afficher "4.8/5" (défaut : 1)
  *   show_count   1|0     Afficher "sur 1 340 avis" (défaut : 1)
  *   show_sources 0|1     Afficher "(Google, TripAdvisor)" (défaut : 0)
@@ -30,6 +31,7 @@ class InlineRatingShortcode {
 
         $a = shortcode_atts([
             'lieu_id'        => '',
+            'source_filter'  => '',
             'show_stars'     => '1',
             'show_score'     => '1',
             'show_count'     => '1',
@@ -56,7 +58,10 @@ class InlineRatingShortcode {
             : '';
 
         // Enriched stats — same formula as dashboard (per-source max of CPT vs platform)
-        $enriched = sj_enriched_stats($lieu_id);
+        $source_filter = !empty($a['source_filter'])
+            ? array_filter(array_map('trim', explode(',', $a['source_filter'])))
+            : [];
+        $enriched = sj_enriched_stats($lieu_id, $source_filter);
         $avg      = $enriched['avg'];
         $count    = $enriched['count'];
         $all_src  = $enriched['sources'];

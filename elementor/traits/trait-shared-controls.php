@@ -15,6 +15,7 @@ defined('ABSPATH') || exit;
  *   - BoxControls:         register_box_controls(), register_box_hover_controls(), register_layout_controls()
  *   - InteractiveControls: register_button_controls(), register_pill_controls()
  *   - MediaControls:       register_avatar_controls(), register_stars_controls(), register_bar_controls()
+ *   - DataControls:        register_lieu_control(), register_source_filter_control(), register_lieu_ids_control()
  *
  * @see CLAUDE.md for full architecture guide.
  */
@@ -24,4 +25,5 @@ trait SharedControls {
     use BoxControls;
     use InteractiveControls;
     use MediaControls;
+    use DataControls;
 }

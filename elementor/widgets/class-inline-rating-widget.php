@@ -41,11 +41,6 @@ class InlineRatingWidget extends SjWidgetBase {
     }
 
     protected function register_controls(): void {
-        $lieux = \SJ_Reviews\Includes\Settings::lieux();
-        $opts  = ['' => 'Tous les lieux'];
-        foreach ($lieux as $l) {
-            $opts[$l['id']] = esc_html(($l['name'] ?? $l['id']) . ' (' . ($l['source'] ?? '') . ')');
-        }
 
         // ── CONTENT TAB ─────────────────────────────────────────────────────
 
@@ -54,12 +49,8 @@ class InlineRatingWidget extends SjWidgetBase {
             'tab'   => Controls_Manager::TAB_CONTENT,
         ]);
 
-        $this->add_control('lieu_id', [
-            'label'   => 'Lieu',
-            'type'    => Controls_Manager::SELECT,
-            'options' => $opts,
-            'default' => '',
-        ]);
+        $this->register_lieu_control(['default' => '', 'show_all' => true, 'all_label' => 'Tous les lieux']);
+        $this->register_source_filter_control();
 
         $this->add_control('show_stars', [
             'label'        => 'Afficher les étoiles',
@@ -250,6 +241,7 @@ class InlineRatingWidget extends SjWidgetBase {
 
         $atts = [
             'lieu_id'        => $s['lieu_id']        ?? '',
+            'source_filter'  => implode(',', array_filter((array) ($s['source_filter'] ?? []))),
             'show_stars'     => $s['show_stars']     ?? '1',
             'show_score'     => $s['show_score']     ?? '1',
             'show_count'     => $s['show_count']     ?? '1',

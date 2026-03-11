@@ -71,6 +71,7 @@ class Plugin {
             require_once SJ_REVIEWS_DIR . 'elementor/traits/trait-box-controls.php';
             require_once SJ_REVIEWS_DIR . 'elementor/traits/trait-interactive-controls.php';
             require_once SJ_REVIEWS_DIR . 'elementor/traits/trait-media-controls.php';
+            require_once SJ_REVIEWS_DIR . 'elementor/traits/trait-data-controls.php';
             require_once SJ_REVIEWS_DIR . 'elementor/traits/trait-shared-controls.php';
             require_once SJ_REVIEWS_DIR . 'elementor/traits/trait-reviews-style-controls.php';
             require_once SJ_REVIEWS_DIR . 'elementor/traits/trait-summary-style-controls.php';
