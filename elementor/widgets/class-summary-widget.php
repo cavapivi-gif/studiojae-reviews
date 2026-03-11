@@ -115,8 +115,30 @@ class SummaryWidget extends SjWidgetBase {
                 'type'         => Controls_Manager::SWITCHER,
                 'return_value' => '1',
                 'default'      => '1',
+                'separator'    => 'before',
             ]
         );
+
+        $this->add_control('schema_type', [
+            'label'     => __('@type entité', 'sj-reviews'),
+            'type'      => Controls_Manager::SELECT,
+            'options'   => [
+                'LocalBusiness' => 'LocalBusiness',
+                'Product'       => 'Product',
+                'Service'       => 'Service',
+                'TouristTrip'   => 'TouristTrip',
+            ],
+            'default'   => 'LocalBusiness',
+            'condition' => ['schema_enabled' => '1'],
+        ]);
+
+        $this->add_control('schema_name', [
+            'label'       => __('Nom de l\'entité (vide = titre du post)', 'sj-reviews'),
+            'type'        => Controls_Manager::TEXT,
+            'default'     => '',
+            'dynamic'     => ['active' => true],
+            'condition'   => ['schema_enabled' => '1'],
+        ]);
 
         $this->end_controls_section();
 
@@ -320,6 +342,8 @@ class SummaryWidget extends SjWidgetBase {
             'show_verified_banner' => ($s['show_verified_banner'] ?? '') === '1' ? '1' : '0',
             'verified_banner_text' => $s['verified_banner_text'] ?? 'Tous les avis proviennent de client·es vérifié·es',
             'schema_enabled'       => ($s['schema_enabled']       ?? '') === '1' ? '1' : '0',
+            'schema_type'          => $s['schema_type']          ?? 'LocalBusiness',
+            'schema_name'          => $s['schema_name']          ?? '',
             'source_filter'        => implode(',', (array) ($s['source_filter'] ?? [])),
             'lieu_ids'             => implode(',', (array) ($s['lieu_ids'] ?? [])),
             'score_layout'         => $s['score_layout']  ?? 'default',

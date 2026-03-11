@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   Sidebar,
@@ -10,18 +11,36 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarRail,
 } from '@/components/ui/sidebar'
-import { IconDashboard, IconStar, IconPlus, IconSettings, IconExternalLink, IconMapPin, IconUpload } from './Icons'
+import {
+  IconDashboard, IconStar, IconPlus, IconSettings, IconExternalLink,
+  IconMapPin, IconRocket, IconChevronRight,
+  IconKey, IconPalette, IconSliders, IconLink, IconCode,
+} from './Icons'
 
+/* ── Navigation tree ─────────────────────────────────────── */
 const navMain = [
   { to: '/dashboard',   label: 'Tableau de bord', icon: IconDashboard },
   { to: '/reviews',     label: 'Tous les avis',   icon: IconStar },
   { to: '/reviews/new', label: 'Ajouter un avis', icon: IconPlus },
   { to: '/lieux',       label: 'Lieux',            icon: IconMapPin },
-  { to: '/import',      label: 'Import CSV',       icon: IconUpload },
-  { to: '/settings',    label: 'Réglages',          icon: IconSettings },
-  { to: '/docs',        label: 'Documentation',    icon: IconExternalLink },
+  { to: '/import',      label: 'Onboarding',       icon: IconRocket },
+  {
+    label: 'Réglages',
+    icon: IconSettings,
+    children: [
+      { to: '/settings/api',        label: 'API & Sync',   icon: IconKey },
+      { to: '/settings/display',    label: 'Affichage',    icon: IconPalette },
+      { to: '/settings/criteria',   label: 'Critères',     icon: IconSliders },
+      { to: '/settings/links',      label: 'Liaisons',     icon: IconLink },
+      { to: '/settings/shortcodes', label: 'Shortcodes',   icon: IconCode },
+    ],
+  },
+  { to: '/docs', label: 'Documentation', icon: IconExternalLink },
 ]
 
 export default function AppSidebar(props) {
@@ -32,6 +51,11 @@ export default function AppSidebar(props) {
     if (to === '/reviews') return location.pathname === '/reviews'
     return location.pathname.startsWith(to)
   }
+
+  // Settings sub-tree is open if any settings route is active
+  const settingsOpen = location.pathname.startsWith('/settings')
+  const [forceOpen, setForceOpen] = useState(null)
+  const isSettingsExpanded = forceOpen !== null ? forceOpen : settingsOpen
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -60,20 +84,62 @@ export default function AppSidebar(props) {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navMain.map(({ to, label, icon: Icon }) => (
-                <SidebarMenuItem key={to}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(to)}
-                    tooltip={label}
-                  >
-                    <NavLink to={to}>
-                      <Icon size={16} strokeWidth={1.5} />
-                      <span>{label}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {navMain.map((item) =>
+                item.children ? (
+                  /* ── Collapsible tree item (Réglages) ── */
+                  <SidebarMenuItem key={item.label}>
+                    <SidebarMenuButton
+                      tooltip={item.label}
+                      isActive={settingsOpen}
+                      onClick={() => setForceOpen(o => o === null ? !settingsOpen : !o)}
+                    >
+                      <item.icon size={16} strokeWidth={1.5} />
+                      <span className="flex-1">{item.label}</span>
+                      <IconChevronRight
+                        size={14}
+                        strokeWidth={1.5}
+                        style={{
+                          transition: 'transform 200ms',
+                          transform: isSettingsExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                        }}
+                      />
+                    </SidebarMenuButton>
+
+                    {isSettingsExpanded && (
+                      <SidebarMenuSub>
+                        {item.children.map(({ to, label, icon: SubIcon }) => (
+                          <SidebarMenuSubItem key={to}>
+                            <SidebarMenuSubButton
+                              asChild
+                              size="sm"
+                              isActive={isActive(to)}
+                            >
+                              <NavLink to={to}>
+                                <SubIcon size={14} strokeWidth={1.5} />
+                                <span>{label}</span>
+                              </NavLink>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    )}
+                  </SidebarMenuItem>
+                ) : (
+                  /* ── Simple nav item ── */
+                  <SidebarMenuItem key={item.to}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive(item.to)}
+                      tooltip={item.label}
+                    >
+                      <NavLink to={item.to}>
+                        <item.icon size={16} strokeWidth={1.5} />
+                        <span>{item.label}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

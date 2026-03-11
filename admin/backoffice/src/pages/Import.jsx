@@ -635,9 +635,35 @@ function Step5Preview({ data, columnMap, defaults, productMap, onBack, onDone })
   )
 }
 
-/* ── Wizard principal ────────────────────────────────────────────── */
+/* ── Action card component ───────────────────────────────────────── */
+function ActionCard({ icon, title, description, action, actionLabel, variant = 'default', done = false }) {
+  return (
+    <div className={`border rounded-lg p-5 flex flex-col gap-3 transition-colors ${
+      done ? 'border-green-200 bg-green-50/50' : variant === 'primary' ? 'border-black bg-gray-50' : 'border-gray-200'
+    }`}>
+      <div className="flex items-start gap-3">
+        <span className="text-xl shrink-0">{icon}</span>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+            {title}
+            {done && <span className="text-xs font-medium text-green-700 bg-green-100 px-1.5 py-0.5 rounded">OK</span>}
+          </h3>
+          <p className="text-xs text-gray-500 mt-1">{description}</p>
+        </div>
+      </div>
+      {action && (
+        <Btn size="sm" variant={variant === 'primary' ? 'default' : 'outline'} onClick={action} className="self-start">
+          {actionLabel}
+        </Btn>
+      )}
+    </div>
+  )
+}
+
+/* ── Main Onboarding / Import page ──────────────────────────────── */
 export default function Import() {
   const navigate = useNavigate()
+  const [mode, setMode] = useState('hub') // 'hub' or 'csv'
   const [step, setStep] = useState(0)
   const [state, setState] = useState({})
 
@@ -645,13 +671,85 @@ export default function Import() {
     setState(prev => ({ ...prev, ...data }))
     setStep(s => s + 1)
   }
-  const back = () => setStep(s => Math.max(0, s - 1))
+  const back = () => {
+    if (step === 0) { setMode('hub'); return }
+    setStep(s => Math.max(0, s - 1))
+  }
 
+  // Hub mode — onboarding landing
+  if (mode === 'hub') {
+    return (
+      <div>
+        <PageHeader
+          title="Onboarding"
+          subtitle="Configurez votre plugin et importez vos premiers avis"
+        />
+
+        <div className="px-8 py-6 max-w-2xl space-y-4">
+          {/* Step 1: Configure API */}
+          <ActionCard
+            icon="1"
+            title="Configurer vos sources"
+            description="Ajoutez vos clés API (Google, Trustpilot, TripAdvisor) et configurez la synchronisation automatique."
+            action={() => navigate('/settings/api')}
+            actionLabel="Configurer les API"
+          />
+
+          {/* Step 2: Create locations */}
+          <ActionCard
+            icon="2"
+            title="Ajouter vos lieux"
+            description="Créez vos lieux (hôtels, restaurants, excursions) et associez-les à vos sources d'avis."
+            action={() => navigate('/lieux')}
+            actionLabel="Gérer les lieux"
+          />
+
+          {/* Step 3: Import CSV */}
+          <ActionCard
+            icon="3"
+            title="Importer des avis CSV"
+            description="Importez vos avis existants depuis un export Regiondo ou tout fichier CSV compatible."
+            action={() => { setMode('csv'); setStep(0) }}
+            actionLabel="Lancer l'import"
+            variant="primary"
+          />
+
+          {/* Step 4: Add manually */}
+          <ActionCard
+            icon="4"
+            title="Ajouter un avis manuellement"
+            description="Saisissez un avis directement depuis l'interface d'administration."
+            action={() => navigate('/reviews/new')}
+            actionLabel="Nouvel avis"
+          />
+
+          {/* Step 5: Widgets */}
+          <ActionCard
+            icon="5"
+            title="Ajouter les widgets Elementor"
+            description="Utilisez les widgets SJ Reviews dans Elementor : Carrousel, Page Avis, Badge, Inline Rating, Coup de Coeur."
+          />
+
+          {/* Shortcodes reminder */}
+          <div className="border border-gray-100 rounded-lg p-4 bg-gray-50/50">
+            <p className="text-xs text-gray-500">
+              Vous pouvez aussi utiliser les <strong>shortcodes</strong> sans Elementor.
+              <button type="button" className="underline ml-1" onClick={() => navigate('/settings/shortcodes')}>
+                Voir les shortcodes
+              </button>
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // CSV import wizard mode
   return (
     <div>
       <PageHeader
-        title="Import d'avis"
-        subtitle="Importez des avis depuis un fichier CSV Regiondo"
+        title="Import CSV"
+        subtitle="Importez des avis depuis un fichier CSV"
       />
 
       <div className="px-8 py-6">

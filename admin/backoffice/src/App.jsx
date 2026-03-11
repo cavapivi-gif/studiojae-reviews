@@ -21,6 +21,7 @@ export default function App() {
           <Route path="/reviews/:id"   element={<ReviewForm />} />
           <Route path="/lieux"         element={<Lieux />} />
           <Route path="/settings"      element={<Settings />} />
+          <Route path="/settings/:tab" element={<Settings />} />
           <Route path="/docs"          element={<Docs />} />
           <Route path="/import"        element={<Import />} />
         </Routes>

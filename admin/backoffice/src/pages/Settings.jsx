@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { PageHeader, Input, Select, Btn, Spinner, Toggle } from '../components/ui'
 import { IconCheck } from '../components/Icons'
@@ -83,10 +84,14 @@ function ApiKeyField({ label, value, onChange, onTest, testStatus, testMsg, badg
 
 export default function Settings() {
   const toast = useToast()
+  const { tab: urlTab } = useParams()
+  const navigate = useNavigate()
   const [form, setForm]             = useState(DEFAULTS)
   const [loading, setLoading]       = useState(true)
   const [saving, setSaving]         = useState(false)
-  const [activeTab, setActiveTab]   = useState('api')
+  const validTabs = TABS.map(t => t.id)
+  const activeTab = validTabs.includes(urlTab) ? urlTab : 'api'
+  const setActiveTab = (id) => navigate(`/settings/${id}`, { replace: true })
   const [availablePostTypes, setAvailablePostTypes] = useState([])
 
   // API key test states
