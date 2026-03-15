@@ -17,7 +17,7 @@ const SOURCE_OPTIONS = [
   { value: 'autre',       label: 'Autre' },
 ]
 
-const EMPTY_FORM = { name: '', place_id: '', source: 'google', address: '', active: true, trustpilot_domain: '', tripadvisor_location_id: '', manual_rating: '', manual_count: '' }
+const EMPTY_FORM = { name: '', place_id: '', source: 'google', address: '', active: true, count_in_dashboard: true, trustpilot_domain: '', tripadvisor_location_id: '', manual_rating: '', manual_count: '' }
 
 function LieuForm({ initial = EMPTY_FORM, onSave, onCancel, saving }) {
   const [form, setForm] = useState({ ...EMPTY_FORM, ...initial })
@@ -78,9 +78,20 @@ function LieuForm({ initial = EMPTY_FORM, onSave, onCancel, saving }) {
         )}
       </div>
 
-      <div className="flex items-center gap-3 sm:col-span-2">
+      {/* Toggles : même pattern que blacktenderscore (titre + description à gauche, toggle à droite) */}
+      <div className="sm:col-span-2 flex items-center justify-between gap-4 py-2 border-t border-border pt-4">
+        <div>
+          <div className="text-sm font-medium">Lieu actif</div>
+          <div className="text-xs text-muted-foreground">Inclus dans les widgets et sélecteurs front</div>
+        </div>
         <Toggle checked={form.active} onChange={v => set('active', v)} id="lieu-active" />
-        <label htmlFor="lieu-active" className="text-sm text-gray-700 cursor-pointer">Lieu actif (inclus dans les widgets)</label>
+      </div>
+      <div className="sm:col-span-2 flex items-center justify-between gap-4 py-2 border-b border-border pb-4">
+        <div>
+          <div className="text-sm font-medium">Compter parmi les avis</div>
+          <div className="text-xs text-muted-foreground">Inclut ce lieu dans le total du tableau de bord. Décocher pour éviter le double comptage (ex. lieu Google dont les avis sont déjà importés en CPT).</div>
+        </div>
+        <Toggle checked={form.count_in_dashboard !== false} onChange={v => set('count_in_dashboard', v)} id="lieu-count-dashboard" />
       </div>
       <div className="flex gap-2 sm:col-span-2">
         <Btn type="submit" disabled={saving}>{saving ? 'Enregistrement…' : 'Enregistrer'}</Btn>
@@ -230,17 +241,17 @@ export default function Lieux() {
                     <span className="font-medium text-sm text-gray-900 truncate">{lieu.name}</span>
                     <Badge variant={lieu.source}>{SOURCE_OPTIONS.find(s => s.value === lieu.source)?.label ?? lieu.source}</Badge>
                     {!lieu.active && <Badge variant="warn">Inactif</Badge>}
-                    {lieu.rating > 0 && (
+                    {(lieu.enriched_avg > 0 || lieu.rating > 0) && (
                       <span
                         title={lieu.manual_rating ? 'Note manuelle (override actif)' : 'Note synchronisée'}
                         className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 border ${lieu.manual_rating ? 'text-violet-700 bg-violet-50 border-violet-200' : 'text-amber-700 bg-amber-50 border-amber-200'}`}
                       >
                         <IconStar size={10} strokeWidth={1.5} />
-                        {Number(lieu.rating).toFixed(1)} · {lieu.reviews_count?.toLocaleString()} avis
+                        {Number(lieu.enriched_avg || lieu.rating).toFixed(1)} · {(lieu.enriched_count || lieu.reviews_count)?.toLocaleString()} avis
                         {lieu.manual_rating && <span className="ml-0.5 text-[9px] font-bold uppercase tracking-wide opacity-60">manuel</span>}
                       </span>
                     )}
-                    {!lieu.rating && lieu.avis_count > 0 && (
+                    {!(lieu.enriched_avg > 0) && !lieu.rating && lieu.avis_count > 0 && (
                       <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-0.5">
                         <IconStar size={10} strokeWidth={1.5} />
                         {lieu.avis_count} avis

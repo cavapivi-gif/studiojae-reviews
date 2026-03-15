@@ -27,6 +27,9 @@ class InlineRatingShortcode {
     }
 
     public function render(array $atts = []): string {
+        \SJ_Reviews\Core\Plugin::enqueue_asset('sj-rating-badge');
+        \SJ_Reviews\Core\Plugin::enqueue_asset('sj-badge', true);
+
         $opts = \SJ_Reviews\Includes\Settings::all();
 
         $a = shortcode_atts([
@@ -42,7 +45,11 @@ class InlineRatingShortcode {
             'separator_type' => 'none',
         ], $atts, 'sj_inline_rating');
 
-        $lieu_id        = sj_resolve_lieu($a['lieu_id']);
+        // 'linked_post' → résout les lieux via la metabox du post courant (même logique que CoupDeCoeur)
+        $lieu_id_raw    = $a['lieu_id'];
+        $lieu_id        = ($lieu_id_raw === 'linked_post')
+            ? sj_resolve_lieu('auto')
+            : sj_resolve_lieu($lieu_id_raw);
         $show_stars     = (bool)(int) $a['show_stars'];
         $show_score     = (bool)(int) $a['show_score'];
         $show_count     = (bool)(int) $a['show_count'];
@@ -126,7 +133,11 @@ class InlineRatingShortcode {
         }
         $inner = implode($sep_html, $parts);
 
-        $badge_data = esc_attr(wp_json_encode(['lieu_id' => $lieu_id]));
+        // source_filter passé au JS pour que le rechargement respecte le même filtre
+        $badge_data = esc_attr(wp_json_encode([
+            'lieu_id'       => $lieu_id,
+            'source_filter' => $source_filter,
+        ]));
 
         return '<span class="sj-inline-rating" aria-label="' . $aria_label . '" data-sj-badge="' . $badge_data . '">'
              . $inner

@@ -25,6 +25,8 @@ class FormShortcode {
     }
 
     public function render(array $atts = []): string {
+        \SJ_Reviews\Core\Plugin::enqueue_asset('sj-form');
+
         $a = shortcode_atts([
             'lieu_id'        => '',
             'show_criteria'  => '0',

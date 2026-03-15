@@ -27,23 +27,30 @@ class RatingShortcode {
     }
 
     public function render(array $atts): string {
+        \SJ_Reviews\Core\Plugin::enqueue_asset('sj-rating-badge');
+        \SJ_Reviews\Core\Plugin::enqueue_asset('sj-badge', true);
+
         $opts = \SJ_Reviews\Includes\Settings::all();
 
         $a = shortcode_atts([
-            'lieu_id'     => 'all',
-            'design'      => 'card',
-            'show_source' => 1,
-            'show_link'   => 1,
-            'star_color'  => $opts['star_color'] ?? '#f5a623',
-            'label'       => 'avis',
+            'lieu_id'       => 'all',
+            'design'        => 'card',
+            'show_source'   => 1,
+            'show_link'     => 1,
+            'star_color'    => $opts['star_color'] ?? '#f5a623',
+            'label'         => 'avis',
+            'source_filter' => '',
         ], $atts, 'sj_rating');
 
-        $design      = sanitize_key($a['design']);
-        $star_color  = sanitize_hex_color($a['star_color']) ?: '#f5a623';
-        $show_source = (bool)(int) $a['show_source'];
-        $show_link   = (bool)(int) $a['show_link'];
-        $label       = esc_html($a['label']);
-        $lieu_id_req = sanitize_text_field($a['lieu_id']);
+        $design        = sanitize_key($a['design']);
+        $star_color    = sanitize_hex_color($a['star_color']) ?: '#f5a623';
+        $show_source   = (bool)(int) $a['show_source'];
+        $show_link     = (bool)(int) $a['show_link'];
+        $label         = esc_html($a['label']);
+        $lieu_id_req   = sanitize_text_field($a['lieu_id']);
+        $source_filter = !empty($a['source_filter'])
+            ? array_filter(array_map('trim', explode(',', $a['source_filter'])))
+            : [];
 
         $all_lieux = \SJ_Reviews\Includes\Settings::lieux();
 
@@ -56,6 +63,11 @@ class RatingShortcode {
             $lieux = array_filter($all_lieux, fn($l) => $l['id'] === $lieu_id_req);
         }
 
+        // Filtre par source(s) si spécifié — chaque lieu a une source unique
+        if (!empty($source_filter)) {
+            $lieux = array_filter($lieux, fn($l) => in_array($l['source'] ?? '', $source_filter, true));
+        }
+
         if (empty($lieux)) return '';
 
         $lieux = array_values($lieux);
@@ -63,21 +75,24 @@ class RatingShortcode {
         // En mode "grid" ou plusieurs lieux → wrapper grille
         $multi = count($lieux) > 1;
 
-        $badge_data = esc_attr(wp_json_encode(['lieu_id' => $lieu_id_req]));
+        $badge_data = esc_attr(wp_json_encode([
+            'lieu_id'       => $lieu_id_req,
+            'source_filter' => $source_filter,
+        ]));
 
         ob_start();
         echo '<div class="sj-rating' . ($multi ? ' sj-rating--grid' : '') . '" data-sj-badge="' . $badge_data . '">';
         foreach ($lieux as $lieu) {
-            $this->render_badge($lieu, $design, $star_color, $show_source, $show_link, $label);
+            $this->render_badge($lieu, $design, $star_color, $show_source, $show_link, $label, $source_filter);
         }
         echo '</div>';
 
         return ob_get_clean();
     }
 
-    private function render_badge(array $l, string $design, string $color, bool $src, bool $link, string $label): void {
+    private function render_badge(array $l, string $design, string $color, bool $src, bool $link, string $label, array $source_filter = []): void {
         // Use sj_enriched_stats() for consistent count — same formula as dashboard + JS hydration
-        $enriched = sj_enriched_stats($l['id'] ?? '');
+        $enriched = sj_enriched_stats($l['id'] ?? '', $source_filter);
         $rating   = $enriched['avg'] ?: (float) ($l['rating'] ?? 0);
         $count    = $enriched['count'] ?: (int) ($l['reviews_count'] ?? 0);
         $name     = esc_html($l['name'] ?? '');

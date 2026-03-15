@@ -81,6 +81,13 @@
     var filteredTotal   = 0       // total matching filtered results
     var filteredPage    = 1       // current page within filtered results
 
+    /**
+     * AbortController actif pour annuler les requêtes fetch en vol si un nouveau
+     * filtre/tri est déclenché avant que le précédent ne soit terminé.
+     * @type {AbortController|null}
+     */
+    var activeController = null
+
     /* ── Troncature par mots ─────────────────────────────────────────────── */
     function truncateCards(container) {
       container.querySelectorAll('.sj-card__text').forEach(function (p) {
@@ -266,6 +273,10 @@
       ajaxLoading = true
       if (loadBtn) loadBtn.disabled = true
 
+      // Annule le fetch précédent si encore en vol
+      if (activeController) activeController.abort()
+      activeController = new AbortController()
+
       var nextPage = currentPage + 1
       var params = new URLSearchParams({
         page: nextPage,
@@ -277,7 +288,8 @@
       })
 
       fetch(restUrl + 'front/reviews?' + params.toString(), {
-        headers: nonce ? { 'X-WP-Nonce': nonce } : {}
+        headers: nonce ? { 'X-WP-Nonce': nonce } : {},
+        signal: activeController.signal
       })
         .then(function (res) {
           totalFound = parseInt(res.headers.get('X-WP-Total'), 10) || totalFound
@@ -357,13 +369,18 @@
       if (ajaxLoading) return
       ajaxLoading = true
 
+      // Annule le fetch précédent si encore en vol (changement de filtre rapide)
+      if (activeController) activeController.abort()
+      activeController = new AbortController()
+
       var params = buildFilterParams(replaceAll ? 1 : filteredPage + 1)
 
       reviews.classList.add('sj-summary__reviews--loading')
       if (loadBtn) loadBtn.disabled = true
 
       fetch(restUrl + 'front/reviews?' + params.toString(), {
-        headers: nonce ? { 'X-WP-Nonce': nonce } : {}
+        headers: nonce ? { 'X-WP-Nonce': nonce } : {},
+        signal: activeController.signal
       })
         .then(function (res) {
           filteredTotal = parseInt(res.headers.get('X-WP-Total'), 10) || 0
@@ -417,6 +434,10 @@
       if (ajaxLoading) return
       ajaxLoading = true
 
+      // Annule le fetch précédent si encore en vol
+      if (activeController) activeController.abort()
+      activeController = new AbortController()
+
       var params = new URLSearchParams({
         per_page: initial,
         sort: active.sort,
@@ -428,7 +449,8 @@
       reviews.classList.add('sj-summary__reviews--loading')
 
       fetch(restUrl + 'front/reviews?' + params.toString(), {
-        headers: nonce ? { 'X-WP-Nonce': nonce } : {}
+        headers: nonce ? { 'X-WP-Nonce': nonce } : {},
+        signal: activeController.signal
       })
         .then(function (res) {
           totalFound = parseInt(res.headers.get('X-WP-Total'), 10) || 0
@@ -561,10 +583,15 @@
       return html
     }
 
+    /**
+     * Nœud div réutilisé pour l'escape HTML — évite de créer un nœud DOM
+     * à chaque appel (buildCardHtml en crée ~8 par carte).
+     */
+    var _escDiv = document.createElement('div')
+
     function escHtml(s) {
-      var div = document.createElement('div')
-      div.textContent = s || ''
-      return div.innerHTML
+      _escDiv.textContent = s || ''
+      return _escDiv.innerHTML
     }
 
     function escAttr(s) {

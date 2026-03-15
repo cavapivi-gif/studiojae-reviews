@@ -41,6 +41,9 @@ class SummaryShortcode {
 
     /** Point d'entrée shortcode ET widget Elementor */
     public function render(array $atts = []): string {
+        \SJ_Reviews\Core\Plugin::enqueue_asset('sj-summary');
+        \SJ_Reviews\Core\Plugin::enqueue_asset('sj-summary', true);
+
         $a = shortcode_atts([
             'lieu_id'              => 'auto',
             'show_distribution'    => '1',
@@ -91,13 +94,14 @@ class SummaryShortcode {
 
     // ── Résolution du lieu ────────────────────────────────────────────────────
 
-    private function resolve_lieu(string $req): string {
+    /** @return string|array  Retourne array si plusieurs lieux liés via multi-select. */
+    private function resolve_lieu(string $req): string|array {
         return sj_resolve_lieu($req);
     }
 
     // ── Récupération des avis ─────────────────────────────────────────────────
 
-    private function get_reviews(string $lieu_id, array $a = [], int $limit = 200): array {
+    private function get_reviews(string|array $lieu_id, array $a = [], int $limit = 200): array {
         $args = [
             'post_type'      => 'sj_avis',
             'post_status'    => 'publish',
@@ -109,8 +113,15 @@ class SummaryShortcode {
 
         $meta_query = ['relation' => 'AND'];
 
-        // lieu_ids multi-select (F3) takes priority; fall back to single lieu_id
-        if (!empty($a['lieu_ids'])) {
+        // Priorité : auto-resolve multi-lieux > lieu_ids widget > lieu_id scalaire
+        if (is_array($lieu_id) && !empty($lieu_id)) {
+            $meta_query[] = [
+                'key'     => 'avis_lieu_id',
+                'value'   => $lieu_id,
+                'compare' => 'IN',
+            ];
+        } elseif (!empty($a['lieu_ids'])) {
+            // lieu_ids multi-select (widget F3)
             $lieux = array_filter(array_map('trim', explode(',', $a['lieu_ids'])));
             if (!empty($lieux)) {
                 $meta_query[] = [
@@ -150,14 +161,19 @@ class SummaryShortcode {
      * Compute stats from ALL reviews via SQL — not limited by posts_per_page.
      * This ensures the header score, count, and distribution are always accurate.
      */
-    private function compute_stats_sql(string $lieu_id, array $a): array {
+    private function compute_stats_sql(string|array $lieu_id, array $a): array {
         global $wpdb;
 
         // Build WHERE conditions for lieu/source filters
         $joins  = '';
         $wheres = "AND p.post_type = 'sj_avis' AND p.post_status = 'publish'";
 
-        if (!empty($a['lieu_ids'])) {
+        // Priorité : auto-resolve multi-lieux > lieu_ids widget > lieu_id scalaire
+        if (is_array($lieu_id) && !empty($lieu_id)) {
+            $joins  .= " INNER JOIN {$wpdb->postmeta} pm_lieu ON pm_lieu.post_id = p.ID AND pm_lieu.meta_key = 'avis_lieu_id'";
+            $in = implode(',', array_map(fn($l) => $wpdb->prepare('%s', $l), $lieu_id));
+            $wheres .= " AND pm_lieu.meta_value IN ({$in})";
+        } elseif (!empty($a['lieu_ids'])) {
             $lieux = array_filter(array_map('trim', explode(',', $a['lieu_ids'])));
             if (!empty($lieux)) {
                 $joins  .= " INNER JOIN {$wpdb->postmeta} pm_lieu ON pm_lieu.post_id = p.ID AND pm_lieu.meta_key = 'avis_lieu_id'";

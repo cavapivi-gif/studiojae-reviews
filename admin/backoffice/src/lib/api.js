@@ -25,8 +25,8 @@ export const api = {
   },
 
   /** Dashboard time-series trends */
-  dashboardTrends: async (period = 'all', source = '', lieu_id = '', from_date = '', to_date = '') => {
-    const p = new URLSearchParams({ period, source, lieu_id, from_date, to_date })
+  dashboardTrends: async (period = 'all', source = '', lieu_id = '', from_date = '', to_date = '', granularity = '') => {
+    const p = new URLSearchParams({ period, source, lieu_id, from_date, to_date, granularity })
     return (await req(`/dashboard/trends?${p}`)).json()
   },
 

@@ -79,7 +79,7 @@ class ReviewsWidget extends SjWidgetBase {
             'default' => 'cpt',
         ]);
 
-        $this->register_lieu_control(['default' => 'auto', 'show_auto' => true, 'condition' => ['source_type' => 'cpt']]);
+        $this->register_lieu_control(['default' => 'auto', 'show_linked_post' => true, 'show_auto' => true, 'condition' => ['source_type' => 'cpt']]);
 
         $this->add_control('max_reviews', [
             'label'   => __('Nombre max d\'avis', 'sj-reviews'),
@@ -541,7 +541,7 @@ class ReviewsWidget extends SjWidgetBase {
         $tag     = $link ? 'a' : 'div';
         $href    = $link ? " href=\"" . esc_url($link) . "\"" : '';
 
-        echo "<{$tag} class=\"sj-badge\"{$href}{$target}>";
+        echo "<{$tag} class=\"sj-reviews__badge\"{$href}{$target}>";
         $this->render_aggregate_header($s, $agg);
         echo "</{$tag}>";
     }
@@ -685,7 +685,11 @@ class ReviewsWidget extends SjWidgetBase {
      * Compute enriched aggregate matching dashboard logic (shared helper).
      */
     private function compute_enriched_aggregate(array $s): array {
-        $lieu_id = sj_resolve_lieu($s['lieu_id'] ?? 'auto');
+        $lieu_id_raw = $s['lieu_id'] ?? 'auto';
+        // 'linked_post' → résout via metabox du post (auto) pour les stats enrichies
+        $lieu_id = ($lieu_id_raw === 'linked_post')
+            ? sj_resolve_lieu('auto')
+            : sj_resolve_lieu($lieu_id_raw);
         $sources = array_filter((array) ($s['source_filter'] ?? []));
         return sj_enriched_stats($lieu_id, $sources);
     }
@@ -706,12 +710,23 @@ class ReviewsWidget extends SjWidgetBase {
                 'type'    => 'NUMERIC',
             ];
         }
-        $lieu_id = sj_resolve_lieu($s['lieu_id'] ?? 'auto');
-        if ($lieu_id && $lieu_id !== 'all') {
+        $lieu_id_raw = $s['lieu_id'] ?? 'auto';
+        if ($lieu_id_raw === 'linked_post') {
+            // Filtre sur les avis liés directement à ce post via avis_linked_post
             $meta_query[] = [
-                'key'   => 'avis_lieu_id',
-                'value' => $lieu_id,
+                'key'     => 'avis_linked_post',
+                'value'   => get_the_ID(),
+                'compare' => '=',
             ];
+        } else {
+            $lieu_id = sj_resolve_lieu($lieu_id_raw);
+            if (!empty($lieu_id) && $lieu_id !== 'all') {
+                $meta_query[] = [
+                    'key'     => 'avis_lieu_id',
+                    'value'   => (array) $lieu_id,
+                    'compare' => 'IN',
+                ];
+            }
         }
         // Source filter
         $sources = array_filter((array) ($s['source_filter'] ?? []));

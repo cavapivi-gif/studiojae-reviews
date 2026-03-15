@@ -337,6 +337,39 @@ class RestApi {
         return current_user_can('manage_options');
     }
 
+    // ── Rate limiting (public endpoints) ──────────────────────────────────────
+
+    /**
+     * Rate limiter pour les endpoints publics (front/reviews, front/aggregate, front/ai-summary).
+     * Limite à 60 requêtes par minute par IP.
+     * @return \WP_Error|null  WP_Error 429 si limite atteinte, null sinon.
+     */
+    private function check_public_rate_limit(): ?\WP_Error {
+        $ip  = $_SERVER['HTTP_CF_CONNECTING_IP']   // Cloudflare
+            ?? $_SERVER['HTTP_X_FORWARDED_FOR']    // Proxy/Load balancer (prend la 1ère IP)
+            ?? $_SERVER['REMOTE_ADDR']
+            ?? 'unknown';
+        // Normalise : ne garde que la première IP si plusieurs (X-Forwarded-For peut en lister plusieurs)
+        $ip  = trim(explode(',', $ip)[0]);
+        $key = 'sj_rl_' . md5($ip);
+
+        $hits = (int) get_transient($key);
+        if ($hits >= 60) {
+            return new \WP_Error(
+                'too_many_requests',
+                'Trop de requêtes. Réessayez dans une minute.',
+                ['status' => 429]
+            );
+        }
+        // Premier hit : crée le transient avec TTL 60s ; hits suivants : incrémente
+        if ($hits === 0) {
+            set_transient($key, 1, 60);
+        } else {
+            set_transient($key, $hits + 1, (int) get_option('_transient_timeout_' . $key) - time() ?: 60);
+        }
+        return null;
+    }
+
     // ── Dashboard ─────────────────────────────────────────────────────────────
 
     private const DASHBOARD_CACHE_PREFIX = 'sj_dash_';
@@ -415,6 +448,8 @@ class RestApi {
         $extra_joins = $f['base_join'] . $f['source_join'] . $f['lieu_join'];
         $extra_where = $f['source_where'] . $f['lieu_where'];
         $has_filters = $f['source_where'] || $f['lieu_where'];
+        // Pour le total "Avis Globaux" : compter TOUS les avis CPT quand filtre = Toutes les sources (pas seulement ceux avec avis_source renseigné).
+        $total_joins = $f['source_where'] ? ($f['base_join'] . $f['source_join'] . $f['lieu_join']) : $f['lieu_join'];
 
         // Per-period cache (only for unfiltered requests)
         $cache_key = self::DASHBOARD_CACHE_PREFIX . $period;
@@ -437,7 +472,7 @@ class RestApi {
         $total = (int) $wpdb->get_var(
             "SELECT COUNT(*)
              FROM {$wpdb->posts} p
-             {$extra_joins}
+             {$total_joins}
              WHERE p.post_type = 'sj_avis'
              AND p.post_status = 'publish'
              {$date_where}{$extra_where}"
@@ -567,101 +602,38 @@ class RestApi {
         );
         // phpcs:enable
 
-        // ── Platform enrichment ──────────────────────────────────────────────
-        // Include platform review counts from lieux (Google, Trustpilot, etc.)
-        // so dashboard totals match the front-end widgets.
-        $all_lieux   = \SJ_Reviews\Includes\Settings::lieux();
-        $lieu_filter = sanitize_key($req->get_param('lieu_id'));
+        // Dashboard = CPT uniquement (pas d'enrichissement plateforme).
+        // "Avis Globaux" = nombre réel d'avis en base (ex. 343). "Par plateforme" = répartition CPT.
+        // Les totaux plateforme (lieux) restent visibles dans la section "Lieux actifs" et sur le front via sj_enriched_stats.
 
-        // Determine which lieux to include
-        if ($lieu_filter) {
-            $matched_lieux = array_filter($all_lieux, fn($l) => ($l['id'] ?? '') === $lieu_filter);
-        } else {
-            $matched_lieux = $all_lieux;
-        }
-
-        // Track platform extras per source for by_source enrichment
-        $platform_extras = []; // source => ['extra' => int, 'rating' => float, 'total' => int]
-
-        foreach ($matched_lieux as $l) {
-            $platform_count  = (int) ($l['reviews_count'] ?? 0);
-            $platform_rating = (float) ($l['rating'] ?? 0);
-            if ($platform_count <= 0) continue;
-
-            // How many CPT reviews do we already have for this lieu?
-            $lieu_cpt_count = (int) $wpdb->get_var($wpdb->prepare(
-                "SELECT COUNT(*) FROM {$wpdb->posts} p
-                 INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID AND pm.meta_key = 'avis_lieu_id'
-                 WHERE p.post_type = 'sj_avis' AND p.post_status = 'publish'
-                 AND pm.meta_value = %s",
-                $l['id']
-            ));
-
-            $extra = max(0, $platform_count - $lieu_cpt_count);
-            if ($extra > 0) {
-                $combined_total = $total + $extra;
-                if ($platform_rating > 0) {
-                    $avg = ($total > 0)
-                        ? round(($avg * $total + $platform_rating * $extra) / $combined_total, 1)
-                        : round($platform_rating, 1);
-                }
-                $total = $combined_total;
-            }
-
-            // Accumulate platform totals per source
-            $source = $l['source'] ?? '';
-            if ($source) {
-                if (!isset($platform_extras[$source])) {
-                    $platform_extras[$source] = ['total' => 0, 'sum' => 0];
-                }
-                $platform_extras[$source]['total'] += $platform_count;
-                $platform_extras[$source]['sum']   += $platform_count * $platform_rating;
-            }
-        }
-
-        // Enrich by_source with platform data (use platform totals to avoid double-counting)
-        foreach ($platform_extras as $src => $pdata) {
-            if ($pdata['total'] <= 0) continue;
-            $platform_avg = round($pdata['sum'] / $pdata['total'], 1);
+        // Ensure all known sources appear in by_source (e.g. "Autre" with 0 count)
+        $known_sources = array_keys(\SJ_Reviews\Includes\Labels::SOURCES);
+        foreach ($known_sources as $src) {
             $found = false;
-            foreach ($by_source as &$entry) {
+            foreach ($by_source as $entry) {
                 if ($entry['source'] === $src) {
-                    // Use the higher of CPT count or platform count
-                    $entry['count']      = max($entry['count'], $pdata['total']);
-                    $entry['avg_rating'] = ($pdata['total'] > $entry['count'])
-                        ? $platform_avg
-                        : $entry['avg_rating'];
                     $found = true;
                     break;
                 }
             }
-            unset($entry);
             if (!$found) {
                 $by_source[] = [
                     'source'     => $src,
-                    'count'      => $pdata['total'],
-                    'avg_rating' => $platform_avg,
+                    'count'      => 0,
+                    'avg_rating' => 0,
                 ];
             }
         }
+        usort($by_source, function ($a, $b) {
+            return ($b['count'] ?? 0) <=> ($a['count'] ?? 0);
+        });
 
-        // Harmonize total with by_source (donut) after enrichment
-        $total = array_sum(array_column($by_source, 'count'));
-
-        // Google stat card: use platform totals when available
-        $google_total = 0;
-        $google_avg   = 0;
-        if (isset($platform_extras['google']) && $platform_extras['google']['total'] > 0) {
-            $google_total = $platform_extras['google']['total'];
-            $google_avg   = round($platform_extras['google']['sum'] / $google_total, 1);
-        } else {
-            // Fall back to CPT data
-            foreach ($by_source as $entry) {
-                if ($entry['source'] === 'google') {
-                    $google_total = $entry['count'];
-                    $google_avg   = $entry['avg_rating'];
-                    break;
-                }
+        // Total = CPT uniquement (déjà calculé plus haut). Google = CPT depuis by_source.
+        foreach ($by_source as $entry) {
+            if ($entry['source'] === 'google') {
+                $google_total = $entry['count'];
+                $google_avg   = $entry['avg_rating'];
+                break;
             }
         }
 
@@ -707,37 +679,35 @@ class RestApi {
         $extra_joins = $f['base_join'] . $f['source_join'] . $f['lieu_join'];
         $extra_where = $f['source_where'] . $f['lieu_where'];
 
-        // Auto granularity: day for ≤30d, week for ≤90d, month otherwise
         $period    = $f['period'];
         $from_date = sanitize_text_field($req->get_param('from_date') ?? '');
         $to_date   = sanitize_text_field($req->get_param('to_date') ?? '');
 
-        // For custom period, compute span in days for auto-granularity
-        if ($period === 'custom' && $from_date) {
-            $span_days = $to_date
-                ? max(1, (int) ((strtotime($to_date) - strtotime($from_date)) / DAY_IN_SECONDS))
-                : 365;
-            if ($span_days <= 31) {
-                $auto_period = '30d';
-            } elseif ($span_days <= 90) {
-                $auto_period = '90d';
-            } else {
-                $auto_period = '12m';
-            }
+        // Granularity: explicit param wins, otherwise auto-compute from period span
+        $explicit_gran = sanitize_key($req->get_param('granularity') ?? '');
+        if (in_array($explicit_gran, ['day', 'week', 'month'], true)) {
+            $granularity = $explicit_gran;
         } else {
-            $auto_period = $period;
+            // Auto granularity: day ≤30d, week ≤90d, month otherwise
+            if ($period === 'custom' && $from_date) {
+                $span_days = $to_date
+                    ? max(1, (int) ((strtotime($to_date) - strtotime($from_date)) / DAY_IN_SECONDS))
+                    : 365;
+                $auto_period = $span_days <= 31 ? '30d' : ($span_days <= 90 ? '90d' : '12m');
+            } else {
+                $auto_period = $period;
+            }
+            $granularity = in_array($auto_period, ['7d', '30d'], true) ? 'day'
+                : ($auto_period === '90d' ? 'week' : 'month');
         }
 
-        if (in_array($auto_period, ['7d', '30d'], true)) {
-            $granularity = 'day';
+        if ($granularity === 'day') {
             $select_date = "DATE(p.post_date) AS date_key";
             $group_by    = "DATE(p.post_date)";
-        } elseif ($auto_period === '90d') {
-            $granularity = 'week';
+        } elseif ($granularity === 'week') {
             $select_date = "CONCAT(YEAR(p.post_date), '-W', LPAD(WEEK(p.post_date, 3), 2, '0')) AS date_key";
             $group_by    = "YEAR(p.post_date), WEEK(p.post_date, 3)";
         } else {
-            $granularity = 'month';
             $select_date = "DATE_FORMAT(p.post_date, '%Y-%m') AS date_key";
             $group_by    = "DATE_FORMAT(p.post_date, '%Y-%m')";
         }
@@ -1078,19 +1048,48 @@ class RestApi {
     ];
 
     public function front_aggregate(\WP_REST_Request $req): \WP_REST_Response {
+        $rl = $this->check_public_rate_limit();
+        if ($rl instanceof \WP_Error) return new \WP_REST_Response($rl->get_error_data(), 429);
+
         $lieu_id = sanitize_text_field($req->get_param('lieu_id') ?? '');
 
-        // Use the single shared enrichment formula — same as dashboard, shortcodes, and widgets
-        $stats = sj_enriched_stats($lieu_id);
+        // lieu_ids — passé quand lieu_id est un tableau (ex: linked_post multi-lieux)
+        // Le JS envoie lieu_id=all&lieu_ids=lieu_abc,lieu_def dans ce cas.
+        $lieu_ids_raw = sanitize_text_field($req->get_param('lieu_ids') ?? '');
+        if ($lieu_ids_raw !== '') {
+            $lieu_id = array_filter(array_map('sanitize_key', explode(',', $lieu_ids_raw)));
+        }
 
-        return new \WP_REST_Response([
+        // source_filter — respecte le même filtre que le render PHP du shortcode
+        $source_filter_raw = sanitize_text_field($req->get_param('source_filter') ?? '');
+        $source_filter     = $source_filter_raw !== ''
+            ? array_filter(array_map('sanitize_key', explode(',', $source_filter_raw)))
+            : [];
+
+        // Cache court (5 min) — clé intègre le source_filter pour éviter les collisions
+        $cache_key = 'sj_front_agg_' . md5(serialize($lieu_id) . '|' . implode(',', $source_filter));
+        $cached    = get_transient($cache_key);
+        if ($cached !== false) {
+            return new \WP_REST_Response($cached, 200);
+        }
+
+        // Même formule enrichie que le dashboard, les shortcodes et les widgets
+        $stats = sj_enriched_stats($lieu_id, $source_filter);
+
+        $payload = [
             'avg'     => $stats['avg'],
             'count'   => $stats['count'],
             'sources' => $stats['sources'],
-        ], 200);
+        ];
+        set_transient($cache_key, $payload, 5 * MINUTE_IN_SECONDS);
+
+        return new \WP_REST_Response($payload, 200);
     }
 
     public function front_reviews(\WP_REST_Request $req): \WP_REST_Response {
+        $rl = $this->check_public_rate_limit();
+        if ($rl instanceof \WP_Error) return new \WP_REST_Response($rl->get_error_data(), 429);
+
         $page     = max(1, (int) $req->get_param('page'));
         $per_page = min(50, max(1, (int) $req->get_param('per_page')));
         $sort     = sanitize_text_field($req->get_param('sort'));
@@ -1178,7 +1177,20 @@ class RestApi {
             $args['meta_query'] = $meta_query;
         }
 
-        $query   = new \WP_Query($args);
+        $query = new \WP_Query($args);
+
+        // Batch-load les posts liés avant la normalisation pour éviter N+1 get_post() calls.
+        // _prime_post_caches() fait une seule requête SQL pour charger tous ces posts en cache WP.
+        if (!empty($query->posts)) {
+            $linked_ids = array_unique(array_filter(array_map(
+                fn($p) => (int) get_post_meta($p->ID, 'avis_linked_post', true),
+                $query->posts
+            )));
+            if (!empty($linked_ids)) {
+                _prime_post_caches($linked_ids, false, false);
+            }
+        }
+
         $reviews = array_map('sj_normalize_review', $query->posts);
 
         $response = rest_ensure_response($reviews);
@@ -1367,6 +1379,10 @@ class RestApi {
             }
             $lieux = array_map(function ($lieu) use ($counts) {
                 $lieu['avis_count'] = $counts[$lieu['id']] ?? 0;
+                // Enriched stats: max(CPT, platform) per source → total + weighted avg
+                $enriched              = sj_enriched_stats($lieu['id'] ?? '');
+                $lieu['enriched_count'] = $enriched['count'];
+                $lieu['enriched_avg']   = $enriched['avg'];
                 return $lieu;
             }, $lieux);
         }
@@ -2360,12 +2376,17 @@ class RestApi {
             if ($c >= 0) $manual_count = $c;
         }
 
+        $count_in_dashboard = isset($body['count_in_dashboard'])
+            ? (bool) $body['count_in_dashboard']
+            : true;
+
         return [
             'name'                     => sanitize_text_field($body['name']),
             'place_id'                 => sanitize_text_field($body['place_id'] ?? ''),
             'source'                   => in_array($body['source'] ?? 'google', $allowed_sources, true) ? $body['source'] : 'google',
             'address'                  => sanitize_text_field($body['address'] ?? ''),
             'active'                   => (bool) ($body['active'] ?? true),
+            'count_in_dashboard'       => $count_in_dashboard,
             'trustpilot_domain'        => sanitize_text_field($body['trustpilot_domain'] ?? ''),
             'tripadvisor_location_id'  => sanitize_text_field($body['tripadvisor_location_id'] ?? ''),
             'manual_rating'            => $manual_rating,
@@ -2468,6 +2489,9 @@ class RestApi {
     }
 
     public function front_ai_summary(\WP_REST_Request $req): \WP_REST_Response {
+        $rl = $this->check_public_rate_limit();
+        if ($rl instanceof \WP_Error) return new \WP_REST_Response($rl->get_error_data(), 429);
+
         require_once SJ_REVIEWS_DIR . 'includes/class-ai-summary.php';
 
         $lieu_id = $req->get_param('lieu_id') ?: 'all';

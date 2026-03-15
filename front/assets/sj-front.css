@@ -242,8 +242,8 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Badge ────────────────────────────────────────────────── */
-.sj-badge {
+/* ── Badge agrégat (slider reviews — ne pas confondre avec sj-badge.css du widget RatingBadge) */
+.sj-reviews__badge {
   display: inline-flex;
   align-items: center;
   gap: 1rem;
@@ -254,7 +254,7 @@
   color: inherit;
   transition: border-color .2s;
 }
-.sj-badge:hover { border-color: #111827; }
+.sj-reviews__badge:hover { border-color: #111827; }
 
 .sj-aggregate {
   display: flex;
@@ -344,7 +344,7 @@
 .sj-reviews--dark .swiper-pagination-bullet { background: #334155; }
 .sj-reviews--dark .swiper-pagination-bullet-active { background: #f8fafc; }
 
-.sj-reviews--dark .sj-badge {
+.sj-reviews--dark .sj-reviews__badge {
   background: #1e293b;
   border-color: #334155;
   color: #f8fafc;
@@ -390,13 +390,6 @@
   padding-left: 28px;
   padding-right: 28px;
 }
-
-/* ── Inline Rating ───────────────────────────────────────── */
-.sj-inline-rating { display:inline-flex; align-items:center; gap:.35em; line-height:1; }
-.sj-inline-rating__stars { letter-spacing:-.05em; }
-.sj-inline-rating__score { font-weight:600; }
-.sj-inline-rating__count { opacity:.75; }
-.sj-inline-rating__sources { opacity:.6; font-size:.85em; }
 
 /* ── Accessibility ──────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {

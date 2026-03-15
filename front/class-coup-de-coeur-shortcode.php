@@ -7,7 +7,8 @@ defined('ABSPATH') || exit;
  * Shortcode [sj_coup_de_coeur] — Bannière "Coup de cœur" style Airbnb.
  *
  * Affichée uniquement si le champ ACF `best_seller` du post courant est true.
- * Récupère les avis liés au post via `avis_linked_post` et calcule la note moyenne.
+ * Le count/avg utilise sj_enriched_stats() — même formule que Note Inline :
+ *   max(CPT count, platform count) par source → total réel incluant les avis non-CPT.
  *
  * Paramètres :
  *   post_id          = int     ID du post (default: post courant)
@@ -15,6 +16,8 @@ defined('ABSPATH') || exit;
  *   star_empty_color = hex     Couleur des étoiles vides (default: #d1d5db)
  *   label            = string  Texte du badge (default: "Coup de cœur voyageurs")
  *   subtitle         = string  Description (default: "Un des logements préférés des voyageurs")
+ *   lieu_filter      = string  'linked_post' | 'auto' | 'lieu_xxx'
+ *   source_filter    = string  Sources CSV ex: "google,regiondo" (vide = toutes)
  */
 class CoupDeCoeurShortcode {
 
@@ -23,6 +26,8 @@ class CoupDeCoeurShortcode {
     }
 
     public function render(array $atts = []): string {
+        \SJ_Reviews\Core\Plugin::enqueue_asset('sj-coup-de-coeur');
+
         $opts = \SJ_Reviews\Includes\Settings::all();
 
         $a = shortcode_atts([
@@ -34,6 +39,8 @@ class CoupDeCoeurShortcode {
             'url'              => '',
             'url_external'     => '',
             'url_nofollow'     => '',
+            'source_filter'    => '',
+            'lieu_filter'      => 'linked_post', // 'linked_post' | 'auto' | 'lieu_xxx'
         ], $atts, 'sj_coup_de_coeur');
 
         $post_id          = (int) $a['post_id'] ?: get_the_ID();
@@ -54,23 +61,48 @@ class CoupDeCoeurShortcode {
 
         if (!$best_seller) return '';
 
-        // Récupère les avis liés à ce post
-        $reviews = sj_get_reviews([
-            'posts_per_page' => -1,
-            'meta_query'     => [
-                [
-                    'key'     => 'avis_linked_post',
-                    'value'   => $post_id,
-                    'compare' => '=',
-                ],
-            ],
-        ]);
+        // Filtre source (ex: "google,regiondo" → ['google', 'regiondo'])
+        $source_filter = !empty($a['source_filter'])
+            ? array_filter(array_map('trim', explode(',', $a['source_filter'])))
+            : [];
 
-        $agg   = sj_aggregate($reviews);
-        $avg   = $agg['avg'];
-        $count = $agg['count'];
+        // ── Résolution du lieu pour les stats enrichies ──────────────────────
+        // 'linked_post' → essaie d'abord la metabox sj_lieu_id de la page (auto-resolve)
+        // 'auto'        → lit sj_lieu_id de la page
+        // 'lieu_xxx'    → lieu spécifique
+        $lieu_filter = sanitize_text_field($a['lieu_filter'] ?: 'linked_post');
+        $stats_lieu  = ($lieu_filter === 'linked_post')
+            ? sj_resolve_lieu('auto')   // tente la metabox du post courant
+            : sj_resolve_lieu($lieu_filter);
 
-        // Ne rien afficher si aucun avis
+        // ── Stats : sj_enriched_stats() comme Note Inline ────────────────────
+        // → max(CPT count, platform count) par source = total réel incluant avis non-CPT.
+        // Fallback sur CPT seul si aucun lieu n'est résolu (page sans metabox + linked_post).
+        if (!empty($stats_lieu) && $stats_lieu !== 'all') {
+            $enriched = sj_enriched_stats($stats_lieu, $source_filter);
+            $avg      = $enriched['avg'];
+            $count    = $enriched['count'];
+        } else {
+            // Fallback : aucun lieu → compte les CPT liés directement au post
+            $fallback_query = ['posts_per_page' => -1, 'meta_query' => [[
+                'key'     => 'avis_linked_post',
+                'value'   => $post_id,
+                'compare' => '=',
+            ]]];
+            if (!empty($source_filter)) {
+                $fallback_query['meta_query'][] = [
+                    'key'     => 'avis_source',
+                    'value'   => $source_filter,
+                    'compare' => 'IN',
+                ];
+                $fallback_query['meta_query']['relation'] = 'AND';
+            }
+            $agg   = sj_aggregate(sj_get_reviews($fallback_query));
+            $avg   = $agg['avg'];
+            $count = $agg['count'];
+        }
+
+        // Ne rien afficher si aucun avis (ni CPT ni plateforme)
         if ($count === 0) return '';
 
         $avg_fmt   = sj_format_rating($avg, 2, ',');

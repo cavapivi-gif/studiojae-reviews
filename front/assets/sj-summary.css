@@ -934,14 +934,14 @@ body.sj-modal-open { overflow: hidden; }
   position: relative;
   display: flex;
   align-items: center;
-  max-width: 480px;
+  max-width: 100%;
 }
 
 /* Inline variant inside filterbar */
 .sj-search__wrap--inline {
   margin-left: auto;
   flex: 0 1 260px;
-  max-width: 260px;
+  max-width: 100%;
 }
 
 .sj-search__icon {

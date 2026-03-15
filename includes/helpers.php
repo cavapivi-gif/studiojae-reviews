@@ -105,8 +105,15 @@ function sj_normalize_review(\WP_Post $post, bool $private = false): array {
     $linked_post_id  = (int) ($get('avis_linked_post') ?: 0);
     $linked_post_obj = null;
     if ($linked_post_id > 0) {
-        $lp = get_post($linked_post_id);
-        if ($lp && $lp->post_status === 'publish') {
+        // Cache statique request-level : évite de requêter le même post lié plusieurs fois
+        // dans la même requête HTTP (ex : 20 avis qui pointent tous vers le même produit).
+        static $linked_cache = [];
+        if (!array_key_exists($linked_post_id, $linked_cache)) {
+            $lp = get_post($linked_post_id);
+            $linked_cache[$linked_post_id] = ($lp && $lp->post_status === 'publish') ? $lp : null;
+        }
+        $lp = $linked_cache[$linked_post_id];
+        if ($lp) {
             $linked_post_obj = [
                 'id'        => $lp->ID,
                 'title'     => get_the_title($lp),
@@ -207,10 +214,13 @@ function sj_aggregate(array $reviews): array {
  *
  * Shared by all widgets/shortcodes that support auto-lieu detection.
  *
+ * Rétrocompat : sj_lieu_id peut être un scalar (ancienne version) ou un array
+ * (multi-select depuis la meta box). Retourne string quand un seul lieu, array sinon.
+ *
  * @param string $lieu_id  'auto' | 'all' | '' | 'lieu_xxxx'
- * @return string Resolved lieu_id (never 'auto').
+ * @return string|array Resolved lieu_id — jamais 'auto'. Array si plusieurs lieux liés.
  */
-function sj_resolve_lieu(string $lieu_id): string {
+function sj_resolve_lieu(string $lieu_id): string|array {
     if ($lieu_id !== 'auto') {
         return sanitize_key($lieu_id);
     }
@@ -218,9 +228,16 @@ function sj_resolve_lieu(string $lieu_id): string {
     $post_id = get_the_ID();
     if (!$post_id) return 'all';
 
-    // Direct meta on the post (set via lieu metabox)
+    // Direct meta on the post (set via lieu metabox — peut être array ou scalar).
     $direct = get_post_meta($post_id, 'sj_lieu_id', true);
-    if ($direct) return sanitize_key($direct);
+    if ($direct) {
+        if (is_array($direct)) {
+            $cleaned = array_values(array_filter(array_map('sanitize_key', $direct)));
+            if (empty($cleaned)) return 'all';
+            return count($cleaned) === 1 ? $cleaned[0] : $cleaned;
+        }
+        return sanitize_key($direct);
+    }
 
     // Reverse lookup: find lieu_id from reviews linked to this post
     global $wpdb;
@@ -285,9 +302,11 @@ function sj_enriched_stats(string|array $lieu_id = '', array $sources = []): arr
     $cpt_total = (int) ($cpt_row->total ?? 0);
     $avg       = round((float) ($cpt_row->avg_r ?? 0), 1);
 
-    // CPT count per source
+    // CPT count + avg per source — une seule requête groupée (évite le N+1 précédent)
     $src_rows = $wpdb->get_results(
-        "SELECT pm_s.meta_value AS source, COUNT(*) AS cnt
+        "SELECT pm_s.meta_value AS source,
+                COUNT(*) AS cnt,
+                AVG(CAST(pm_r.meta_value AS DECIMAL(3,1))) AS avg_r
          FROM {$wpdb->posts} p
          INNER JOIN {$wpdb->postmeta} pm_s ON pm_s.post_id = p.ID AND pm_s.meta_key = 'avis_source'
          INNER JOIN {$wpdb->postmeta} pm_r ON pm_r.post_id = p.ID AND pm_r.meta_key = 'avis_rating'
@@ -295,9 +314,11 @@ function sj_enriched_stats(string|array $lieu_id = '', array $sources = []): arr
          WHERE 1=1 {$wheres}
          GROUP BY pm_s.meta_value"
     );
-    $by_source = [];
+    $by_source     = []; // source => count
+    $avg_by_source = []; // source => avg (float) — utilisé pour la moyenne pondérée
     foreach ($src_rows as $row) {
-        $by_source[$row->source] = (int) $row->cnt;
+        $by_source[$row->source]     = (int) $row->cnt;
+        $avg_by_source[$row->source] = (float) $row->avg_r;
     }
 
     // 2. Platform data per source (from lieux settings)
@@ -309,6 +330,11 @@ function sj_enriched_stats(string|array $lieu_id = '', array $sources = []): arr
     } else {
         $matched_lieux = $all_lieux;
     }
+
+    // Exclure les lieux dont "Compter parmi les avis" est décoché (évite double comptage dashboard)
+    $matched_lieux = array_filter($matched_lieux, function ($l) {
+        return ($l['count_in_dashboard'] ?? true) !== false;
+    });
 
     $platform_by_source = []; // source => ['total' => int, 'sum' => float]
     foreach ($matched_lieux as $l) {
@@ -339,21 +365,12 @@ function sj_enriched_stats(string|array $lieu_id = '', array $sources = []): arr
         $count_for_source = max($cpt_cnt, $platform_cnt);
         $total += $count_for_source;
 
-        // For weighted average: use platform avg if platform has more reviews, otherwise CPT avg
+        // For weighted average: platform avg if platform has more reviews, CPT avg sinon.
+        // Les moyennes CPT par source sont déjà calculées dans avg_by_source (requête groupée).
         if ($platform_cnt > $cpt_cnt && $platform_avg > 0) {
             $weighted_sum += $platform_avg * $count_for_source;
         } elseif ($cpt_cnt > 0) {
-            // Get CPT avg for this source
-            $src_avg_row = $wpdb->get_var($wpdb->prepare(
-                "SELECT AVG(CAST(pm_r.meta_value AS DECIMAL(3,1)))
-                 FROM {$wpdb->posts} p
-                 INNER JOIN {$wpdb->postmeta} pm_r ON pm_r.post_id = p.ID AND pm_r.meta_key = 'avis_rating'
-                 INNER JOIN {$wpdb->postmeta} pm_s ON pm_s.post_id = p.ID AND pm_s.meta_key = 'avis_source'
-                 {$joins}
-                 WHERE 1=1 {$wheres} AND pm_s.meta_value = %s",
-                $src
-            ));
-            $weighted_sum += (float) $src_avg_row * $count_for_source;
+            $weighted_sum += ($avg_by_source[$src] ?? 0.0) * $count_for_source;
         }
 
         if ($count_for_source > 0) {

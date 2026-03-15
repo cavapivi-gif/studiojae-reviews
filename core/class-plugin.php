@@ -35,18 +35,16 @@ class Plugin {
             register_widget(\SJ_Reviews\Includes\ReviewsWidget::class);
         });
 
-        // Admin backoffice
+        // REST API — enregistrée une seule fois, accessible admin et front.
+        // Les endpoints admin sont protégés par permission_callback => is_manager().
+        // Les endpoints publics (front/) sont ouverts mais rate-limitéa par check_public_rate_limit().
+        require_once SJ_REVIEWS_DIR . 'admin/backoffice/class-rest-api.php';
+        (new \SJ_Reviews\Admin\Backoffice\RestApi())->init();
+
+        // Admin backoffice (UI React — page WP admin seulement)
         if (is_admin()) {
             require_once SJ_REVIEWS_DIR . 'admin/backoffice/class-backoffice.php';
-            require_once SJ_REVIEWS_DIR . 'admin/backoffice/class-rest-api.php';
             (new \SJ_Reviews\Admin\Backoffice\Backoffice())->init();
-            (new \SJ_Reviews\Admin\Backoffice\RestApi())->init();
-        }
-
-        // REST API aussi accessible côté front (nonce wp_rest)
-        if (!is_admin()) {
-            require_once SJ_REVIEWS_DIR . 'admin/backoffice/class-rest-api.php';
-            (new \SJ_Reviews\Admin\Backoffice\RestApi())->init();
         }
 
         // Shortcodes
@@ -90,72 +88,52 @@ class Plugin {
             $manager->register(new \SJ_Reviews\Elementor\Widgets\CoupDeCoeurWidget());
         });
 
-        add_action('elementor/frontend/after_enqueue_styles', [$this, 'enqueue_front_assets']);
-        add_action('wp_enqueue_scripts', [$this, 'enqueue_front_assets']);
+        // Enregistrement global (pas de chargement) — les shortcodes/widgets enqueue à la demande.
+        add_action('wp_enqueue_scripts', [$this, 'register_front_assets']);
+        // Elementor recharge ses styles après rendu — on s'assure que les assets sont bien enregistrés.
+        add_action('elementor/frontend/after_enqueue_styles', [$this, 'register_front_assets']);
     }
 
-    public function enqueue_front_assets(): void {
-        wp_enqueue_style(
-            'sj-reviews-front',
-            SJ_REVIEWS_URL . 'front/assets/sj-front.css',
-            [],
-            SJ_REVIEWS_VERSION
-        );
-        wp_enqueue_style(
-            'sj-rating-badge',
-            SJ_REVIEWS_URL . 'front/assets/sj-badge.css',
-            [],
-            SJ_REVIEWS_VERSION
-        );
-        wp_enqueue_style(
-            'sj-summary',
-            SJ_REVIEWS_URL . 'front/assets/sj-summary.css',
-            [],
-            SJ_REVIEWS_VERSION
-        );
-        wp_enqueue_style(
-            'sj-form',
-            SJ_REVIEWS_URL . 'front/assets/sj-form.css',
-            [],
-            SJ_REVIEWS_VERSION
-        );
-        wp_enqueue_style(
-            'sj-coup-de-coeur',
-            SJ_REVIEWS_URL . 'front/assets/sj-coup-de-coeur.css',
-            [],
-            SJ_REVIEWS_VERSION
-        );
+    /**
+     * Enregistre (sans charger) tous les assets front.
+     * Les shortcodes et widgets Elementor appellent sj_enqueue_asset() pour charger
+     * uniquement ce dont ils ont besoin sur la page courante.
+     */
+    public function register_front_assets(): void {
+        wp_register_style('sj-reviews-front', SJ_REVIEWS_URL . 'front/assets/sj-front.css',   [], SJ_REVIEWS_VERSION);
+        wp_register_style('sj-rating-badge',  SJ_REVIEWS_URL . 'front/assets/sj-badge.css',   [], SJ_REVIEWS_VERSION);
+        wp_register_style('sj-summary',       SJ_REVIEWS_URL . 'front/assets/sj-summary.css', [], SJ_REVIEWS_VERSION);
+        wp_register_style('sj-form',          SJ_REVIEWS_URL . 'front/assets/sj-form.css',    [], SJ_REVIEWS_VERSION);
+        wp_register_style('sj-coup-de-coeur', SJ_REVIEWS_URL . 'front/assets/sj-coup-de-coeur.css', [], SJ_REVIEWS_VERSION);
+        wp_register_style('sj-toast',         SJ_REVIEWS_URL . 'front/assets/sj-toast.css',   [], SJ_REVIEWS_VERSION);
 
-        wp_enqueue_script(
-            'sj-summary',
-            SJ_REVIEWS_URL . 'front/assets/sj-summary.js',
-            [],
-            SJ_REVIEWS_VERSION,
-            true
-        );
-        wp_localize_script('sj-summary', 'sjReviewsConfig', [
-            'restUrl' => esc_url_raw(rest_url('sj-reviews/v1/')),
-            'nonce'   => wp_create_nonce('wp_rest'),
-        ]);
+        wp_register_script('sj-reviews-front', SJ_REVIEWS_URL . 'front/assets/sj-front.js',   ['swiper'], SJ_REVIEWS_VERSION, true);
+        wp_register_script('sj-summary',       SJ_REVIEWS_URL . 'front/assets/sj-summary.js', [], SJ_REVIEWS_VERSION, true);
+        wp_register_script('sj-badge',         SJ_REVIEWS_URL . 'front/assets/sj-badge.js',   [], SJ_REVIEWS_VERSION, true);
+        wp_register_script('sj-toast',         SJ_REVIEWS_URL . 'front/assets/sj-toast.js',   [], SJ_REVIEWS_VERSION, true);
+    }
 
-        wp_enqueue_script(
-            'sj-badge',
-            SJ_REVIEWS_URL . 'front/assets/sj-badge.js',
-            [],
-            SJ_REVIEWS_VERSION,
-            true
-        );
-        wp_localize_script('sj-badge', 'sjBadgeConfig', [
-            'restUrl' => esc_url_raw(rest_url('sj-reviews/v1/')),
-            'nonce'   => wp_create_nonce('wp_rest'),
-        ]);
-
-        wp_enqueue_script(
-            'sj-reviews-front',
-            SJ_REVIEWS_URL . 'front/assets/sj-front.js',
-            ['swiper'],
-            SJ_REVIEWS_VERSION,
-            true
-        );
+    /**
+     * Charge un asset enregistré et injecte la config REST si c'est un script JS dynamique.
+     * Appelé par chaque shortcode/widget dans son render().
+     *
+     * @param string $handle  Handle wp_register_style/script
+     * @param bool   $is_script
+     */
+    public static function enqueue_asset(string $handle, bool $is_script = false): void {
+        if ($is_script) {
+            if (!wp_script_is($handle, 'enqueued')) {
+                wp_enqueue_script($handle);
+                // Injecte la config REST une seule fois par handle JS dynamique
+                if (in_array($handle, ['sj-summary', 'sj-badge', 'sj-toast'], true)) {
+                    wp_localize_script($handle, 'sjReviewsConfig', [
+                        'restUrl' => esc_url_raw(rest_url('sj-reviews/v1/')),
+                        'nonce'   => wp_create_nonce('wp_rest'),
+                    ]);
+                }
+            }
+        } else {
+            wp_enqueue_style($handle);
+        }
     }
 }

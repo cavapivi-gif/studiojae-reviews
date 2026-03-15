@@ -192,8 +192,8 @@ export default function SeasonCompare({ comparison, loading, onCompare, onCompar
                   <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
                   <Tooltip />
                   <Legend wrapperStyle={{ fontSize: 10 }} iconType="square" iconSize={8} />
-                  <Bar dataKey={label1} fill="#000" />
-                  <Bar dataKey={label2} fill="#9CA3AF" />
+                  <Bar dataKey={label1} fill="#6366f1" />
+                  <Bar dataKey={label2} fill="#f59e0b" />
                 </BarChart>
               </ResponsiveContainer>
             </div>

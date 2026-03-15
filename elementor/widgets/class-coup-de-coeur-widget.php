@@ -88,6 +88,37 @@ class CoupDeCoeurWidget extends SjWidgetBase {
 
         $this->end_controls_section();
 
+        // ── FILTRES ──────────────────────────────────────────────────────────
+        $this->start_controls_section('section_filters', [
+            'label' => __('Filtres', 'sj-reviews'),
+            'tab'   => Controls_Manager::TAB_CONTENT,
+        ]);
+
+        // Construire la liste des lieux pour le sélecteur
+        $lieux     = \SJ_Reviews\Includes\Settings::lieux();
+        $lieu_opts = [
+            'linked_post' => __('Avis liés directement au post', 'sj-reviews'),
+            'auto'        => __('Auto — lieux de la page (metabox)', 'sj-reviews'),
+        ];
+        foreach ($lieux as $l) {
+            $label = $l['name'] ?? $l['id'];
+            if (!($l['active'] ?? true)) $label .= ' (inactif)';
+            if (!empty($l['source']))    $label .= ' (' . $l['source'] . ')';
+            $lieu_opts[$l['id']] = esc_html($label);
+        }
+
+        $this->add_control('lieu_filter', [
+            'label'       => __('Source des avis', 'sj-reviews'),
+            'type'        => Controls_Manager::SELECT,
+            'options'     => $lieu_opts,
+            'default'     => 'linked_post',
+            'description' => __('« Auto » lit le(s) lieu(x) lié(s) à la page via la metabox SJ Reviews.', 'sj-reviews'),
+        ]);
+
+        $this->register_source_filter_control();
+
+        $this->end_controls_section();
+
         // ── STYLE TAB — shared controls from trait ──────────────────────────
 
         // Container (bg, border, radius, padding, shadow)
@@ -189,6 +220,8 @@ class CoupDeCoeurWidget extends SjWidgetBase {
             'url'              => $link['url']             ?? '',
             'url_external'     => $link['is_external']     ?? '',
             'url_nofollow'     => $link['nofollow']        ?? '',
+            'source_filter'    => implode(',', array_filter((array) ($s['source_filter'] ?? []))),
+            'lieu_filter'      => $s['lieu_filter'] ?? 'linked_post',
         ];
 
         $sc = new \SJ_Reviews\Front\CoupDeCoeurShortcode();

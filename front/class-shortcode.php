@@ -38,6 +38,9 @@ class Shortcode {
     }
 
     public function render(array $atts): string {
+        \SJ_Reviews\Core\Plugin::enqueue_asset('sj-reviews-front');
+        \SJ_Reviews\Core\Plugin::enqueue_asset('sj-reviews-front', true); // JS Swiper
+
         self::$instance_count++;
         $uid = 'sj-sc-' . self::$instance_count . '-' . uniqid();
 
@@ -219,7 +222,7 @@ class Shortcode {
         $tag  = $link ? 'a' : 'div';
         $href = $link ? " href=\"" . esc_url($link) . "\"" : '';
 
-        echo "<{$tag} class=\"sj-badge\"{$href}{$target}>";
+        echo "<{$tag} class=\"sj-reviews__badge\"{$href}{$target}>";
         $this->render_aggregate($agg, $star_color, $place_id);
         echo "</{$tag}>";
     }

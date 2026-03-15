@@ -309,9 +309,14 @@ export function RatingBar({ value, max, count }) {
   const pct = max > 0 ? Math.round((count / max) * 100) : 0
   return (
     <div className="flex items-center gap-2 text-xs">
-      <span className="w-2 text-muted-foreground">{value}</span>
-      <Progress value={pct} className="h-2 flex-1" />
-      <span className="w-6 text-right text-muted-foreground tabular-nums">{count}</span>
+      <span className="w-2 shrink-0 text-muted-foreground tabular-nums">{value}</span>
+      <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
+        <div
+          className="h-full rounded-full bg-amber-400 transition-all duration-300"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="w-7 text-right text-muted-foreground tabular-nums">{count}</span>
     </div>
   )
 }

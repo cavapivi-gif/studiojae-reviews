@@ -1,9 +1,14 @@
 import { useMemo } from 'react'
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, Legend, BarChart, Bar,
+  CartesianGrid, Legend, BarChart, Bar, Line,
 } from 'recharts'
 import { SOURCE_LABELS, SOURCE_HEX } from '../../lib/constants'
+
+const COLOR_VOLUME = '#6366f1' // indigo
+const COLOR_RATING = '#f59e0b' // amber
+const COLOR_PREV   = '#a5b4fc' // indigo-300 (comparateur)
+const COLOR_PREV_R = '#fcd34d' // amber-300
 
 function formatDateKey(key, granularity) {
   if (granularity === 'day') {
@@ -13,7 +18,6 @@ function formatDateKey(key, granularity) {
   if (granularity === 'week') {
     return key.replace(/^\d{4}-W/, 'S')
   }
-  // month: '2024-03' → 'mars 2024'
   const [y, m] = key.split('-')
   return new Date(parseInt(y), parseInt(m) - 1).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })
 }
@@ -25,11 +29,7 @@ function formatFullDate(rawDate, granularity) {
     return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })
   }
   if (granularity === 'week') {
-    // rawDate = '2024-W03' → show week range
     const [y, w] = rawDate.split('-W')
-    const dt = new Date()
-    dt.setFullYear(parseInt(y))
-    // ISO week → Monday
     const jan4 = new Date(parseInt(y), 0, 4)
     const dayOfWeek = jan4.getDay() || 7
     const monday = new Date(jan4)
@@ -39,7 +39,6 @@ function formatFullDate(rawDate, granularity) {
     const fmt = d => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
     return `${fmt(monday)} – ${fmt(sunday)} ${y}`
   }
-  // month: '2024-03'
   const [y, m] = rawDate.split('-')
   return new Date(parseInt(y), parseInt(m) - 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
 }
@@ -63,12 +62,27 @@ function CustomTooltip({ active, payload, label }) {
   )
 }
 
-export default function TimeSeriesChart({ data, loading, totalVisible }) {
+/**
+ * Merge current + comparison data by index (comparison is aligned by position, not date).
+ * Adds AvisPrécédent / NotePrécédente keys to each point.
+ */
+function mergeComparison(chartData, compData, compGranularity) {
+  if (!compData?.points?.length) return chartData
+  return chartData.map((point, i) => {
+    const cp = compData.points[i]
+    return {
+      ...point,
+      'Avis (période préc.)': cp?.count ?? null,
+      'Note (période préc.)': cp?.avg ?? null,
+    }
+  })
+}
+
+export default function TimeSeriesChart({ data, loading, totalVisible, comparisonData, comparisonLoading }) {
   if (!data || loading) return null
 
   const { granularity, points } = data
 
-  // Collect all source keys present in data
   const sourceKeys = useMemo(() => {
     const keys = new Set()
     points.forEach(p => {
@@ -77,8 +91,7 @@ export default function TimeSeriesChart({ data, loading, totalVisible }) {
     return Array.from(keys)
   }, [points])
 
-  // Transform for Recharts: flatten sources into top-level keys
-  const chartData = useMemo(() =>
+  const baseChartData = useMemo(() =>
     points.map(p => ({
       date: formatDateKey(p.date, granularity),
       rawDate: p.date,
@@ -92,21 +105,32 @@ export default function TimeSeriesChart({ data, loading, totalVisible }) {
     [points, granularity, sourceKeys]
   )
 
-  // Total visible reviews (from filtered data)
+  const chartData = useMemo(
+    () => mergeComparison(baseChartData, comparisonData, granularity),
+    [baseChartData, comparisonData, granularity]
+  )
+
   const totalFromChart = useMemo(() =>
     points.reduce((sum, p) => sum + p.count, 0),
     [points]
   )
 
+  const hasComparison = !!comparisonData?.points?.length
+
   if (!chartData.length) return <p className="text-xs text-gray-400 italic">Pas de données</p>
 
   return (
     <div className="space-y-6">
-      {/* Review count area chart */}
+      {/* Volume d'avis */}
       <div>
-        <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">
-          Volume d'avis{' '}
-          <span className="text-gray-500 font-medium">({totalVisible ?? totalFromChart})</span>
+        <div className="flex items-center gap-3 mb-2">
+          <span className="text-[10px] text-gray-400 uppercase tracking-wider">
+            Volume d'avis{' '}
+            <span className="text-gray-500 font-medium">({totalVisible ?? totalFromChart})</span>
+          </span>
+          {comparisonLoading && (
+            <span className="text-[10px] text-indigo-400 animate-pulse">Chargement comparateur…</span>
+          )}
         </div>
         <ResponsiveContainer width="100%" height={180}>
           <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
@@ -124,19 +148,38 @@ export default function TimeSeriesChart({ data, loading, totalVisible }) {
               allowDecimals={false}
             />
             <Tooltip content={<CustomTooltip />} />
+            {hasComparison && (
+              <Area
+                type="monotone"
+                dataKey="Avis (période préc.)"
+                stroke={COLOR_PREV}
+                fill={COLOR_PREV}
+                fillOpacity={0.06}
+                strokeWidth={1.5}
+                strokeDasharray="4 3"
+                connectNulls
+              />
+            )}
             <Area
               type="monotone"
               dataKey="Avis"
-              stroke="#000"
-              fill="#000"
-              fillOpacity={0.08}
-              strokeWidth={1.5}
+              stroke={COLOR_VOLUME}
+              fill={COLOR_VOLUME}
+              fillOpacity={0.1}
+              strokeWidth={2}
             />
+            {hasComparison && (
+              <Legend
+                wrapperStyle={{ fontSize: 10 }}
+                iconType="square"
+                iconSize={8}
+              />
+            )}
           </AreaChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Average rating line */}
+      {/* Note moyenne */}
       <div>
         <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">Note moyenne</div>
         <ResponsiveContainer width="100%" height={140}>
@@ -156,19 +199,38 @@ export default function TimeSeriesChart({ data, loading, totalVisible }) {
               ticks={[1, 2, 3, 4, 5]}
             />
             <Tooltip content={<CustomTooltip />} />
+            {hasComparison && (
+              <Area
+                type="monotone"
+                dataKey="Note (période préc.)"
+                stroke={COLOR_PREV_R}
+                fill={COLOR_PREV_R}
+                fillOpacity={0.06}
+                strokeWidth={1.5}
+                strokeDasharray="4 3"
+                connectNulls
+              />
+            )}
             <Area
               type="monotone"
               dataKey="Note"
-              stroke="#374151"
-              fill="#374151"
-              fillOpacity={0.06}
-              strokeWidth={1.5}
+              stroke={COLOR_RATING}
+              fill={COLOR_RATING}
+              fillOpacity={0.1}
+              strokeWidth={2}
             />
+            {hasComparison && (
+              <Legend
+                wrapperStyle={{ fontSize: 10 }}
+                iconType="square"
+                iconSize={8}
+              />
+            )}
           </AreaChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Stacked bar by source */}
+      {/* Par source (stacked bar) */}
       {sourceKeys.length > 1 && (
         <div>
           <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">Par source</div>

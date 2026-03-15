@@ -73,6 +73,11 @@
         return;
       }
 
+      // Détruit l'instance précédente si le widget est ré-initialisé (edit Elementor, ajout dynamique)
+      if (swiperEl.swiper) {
+        swiperEl.swiper.destroy(true, true);
+      }
+
       new Swiper(swiperEl, {
         loop:         cfg.loop,
         speed:        cfg.speed || 500,

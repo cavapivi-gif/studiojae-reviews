@@ -20,27 +20,33 @@ trait DataControls {
      * Register lieu selector control.
      *
      * @param array $opts {
-     *     @type string   $default     Default value: ''|'all'|'auto' (default: 'all')
-     *     @type bool     $show_auto   Add "Auto (lieu de la page)" option (default: false)
-     *     @type bool     $show_all    Add "Tous les lieux" option (default: true)
-     *     @type string   $all_key     Key for "all" option: '' or 'all' (default: matches $default)
-     *     @type string   $all_label   Label for "all" option (default: 'Tous les lieux')
-     *     @type array    $condition   Elementor condition array (default: [])
+     *     @type string   $default          Default value: 'linked_post'|'auto'|'all'|'lieu_xxx' (default: 'all')
+     *     @type bool     $show_linked_post Add "Avis liés au post" option first (default: false)
+     *     @type bool     $show_auto        Add "Auto (lieu de la page)" option (default: false)
+     *     @type bool     $show_all         Add "Tous les lieux" option (default: true)
+     *     @type string   $all_key          Key for "all" option (default: 'all')
+     *     @type string   $all_label        Label for "all" option (default: 'Tous les lieux')
+     *     @type array    $condition        Elementor condition array (default: [])
      * }
      */
     protected function register_lieu_control(array $opts = []): void {
-        $default   = $opts['default']   ?? 'all';
-        $show_auto = $opts['show_auto'] ?? false;
-        $show_all  = $opts['show_all']  ?? true;
-        $all_key   = $opts['all_key']   ?? $default;
-        $all_label = $opts['all_label'] ?? __('Tous les lieux', 'sj-reviews');
-        $condition = $opts['condition'] ?? [];
+        $default          = $opts['default']          ?? 'all';
+        $show_linked_post = $opts['show_linked_post'] ?? false;
+        $show_auto        = $opts['show_auto']        ?? false;
+        $show_all         = $opts['show_all']         ?? true;
+        $all_key          = $opts['all_key']          ?? 'all';
+        $all_label        = $opts['all_label']        ?? __('Tous les lieux', 'sj-reviews');
+        $condition        = $opts['condition']        ?? [];
 
         $lieux    = \SJ_Reviews\Includes\Settings::lieux();
         $lieu_map = [];
 
+        // "Avis liés au post" — filtre via avis_linked_post (méta CPT) + enriched stats auto
+        if ($show_linked_post) {
+            $lieu_map['linked_post'] = __('Avis liés à ce post', 'sj-reviews');
+        }
         if ($show_auto) {
-            $lieu_map['auto'] = __('Auto (lieu de la page)', 'sj-reviews');
+            $lieu_map['auto'] = __('Auto — lieux de la page (metabox)', 'sj-reviews');
         }
         if ($show_all) {
             $lieu_map[$all_key] = $all_label;
@@ -54,11 +60,14 @@ trait DataControls {
         }
 
         $control = [
-            'label'   => __('Lieu', 'sj-reviews'),
-            'type'    => Controls_Manager::SELECT,
-            'options' => $lieu_map,
-            'default' => $default,
+            'label'       => __('Lieu / Source', 'sj-reviews'),
+            'type'        => Controls_Manager::SELECT,
+            'options'     => $lieu_map,
+            'default'     => $default,
         ];
+        if ($show_linked_post) {
+            $control['description'] = __('« Avis liés à ce post » utilise les lieux de la metabox pour le total enrichi.', 'sj-reviews');
+        }
         if (!empty($condition)) {
             $control['condition'] = $condition;
         }

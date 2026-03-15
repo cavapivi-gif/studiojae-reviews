@@ -18,9 +18,11 @@ export default function Dashboard() {
   const {
     data, loading, period, setPeriod,
     sourceFilter, setSourceFilter, lieuFilter, setLieuFilter,
+    granularity, setGranularity,
     fromDate, setFromDate, toDate, setToDate,
     lieux, activeLieux, monthlyTrend,
     trends, trendsLoading,
+    compareEnabled, setCompareEnabled, prevTrends, prevTrendsLoading,
     comparison, comparisonLoading, compareSeason, compareRange,
   } = useDashboard()
 
@@ -95,6 +97,7 @@ export default function Dashboard() {
           {/* Filters: period + source + lieu */}
           <FilterBar
             period={period} setPeriod={setPeriod}
+            granularity={granularity} setGranularity={setGranularity}
             sourceFilter={sourceFilter} setSourceFilter={setSourceFilter}
             lieuFilter={lieuFilter} setLieuFilter={setLieuFilter}
             fromDate={fromDate} setFromDate={setFromDate}
@@ -110,15 +113,15 @@ export default function Dashboard() {
               sub={<button onClick={() => navigate('/reviews')} className="text-xs underline">Voir tout</button>}
             />
             <StatCard
-              label={
-                <span className="flex items-center justify-between gap-2 w-full">
-                  <span>Note moyenne</span>
-                  {data?.total > 0 && <span className="font-normal normal-case tracking-normal">{data.total} avis</span>}
-                </span>
-              }
+              label="Note moyenne"
               value={data?.avg_rating ? `${data.avg_rating} / 5` : '—'}
               accent
-              sub={<Stars rating={data?.avg_rating ?? 0} size={12} />}
+              sub={
+                <span className="flex items-center gap-2">
+                  <Stars rating={data?.avg_rating ?? 0} size={12} />
+                  {data?.total > 0 && <span className="opacity-70">({data.total} avis)</span>}
+                </span>
+              }
             />
             <StatCard
               label="Google"
@@ -147,8 +150,32 @@ export default function Dashboard() {
 
           {/* Time-series trends */}
           <div className="mx-6 mt-6">
-            <ChartCard title="Tendances" loading={trendsLoading}>
-              <TimeSeriesChart data={trends} loading={trendsLoading} totalVisible={data?.total} />
+            <ChartCard
+              title="Tendances"
+              loading={trendsLoading}
+              actions={
+                period !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => setCompareEnabled(v => !v)}
+                    className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                      compareEnabled
+                        ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                        : 'bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground'
+                    }`}
+                  >
+                    vs période préc.
+                  </button>
+                )
+              }
+            >
+              <TimeSeriesChart
+                data={trends}
+                loading={trendsLoading}
+                totalVisible={data?.total}
+                comparisonData={compareEnabled ? prevTrends : null}
+                comparisonLoading={prevTrendsLoading}
+              />
             </ChartCard>
           </div>
 

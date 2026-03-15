@@ -24,6 +24,7 @@ class RatingBadgeWidget extends SjWidgetBase {
             'icon'     => 'eicon-rating',
             'keywords' => ['rating', 'badge', 'avis', 'google', 'note', 'sj'],
             'css'      => ['sj-rating-badge'],
+            'js'       => ['sj-badge'],
         ];
     }
 
@@ -51,6 +52,7 @@ class RatingBadgeWidget extends SjWidgetBase {
         ]);
 
         $this->register_lieu_control(['default' => 'all', 'all_label' => 'Tous les lieux actifs']);
+        $this->register_source_filter_control();
 
         $this->add_control('design', [
             'label'   => 'Design',
@@ -133,11 +135,12 @@ class RatingBadgeWidget extends SjWidgetBase {
         $s = $this->get_settings_for_display();
 
         $atts = [
-            'lieu_id'     => $s['lieu_id']     ?? 'all',
-            'design'      => $s['design']      ?? 'card',
-            'show_source' => $s['show_source'] ?? '1',
-            'show_link'   => $s['show_link']   ?? '1',
-            'label'       => $s['label']       ?? 'avis',
+            'lieu_id'       => $s['lieu_id']     ?? 'all',
+            'design'        => $s['design']      ?? 'card',
+            'show_source'   => $s['show_source'] ?? '1',
+            'show_link'     => $s['show_link']   ?? '1',
+            'label'         => $s['label']       ?? 'avis',
+            'source_filter' => implode(',', array_filter((array) ($s['source_filter'] ?? []))),
         ];
 
         $sc = new \SJ_Reviews\Front\RatingShortcode();
