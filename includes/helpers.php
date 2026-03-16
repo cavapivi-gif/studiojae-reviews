@@ -291,27 +291,28 @@ function sj_enriched_stats(string|array $lieu_id = '', array $sources = []): arr
         $wheres .= " AND pm_src.meta_value IN ({$in})";
     }
 
-    // Global CPT avg (needed for weighted average)
+    // Global CPT avg (needed for weighted average) — COUNT(DISTINCT p.ID) pour éviter inflations
     $cpt_row = $wpdb->get_row(
-        "SELECT COUNT(*) AS total, AVG(CAST(pm_r.meta_value AS DECIMAL(3,1))) AS avg_r
+        "SELECT COUNT(DISTINCT p.ID) AS total, AVG(CAST(pm_r.meta_value AS DECIMAL(3,1))) AS avg_r
          FROM {$wpdb->posts} p
-         INNER JOIN {$wpdb->postmeta} pm_r ON pm_r.post_id = p.ID AND pm_r.meta_key = 'avis_rating'
+         LEFT JOIN {$wpdb->postmeta} pm_r ON pm_r.post_id = p.ID AND pm_r.meta_key = 'avis_rating'
          {$joins}
          WHERE 1=1 {$wheres}"
     );
     $cpt_total = (int) ($cpt_row->total ?? 0);
     $avg       = round((float) ($cpt_row->avg_r ?? 0), 1);
 
-    // CPT count + avg per source — une seule requête groupée (évite le N+1 précédent)
+    // CPT count + avg per source — COUNT(DISTINCT) pour éviter les doublons postmeta ACF
     $src_rows = $wpdb->get_results(
         "SELECT pm_s.meta_value AS source,
-                COUNT(*) AS cnt,
+                COUNT(DISTINCT p.ID) AS cnt,
                 AVG(CAST(pm_r.meta_value AS DECIMAL(3,1))) AS avg_r
          FROM {$wpdb->posts} p
          INNER JOIN {$wpdb->postmeta} pm_s ON pm_s.post_id = p.ID AND pm_s.meta_key = 'avis_source'
-         INNER JOIN {$wpdb->postmeta} pm_r ON pm_r.post_id = p.ID AND pm_r.meta_key = 'avis_rating'
+         LEFT  JOIN {$wpdb->postmeta} pm_r ON pm_r.post_id = p.ID AND pm_r.meta_key = 'avis_rating'
          {$joins}
          WHERE 1=1 {$wheres}
+         AND pm_s.meta_value != ''
          GROUP BY pm_s.meta_value"
     );
     $by_source     = []; // source => count
@@ -331,10 +332,14 @@ function sj_enriched_stats(string|array $lieu_id = '', array $sources = []): arr
         $matched_lieux = $all_lieux;
     }
 
-    // Exclure les lieux dont "Compter parmi les avis" est décoché (évite double comptage dashboard)
-    $matched_lieux = array_filter($matched_lieux, function ($l) {
-        return ($l['count_in_dashboard'] ?? true) !== false;
-    });
+    // Exclure les lieux dont "Compter parmi les avis" est décoché — UNIQUEMENT pour les totaux globaux.
+    // Quand un widget interroge un lieu spécifique, on affiche toujours les stats complètes (plateforme + CPT).
+    $is_global = empty($lieu_ids) && ($lieu_str === '' || $lieu_str === 'all');
+    if ($is_global) {
+        $matched_lieux = array_filter($matched_lieux, function ($l) {
+            return ($l['count_in_dashboard'] ?? true) !== false;
+        });
+    }
 
     $platform_by_source = []; // source => ['total' => int, 'sum' => float]
     foreach ($matched_lieux as $l) {
@@ -375,6 +380,18 @@ function sj_enriched_stats(string|array $lieu_id = '', array $sources = []): arr
 
         if ($count_for_source > 0) {
             $source_names[] = $src;
+        }
+    }
+
+    // Add CPT reviews without any source (excluded from per-source grouping via `meta_value != ''`)
+    // This fixes the discrepancy between front widgets and the backoffice total.
+    $sourced_cpt    = array_sum($by_source);
+    $sourceless_cpt = max(0, $cpt_total - $sourced_cpt);
+    if ($sourceless_cpt > 0) {
+        $total        += $sourceless_cpt;
+        // Use global CPT average as best estimate for untagged reviews
+        if ($avg > 0) {
+            $weighted_sum += $avg * $sourceless_cpt;
         }
     }
 

@@ -29,7 +29,9 @@ function LieuForm({ initial = EMPTY_FORM, onSave, onCancel, saving }) {
       <Select label="Plateforme" value={form.source} onChange={e => set('source', e.target.value)}>
         {SOURCE_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
       </Select>
-      <Input label="Place ID (Google Maps)" value={form.place_id} onChange={e => set('place_id', e.target.value)} placeholder="ChIJN1t_tDeuEmsRUsoyG83frY4" className="font-mono text-xs" />
+      {form.source === 'google' && (
+        <Input label="Place ID (Google Maps)" value={form.place_id} onChange={e => set('place_id', e.target.value)} placeholder="ChIJN1t_tDeuEmsRUsoyG83frY4" className="font-mono text-xs" />
+      )}
       <Input label="Adresse (optionnel)" value={form.address} onChange={e => set('address', e.target.value)} placeholder="1 rue de Rivoli, 75001 Paris" />
 
       {/* Trustpilot field */}
