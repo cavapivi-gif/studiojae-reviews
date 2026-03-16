@@ -159,4 +159,19 @@ export const api = {
   /** Email digest — send test */
   emailDigestTest: async () =>
     (await req('/email-digest/test', { method: 'POST' })).json(),
+
+  /** Liste tous les providers */
+  providers: async () => (await req('/providers')).json(),
+
+  /** Créer un provider custom */
+  createProvider: async (body) =>
+    (await req('/providers', { method: 'POST', body: JSON.stringify(body) })).json(),
+
+  /** Modifier un provider */
+  updateProvider: async (id, body) =>
+    (await req(`/providers/${id}`, { method: 'PUT', body: JSON.stringify(body) })).json(),
+
+  /** Supprimer un provider custom */
+  deleteProvider: async (id) =>
+    (await req(`/providers/${id}`, { method: 'DELETE' })).json(),
 }

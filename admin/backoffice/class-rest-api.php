@@ -190,6 +190,33 @@ class RestApi {
             ],
         ]);
 
+        // Providers
+        register_rest_route($this->ns, '/providers', [
+            [
+                'methods'             => 'GET',
+                'callback'            => [$this, 'list_providers'],
+                'permission_callback' => [$this, 'is_manager'],
+            ],
+            [
+                'methods'             => 'POST',
+                'callback'            => [$this, 'create_provider'],
+                'permission_callback' => [$this, 'is_manager'],
+            ],
+        ]);
+
+        register_rest_route($this->ns, '/providers/(?P<id>[a-z0-9_-]+)', [
+            [
+                'methods'             => 'PUT',
+                'callback'            => [$this, 'update_provider'],
+                'permission_callback' => [$this, 'is_manager'],
+            ],
+            [
+                'methods'             => 'DELETE',
+                'callback'            => [$this, 'delete_provider'],
+                'permission_callback' => [$this, 'is_manager'],
+            ],
+        ]);
+
         // Post types publics disponibles pour la liaison
         register_rest_route($this->ns, '/post-types', [
             'methods'             => 'GET',
@@ -436,7 +463,28 @@ class RestApi {
             $lieu_where = $wpdb->prepare(" AND pm_flieu.meta_value = %s", $lieu_id);
         }
 
-        return compact('period', 'date_where', 'base_join', 'source_join', 'source_where', 'lieu_join', 'lieu_where');
+        // count_in_dashboard exclusion: exclude reviews belonging to lieux with count_in_dashboard = false
+        $excluded_where = '';
+        if (!$lieu_id) {
+            $all_lieux = \SJ_Reviews\Includes\Settings::lieux();
+            $excluded_ids = [];
+            foreach ($all_lieux as $lieu) {
+                if (isset($lieu['count_in_dashboard']) && $lieu['count_in_dashboard'] === false) {
+                    $excluded_ids[] = $lieu['id'];
+                }
+            }
+            if (!empty($excluded_ids)) {
+                $placeholders = implode(', ', array_fill(0, count($excluded_ids), '%s'));
+                // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
+                $excluded_where = $wpdb->prepare(
+                    " AND p.ID NOT IN (SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = 'avis_lieu_id' AND meta_value IN ($placeholders))",
+                    ...$excluded_ids
+                );
+                // phpcs:enable
+            }
+        }
+
+        return compact('period', 'date_where', 'base_join', 'source_join', 'source_where', 'lieu_join', 'lieu_where', 'excluded_where');
     }
 
     public function dashboard(\WP_REST_Request $req): \WP_REST_Response {
@@ -450,6 +498,8 @@ class RestApi {
         $has_filters = $f['source_where'] || $f['lieu_where'];
         // Pour le total "Avis Globaux" : compter TOUS les avis CPT quand filtre = Toutes les sources (pas seulement ceux avec avis_source renseigné).
         $total_joins = $f['source_where'] ? ($f['base_join'] . $f['source_join'] . $f['lieu_join']) : $f['lieu_join'];
+        // Appliquer l'exclusion count_in_dashboard sur le total global (uniquement sans filtre lieu actif)
+        $excluded_where = $f['excluded_where'] ?? '';
 
         // Per-period cache (only for unfiltered requests)
         $cache_key = self::DASHBOARD_CACHE_PREFIX . $period;
@@ -475,7 +525,7 @@ class RestApi {
              {$total_joins}
              WHERE p.post_type = 'sj_avis'
              AND p.post_status = 'publish'
-             {$date_where}{$extra_where}"
+             {$date_where}{$extra_where}{$excluded_where}"
         );
 
         $avg_raw = $wpdb->get_var(
@@ -486,7 +536,7 @@ class RestApi {
              WHERE pm.meta_key = 'avis_rating'
              AND p.post_type = 'sj_avis'
              AND p.post_status = 'publish'
-             {$date_where}{$extra_where}"
+             {$date_where}{$extra_where}{$excluded_where}"
         );
         $avg = round((float) $avg_raw, 1);
 
@@ -501,7 +551,7 @@ class RestApi {
              AND p.post_type = 'sj_avis'
              AND p.post_status = 'publish'
              AND pm.meta_value BETWEEN '1' AND '5'
-             {$date_where}{$extra_where}
+             {$date_where}{$extra_where}{$excluded_where}
              GROUP BY rating"
         );
         foreach ($dist_rows as $row) {
@@ -509,20 +559,23 @@ class RestApi {
         }
 
         // Répartition par source (avec note moyenne par source)
+        // Utilise COUNT(DISTINCT p.ID) pour éviter les doublons causés par les jointures postmeta
+        $src_joins = $f['source_join'] . $f['lieu_join'];
         $sources_raw = $wpdb->get_results(
             "SELECT
                 pm_src.meta_value AS source,
-                COUNT(*) AS total,
+                COUNT(DISTINCT p.ID) AS total,
                 ROUND(AVG(CAST(pm_rat.meta_value AS DECIMAL(3,1))), 1) AS avg_rating
              FROM {$wpdb->postmeta} pm_src
              INNER JOIN {$wpdb->posts} p ON p.ID = pm_src.post_id
              LEFT JOIN {$wpdb->postmeta} pm_rat
-                ON pm_rat.post_id = pm_src.post_id AND pm_rat.meta_key = 'avis_rating'
-             {$extra_joins}
+                ON pm_rat.post_id = p.ID AND pm_rat.meta_key = 'avis_rating'
+             {$src_joins}
              WHERE pm_src.meta_key = 'avis_source'
+             AND pm_src.meta_value != ''
              AND p.post_type = 'sj_avis'
              AND p.post_status = 'publish'
-             {$date_where}{$extra_where}
+             {$date_where}{$extra_where}{$excluded_where}
              GROUP BY pm_src.meta_value
              ORDER BY total DESC"
         );
@@ -1353,6 +1406,58 @@ class RestApi {
         wp_delete_post($post->ID, true);
         $this->invalidate_dashboard_cache();
         return rest_ensure_response(['deleted' => true, 'id' => (int) $req['id']]);
+    }
+
+    // ── Providers ─────────────────────────────────────────────────────────────
+
+    public function list_providers(\WP_REST_Request $req): \WP_REST_Response {
+        return rest_ensure_response(array_values(\SJ_Reviews\Includes\Providers::all()));
+    }
+
+    public function create_provider(\WP_REST_Request $req): \WP_REST_Response {
+        $body = $req->get_json_params();
+        $id   = sanitize_key($body['id'] ?? '');
+        if (!$id) {
+            return new \WP_Error('missing_id', 'Le champ id est requis.', ['status' => 422]);
+        }
+        // Prevent overwriting system providers via create
+        $defaults = \SJ_Reviews\Includes\Providers::all();
+        if (isset($defaults[$id]) && ($defaults[$id]['is_system'] ?? false)) {
+            return new \WP_Error('system_provider', 'Ce provider système ne peut pas être recréé.', ['status' => 403]);
+        }
+        $data = $this->sanitize_provider_body($body);
+        \SJ_Reviews\Includes\Providers::save($id, $data);
+        return rest_ensure_response(\SJ_Reviews\Includes\Providers::get($id));
+    }
+
+    public function update_provider(\WP_REST_Request $req): \WP_REST_Response {
+        $id   = sanitize_key($req->get_param('id'));
+        $body = $req->get_json_params();
+        $data = $this->sanitize_provider_body($body);
+        \SJ_Reviews\Includes\Providers::save($id, $data);
+        return rest_ensure_response(\SJ_Reviews\Includes\Providers::get($id));
+    }
+
+    public function delete_provider(\WP_REST_Request $req): \WP_REST_Response {
+        $id = sanitize_key($req->get_param('id'));
+        $ok = \SJ_Reviews\Includes\Providers::delete($id);
+        if (!$ok) {
+            return new \WP_Error('system_provider', 'Les providers système ne peuvent pas être supprimés.', ['status' => 403]);
+        }
+        return rest_ensure_response(['deleted' => true]);
+    }
+
+    private function sanitize_provider_body(array $body): array {
+        $allowed_icon_types = ['svg_inline', 'img_url', 'emoji', 'letter'];
+        return [
+            'label'                 => sanitize_text_field($body['label'] ?? ''),
+            'color'                 => sanitize_hex_color($body['color'] ?? '') ?: '#9CA3AF',
+            'icon_type'             => in_array($body['icon_type'] ?? '', $allowed_icon_types, true) ? $body['icon_type'] : 'letter',
+            'icon_value'            => wp_kses($body['icon_value'] ?? '', ['svg' => ['xmlns' => [], 'viewbox' => [], 'viewBox' => [], 'width' => [], 'height' => []], 'path' => ['d' => [], 'fill' => [], 'stroke' => []], 'circle' => ['cx' => [], 'cy' => [], 'r' => [], 'fill' => [], 'stroke' => []], 'polygon' => ['points' => [], 'fill' => []], 'polyline' => ['points' => [], 'fill' => [], 'stroke' => []]]),
+            'icon_url'              => esc_url_raw($body['icon_url'] ?? ''),
+            'external_link_pattern' => sanitize_text_field($body['external_link_pattern'] ?? ''),
+            'active'                => (bool) ($body['active'] ?? true),
+        ];
     }
 
     // ── Lieux ─────────────────────────────────────────────────────────────────
