@@ -291,11 +291,11 @@ function sj_enriched_stats(string|array $lieu_id = '', array $sources = []): arr
         $wheres .= " AND pm_src.meta_value IN ({$in})";
     }
 
-    // Global CPT avg (needed for weighted average)
+    // Global CPT avg (needed for weighted average) — COUNT(DISTINCT p.ID) pour éviter inflations
     $cpt_row = $wpdb->get_row(
-        "SELECT COUNT(*) AS total, AVG(CAST(pm_r.meta_value AS DECIMAL(3,1))) AS avg_r
+        "SELECT COUNT(DISTINCT p.ID) AS total, AVG(CAST(pm_r.meta_value AS DECIMAL(3,1))) AS avg_r
          FROM {$wpdb->posts} p
-         INNER JOIN {$wpdb->postmeta} pm_r ON pm_r.post_id = p.ID AND pm_r.meta_key = 'avis_rating'
+         LEFT JOIN {$wpdb->postmeta} pm_r ON pm_r.post_id = p.ID AND pm_r.meta_key = 'avis_rating'
          {$joins}
          WHERE 1=1 {$wheres}"
     );
@@ -332,10 +332,14 @@ function sj_enriched_stats(string|array $lieu_id = '', array $sources = []): arr
         $matched_lieux = $all_lieux;
     }
 
-    // Exclure les lieux dont "Compter parmi les avis" est décoché (évite double comptage dashboard)
-    $matched_lieux = array_filter($matched_lieux, function ($l) {
-        return ($l['count_in_dashboard'] ?? true) !== false;
-    });
+    // Exclure les lieux dont "Compter parmi les avis" est décoché — UNIQUEMENT pour les totaux globaux.
+    // Quand un widget interroge un lieu spécifique, on affiche toujours les stats complètes (plateforme + CPT).
+    $is_global = empty($lieu_ids) && ($lieu_str === '' || $lieu_str === 'all');
+    if ($is_global) {
+        $matched_lieux = array_filter($matched_lieux, function ($l) {
+            return ($l['count_in_dashboard'] ?? true) !== false;
+        });
+    }
 
     $platform_by_source = []; // source => ['total' => int, 'sum' => float]
     foreach ($matched_lieux as $l) {
