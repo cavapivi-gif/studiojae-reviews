@@ -28,7 +28,6 @@ const navMain = [
   { to: '/reviews',     label: 'Tous les avis',   icon: IconStar },
   { to: '/reviews/new', label: 'Ajouter un avis', icon: IconPlus },
   { to: '/lieux',       label: 'Lieux',            icon: IconMapPin },
-  { to: '/providers',   label: 'Providers',        icon: IconLayers },
   { to: '/import',      label: 'Onboarding',       icon: IconRocket },
   {
     label: 'Réglages',
@@ -39,6 +38,7 @@ const navMain = [
       { to: '/settings/criteria',   label: 'Critères',     icon: IconSliders },
       { to: '/settings/links',      label: 'Liaisons',     icon: IconLink },
       { to: '/settings/shortcodes', label: 'Shortcodes',   icon: IconCode },
+      { to: '/providers',           label: 'Providers',    icon: IconLayers },
     ],
   },
   { to: '/docs', label: 'Documentation', icon: IconExternalLink },
@@ -53,8 +53,8 @@ export default function AppSidebar(props) {
     return location.pathname.startsWith(to)
   }
 
-  // Settings sub-tree is open if any settings route is active
-  const settingsOpen = location.pathname.startsWith('/settings')
+  // Settings sub-tree is open if any settings or providers route is active
+  const settingsOpen = location.pathname.startsWith('/settings') || location.pathname === '/providers'
   const [forceOpen, setForceOpen] = useState(null)
   const isSettingsExpanded = forceOpen !== null ? forceOpen : settingsOpen
 
