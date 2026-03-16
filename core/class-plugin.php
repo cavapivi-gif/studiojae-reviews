@@ -15,6 +15,7 @@ class Plugin {
         // Helpers
         require_once SJ_REVIEWS_DIR . 'includes/class-settings.php';
         require_once SJ_REVIEWS_DIR . 'includes/class-labels.php';
+        require_once SJ_REVIEWS_DIR . 'includes/class-providers.php';
         require_once SJ_REVIEWS_DIR . 'includes/helpers.php';
 
         // Cron — auto-sync

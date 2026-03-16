@@ -652,15 +652,18 @@ if (!empty($a['max_width_mobile'])) {
 
             <!-- Texte (tronqué avec JS) -->
             <?php if (!empty($rv['text'])): ?>
+            <?php
+            // Count words consistently with JS split(/\s+/) — includes numbers, unlike str_word_count()
+            $text_words_arr = preg_split('/\s+/', trim(strip_tags($rv['text'])), -1, PREG_SPLIT_NO_EMPTY);
+            $text_word_count = count($text_words_arr);
+            $needs_truncation = $text_word_count > (int)$a['text_words'];
+            ?>
             <div class="sj-card__body">
                 <p class="sj-card__text"
                    data-full="<?php echo esc_attr($rv['text']); ?>">
                     <?php echo esc_html($rv['text']); ?>
                 </p>
-                <?php
-                $word_count = str_word_count(strip_tags($rv['text']));
-                if ($word_count > (int)$a['text_words']):
-                ?>
+                <?php if ($needs_truncation): ?>
                 <button type="button" class="sj-card__more" aria-expanded="false">
                     Voir plus
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">

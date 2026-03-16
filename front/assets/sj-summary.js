@@ -91,15 +91,32 @@
     /* ── Troncature par mots ─────────────────────────────────────────────── */
     function truncateCards(container) {
       container.querySelectorAll('.sj-card__text').forEach(function (p) {
-        var full      = p.dataset.full || p.textContent.trim()
-        var wordArr   = full.split(/\s+/)
-        var shortArr  = wordArr.slice(0, words)
-        var short     = wordArr.length > words ? shortArr.join(' ') + '…' : full
-        p.textContent   = short
-        p.dataset.short = short
-        p.dataset.full  = full
-        var btn = p.closest('.sj-card__body') && p.closest('.sj-card__body').querySelector('.sj-card__more')
-        if (btn) btn.hidden = wordArr.length <= words
+        var full     = p.dataset.full || p.textContent.trim()
+        p.dataset.full = full
+        var wordArr  = full.split(/\s+/).filter(Boolean)
+        var needsTrunc = wordArr.length > words
+        var body     = p.closest('.sj-card__body')
+        var btn      = body && body.querySelector('.sj-card__more')
+
+        if (needsTrunc) {
+          var short = wordArr.slice(0, words).join(' ') + '…'
+          p.textContent   = short
+          p.dataset.short = short
+          // Create button if PHP didn't render one (e.g. word-count discrepancy)
+          if (!btn && body) {
+            btn = document.createElement('button')
+            btn.type = 'button'
+            btn.className = 'sj-card__more'
+            btn.setAttribute('aria-expanded', 'false')
+            btn.innerHTML = 'Voir plus <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+            body.appendChild(btn)
+          }
+          if (btn) btn.hidden = false
+        } else {
+          p.textContent   = full
+          p.dataset.short = full
+          if (btn) btn.hidden = true
+        }
       })
     }
     truncateCards(reviews)

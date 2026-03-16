@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/sidebar'
 import {
   IconDashboard, IconStar, IconPlus, IconSettings, IconExternalLink,
-  IconMapPin, IconRocket, IconChevronRight,
+  IconMapPin, IconRocket, IconChevronRight, IconLayers,
   IconKey, IconPalette, IconSliders, IconLink, IconCode,
 } from './Icons'
 
@@ -28,6 +28,7 @@ const navMain = [
   { to: '/reviews',     label: 'Tous les avis',   icon: IconStar },
   { to: '/reviews/new', label: 'Ajouter un avis', icon: IconPlus },
   { to: '/lieux',       label: 'Lieux',            icon: IconMapPin },
+  { to: '/providers',   label: 'Providers',        icon: IconLayers },
   { to: '/import',      label: 'Onboarding',       icon: IconRocket },
   {
     label: 'Réglages',
